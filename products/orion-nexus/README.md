@@ -17,6 +17,9 @@ python3 products/orion-nexus/src/orion_cli.py backtest --symbol AAPL
 
 # 3) 生成简洁可视化 HTML
 python3 products/orion-nexus/src/orion_cli.py render --symbol AAPL
+
+# 4) 生成 paper-trading 接口准备 payload（仅模拟，不下实盘）
+python3 products/orion-nexus/src/orion_cli.py paper-prep --symbol AAPL
 ```
 
 ## 数据来源与延迟说明

@@ -37,3 +37,21 @@
 
 ### 是否建议进入明晚窗口继续推进
 - **建议继续推进。** 理由：当前已具备“可运行脚本 + 可验证改进 + 明确下一步实验设计”，只差真实流量验证即可形成收益闭环。
+
+## 2026-03-16 深夜窗口（00:56-01:01）新增成果
+
+### Passive-Income 主线
+- 新增自动化：`generate_sales_execution.py`
+- 新增产物：
+  - `outputs/sales-execution-checklist.md`
+  - `outputs/sales-execution-checklist.json`
+- 达成：将“提示词包+上架文案”推进到“24h/7d可执行变现清单+阈值判定”。
+
+### Orion Nexus Quant
+- 升级回测指标：Sortino、Calmar、WinRate、Trades、Turnover
+- 新增稳定性视图：Walk-forward（70/30）
+- 新增交易化准备：`paper-prep` 命令，输出 `products/orion-nexus/output/AAPL_paper_trade_plan.json`（仅 paper）
+
+### 安全与预算
+- 未执行 curl|sh，未下载可疑二进制，未进行实盘下单。
+- 预算可见性问题仍存在：无法在本地环境验证“当日剩余预算”。
