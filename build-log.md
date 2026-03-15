@@ -1,0 +1,36 @@
+# Build Log
+
+## 2026-03-14
+- [x] 创建 Passive Income Lab 工作区
+- [x] 建立 ideas/research/build/results/30d 结构
+- [x] 配置夜间研究 cron 与 12小时汇报 cron
+- [x] 完成首个 MVP 选题与实现
+- [x] 新增可运行脚本：`mvp_prompt_pack_builder.py`（从 GitHub 公开仓库抓取并筛选营销/销售相关提示词）
+- [x] 生成最小产物：`outputs/prompt-pack.md`、`outputs/prompt-pack.json`
+- [x] 新增可运行脚本：`mvp_vertical_pack_builder.py`（按行业预设筛选并生成垂直提示词包）
+- [x] 生成餐饮垂直产物：`outputs/prompt-pack-restaurant.md`、`outputs/prompt-pack-restaurant.json`
+- [x] 补充行业垂直包：跨境电商（`outputs/prompt-pack-ecommerce.md/.json`）
+- [x] 补充 SaaS 垂直包（`outputs/prompt-pack-saas.md/.json`）
+- [x] 更新脚本预设：`mvp_vertical_pack_builder.py` 新增 `saas` preset 与关键词映射
+- [x] 质量修正：对自动筛选结果做二次精选，剔除误命中条目，SaaS包有效条目提升至3条
+- [x] 新增垂直预设：`mvp_vertical_pack_builder.py` 增加 `micro-saas-launch`
+- [x] 筛选质量修正：新增重试机制与排除词（`regex/正则/sql terminal`）避免误命中
+- [x] 生成最小产物：`outputs/prompt-pack-micro-saas-launch.md`、`outputs/prompt-pack-micro-saas-launch.json`
+- [x] 扩充第3个公开数据源：`dair-ai/Prompt-Engineering-Guide`（MIT，高星公开仓库）
+- [x] 重新生成 Micro-SaaS 包：`outputs/prompt-pack-micro-saas-launch.md/.json`（加入第3公开源并清理公告噪声，保留3条高相关）
+- [x] 新增实验预设：`freelancer-leads`（用于验证自由职业获客方向）
+- [x] 新增可运行脚本：`build_gumroad_listing.py`（根据提示词包 JSON 自动生成上架页文案）
+- [x] 生成最小产物：`outputs/gumroad-listing-micro-saas.md`（含价值主张、交付清单、FAQ、合规声明、定价）
+- [x] 完成首个上架页最小版本（Micro-SaaS）
+- [ ] 下一步：将通用标题重写为业务价值标题（避免“作为广告商”这类弱转化标题）
+- [ ] 下一步：重构 `freelancer-leads` 的关键词与筛选规则，目标命中≥3条高相关提示词
+- [x] 新增可运行脚本：`rewrite_prompt_titles.py`（将角色型标题重写为收益导向标题，输出可追溯变更）
+- [x] 生成最小产物：`outputs/prompt-pack-micro-saas-launch-v2.json`（含 `title_original` 与 `title_rewrite`）
+- [x] 生成最小产物：`outputs/gumroad-listing-micro-saas-v2.md`（业务价值版商品页文案）
+- [ ] 下一步：对 v1/v2 商品页做首轮 A/B（点击率、加购率、支付转化）
+- [x] 新增可运行脚本：`evaluate_title_value.py`（离线评估标题“价值感知”，用于A/B前基线验证）
+- [x] 通过 Python 语法校验：`python3 -m py_compile`（`evaluate_title_value.py` / `rewrite_prompt_titles.py` / `build_gumroad_listing.py`）
+- [x] 生成评估产物：`outputs/title-value-eval-micro-saas.json`
+- [x] 生成评估报告：`outputs/title-value-eval-micro-saas.md`
+- [x] 验证结果：标题平均分 v1=-0.33 -> v2=6.67（+7.0）
+- [ ] 下一步：把离线评分与真实上架指标（CTR/加购/支付）打通，形成最小闭环复盘模板
