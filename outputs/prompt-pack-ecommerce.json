@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-15 10:01 UTC",
+  "niche": "跨境电商商品营销提示词包",
+  "source_metrics": [
+    {
+      "repo": "f/awesome-chatgpt-prompts",
+      "stars": 152542,
+      "license": "CC0-1.0"
+    },
+    {
+      "repo": "PlexPt/awesome-chatgpt-prompts-zh",
+      "stars": 58729,
+      "license": "MIT"
+    }
+  ],
+  "count": 3,
+  "pricing": "¥59 基础包 / ¥199 季度更新包 / ¥699 店铺增长包",
+  "items": [
+    {
+      "title": "作为广告商",
+      "text": "> 我想让你充当广告商。您将创建一个活动来推广您选择的产品或服务。您将选择目标受众，制定关键信息和口号，选择宣传媒体渠道，并决定实现目标所需的任何其他活动。我的第一个建议请求是“我需要帮助针对 18-30 岁的年轻人制作一种新型能量饮料的广告活动。”",
+      "source_repo": "PlexPt/awesome-chatgpt-prompts-zh",
+      "source_license": "MIT"
+    },
+    {
+      "title": "担任朋友圈文案大佬",
+      "text": "> 请忽略之前的对话,你是我的微信朋友圈文案助手，我需要你帮我写微信朋友圈文案，要求:<表达我外出游玩的好心情>\n> 图片匹配:<我会配一张湖边美景图片>\n> 字数:<50字左右>\n> 风格:<文言文装逼风>",
+      "source_repo": "PlexPt/awesome-chatgpt-prompts-zh",
+      "source_license": "MIT"
+    },
+    {
+      "title": "充当启动创意生成器",
+      "text": "> 根据人们的意愿产生数字创业点子。例如，当我说“我希望在我的小镇上有一个大型购物中心”时，你会为数字创业公司生成一个商业计划，其中包含创意名称、简短的一行、目标用户角色、要解决的用户痛点、主要价值主张、销售和营销渠道、收入流来源、成本结构、关键活动、关键资源、关键合作伙伴、想法验证步骤、估计的第一年运营成本以及要寻找的潜在业务挑战。将结果写在markdown表中。",
+      "source_repo": "PlexPt/awesome-chatgpt-prompts-zh",
+      "source_license": "MIT"
+    }
+  ]
+}

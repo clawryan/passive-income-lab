@@ -1,0 +1,73 @@
+{
+  "v1": {
+    "count": 3,
+    "avg_score": -0.33,
+    "rows": [
+      {
+        "title": "作为广告商",
+        "value_hits": [],
+        "role_hits": [
+          "作为"
+        ],
+        "score": -1
+      },
+      {
+        "title": "担任网页设计顾问",
+        "value_hits": [],
+        "role_hits": [
+          "担任"
+        ],
+        "score": -1
+      },
+      {
+        "title": "充当启动创意生成器",
+        "value_hits": [
+          "生成器"
+        ],
+        "role_hits": [
+          "充当"
+        ],
+        "score": 1
+      }
+    ]
+  },
+  "v2": {
+    "count": 3,
+    "avg_score": 6.67,
+    "rows": [
+      {
+        "title": "7天获客广告活动生成器（定位/卖点/渠道一键成稿）",
+        "value_hits": [
+          "获客",
+          "生成器",
+          "一键",
+          "7天"
+        ],
+        "role_hits": [],
+        "score": 8
+      },
+      {
+        "title": "高转化落地页顾问（首页结构+转化文案+CTA）",
+        "value_hits": [
+          "转化",
+          "落地页"
+        ],
+        "role_hits": [],
+        "score": 4
+      },
+      {
+        "title": "Micro-SaaS 商业点子与验证计划生成器",
+        "value_hits": [
+          "验证",
+          "计划",
+          "生成器",
+          "商业"
+        ],
+        "role_hits": [],
+        "score": 8
+      }
+    ]
+  },
+  "delta_avg_score": 7.0,
+  "note": "用于上架标题A/B前的离线价值感知基线评估"
+}

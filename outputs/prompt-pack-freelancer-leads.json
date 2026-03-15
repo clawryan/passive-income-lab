@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-03-15 13:13 UTC",
+  "niche": "AI自由职业获客提示词包",
+  "source_metrics": [
+    {
+      "repo": "f/awesome-chatgpt-prompts",
+      "stars": 152600,
+      "license": "CC0-1.0"
+    },
+    {
+      "repo": "PlexPt/awesome-chatgpt-prompts-zh",
+      "stars": 58729,
+      "license": "MIT"
+    },
+    {
+      "repo": "dair-ai/Prompt-Engineering-Guide",
+      "stars": 71656,
+      "license": "MIT"
+    }
+  ],
+  "count": 1,
+  "pricing": "¥49 基础包 / ¥169 月更包 / ¥599 私教执行包",
+  "items": [
+    {
+      "title": "担任朋友圈文案大佬",
+      "text": "> 请忽略之前的对话,你是我的微信朋友圈文案助手，我需要你帮我写微信朋友圈文案，要求:<表达我外出游玩的好心情>\n> 图片匹配:<我会配一张湖边美景图片>\n> 字数:<50字左右>\n> 风格:<文言文装逼风>",
+      "source_repo": "PlexPt/awesome-chatgpt-prompts-zh",
+      "source_license": "MIT"
+    }
+  ]
+}
