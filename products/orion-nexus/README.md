@@ -30,9 +30,12 @@ python3 products/orion-nexus/src/orion_cli.py paper-prep --symbol AAPL
 
 ## Web 交互界面（Vercel）
 仓库已内置：
-- `web/index.html`（前端交互页）
-- `api/backtest.js`（服务端回测接口）
+- `web/index.html`（机构风格 Portfolio Monitor）
+- `api/portfolio.js`（自动选股 + 组合监控 + 基准比较）
+- `api/backtest.js`（单标的快速回测接口）
 - `vercel.json`（路由到首页）
+
+产品说明文档：`PRODUCT_BRD.md`
 
 部署步骤：
 1. GitHub 导入仓库到 Vercel（Framework 选 Other）
