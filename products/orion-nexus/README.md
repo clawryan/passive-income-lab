@@ -9,8 +9,9 @@
 
 ## 今日可运行 CLI
 ```bash
-# 1) 抓取公开可匿名访问数据（Stooq，日频，通常T+0/T+1更新）
+# 1) 抓取公开可匿名访问数据（Stooq 日频 或 Yahoo 分钟线）
 python3 products/orion-nexus/src/orion_cli.py fetch --symbol AAPL --source stooq
+python3 products/orion-nexus/src/orion_cli.py fetch --symbol AAPL --source yahoo
 
 # 2) 跑离线回测（3策略聚合评测）
 python3 products/orion-nexus/src/orion_cli.py backtest --symbol AAPL

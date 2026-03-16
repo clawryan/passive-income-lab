@@ -8,6 +8,7 @@ import json
 import math
 import pathlib
 import urllib.request
+import time
 
 BASE = pathlib.Path('passive-income-lab/products/orion-nexus')
 DATA = BASE / 'data'
@@ -29,6 +30,42 @@ def fetch_stooq(symbol: str) -> pathlib.Path:
         for row in r:
             if row.get('Close') and row['Close'] != '0':
                 w.writerow([row['Date'], row['Close']])
+    return out
+
+
+def fetch_yahoo_intraday(symbol: str, interval: str = '5m', range_: str = '5d') -> pathlib.Path:
+    url = (
+        f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol.upper()}?'
+        f'interval={interval}&range={range_}&includePrePost=false&events=div%2Csplit'
+    )
+    DATA.mkdir(parents=True, exist_ok=True)
+    out = DATA / f'{symbol.upper()}_yahoo_{interval}_{range_}.csv'
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 OrionNexus/1.0'})
+    try:
+        raw = urllib.request.urlopen(req, timeout=20).read().decode('utf-8', errors='ignore')
+    except Exception:
+        time.sleep(2)
+        raw = urllib.request.urlopen(req, timeout=20).read().decode('utf-8', errors='ignore')
+    payload = json.loads(raw)
+    result = payload.get('chart', {}).get('result', [])
+    if not result:
+        raise RuntimeError('yahoo chart data unavailable')
+
+    rs = result[0]
+    timestamps = rs.get('timestamp') or []
+    quote = (rs.get('indicators', {}).get('quote') or [{}])[0]
+    closes = quote.get('close') or []
+    if not timestamps or not closes:
+        raise RuntimeError('yahoo chart empty')
+
+    with out.open('w', encoding='utf-8', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['datetime', 'close'])
+        for ts, c in zip(timestamps, closes):
+            if c is None:
+                continue
+            t = dt.datetime.utcfromtimestamp(ts).isoformat(timespec='seconds')
+            w.writerow([t, c])
     return out
 
 
@@ -248,9 +285,16 @@ def main():
 
     a = p.parse_args()
     if a.cmd == 'fetch':
-        path = fetch_stooq(a.symbol)
-        print(f'written: {path}')
-        print('source=stooq, latency=daily (non-tick realtime)')
+        if a.source == 'stooq':
+            path = fetch_stooq(a.symbol)
+            print(f'written: {path}')
+            print('source=stooq, latency=daily (non-tick realtime)')
+        elif a.source == 'yahoo':
+            path = fetch_yahoo_intraday(a.symbol)
+            print(f'written: {path}')
+            print('source=yahoo chart api, latency=usually minute-level delayed')
+        else:
+            raise ValueError("--source must be 'stooq' or 'yahoo'")
     elif a.cmd == 'backtest':
         run_backtest(a.symbol)
         print(f'written: {OUT}/{a.symbol.upper()}_backtest.md')
