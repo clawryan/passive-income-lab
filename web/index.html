@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orion Nexus Quant Web</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; background: #0b1020; color: #ecf2ff; }
+    .card { background: #151e36; border-radius: 12px; padding: 16px; margin-top: 14px; }
+    input, button { font-size: 16px; padding: 10px 12px; border-radius: 8px; border: none; }
+    input { width: 160px; margin-right: 8px; }
+    button { background: #4da3ff; color: white; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border-bottom: 1px solid #2a375f; padding: 8px; text-align: left; }
+    .muted { opacity: .75; font-size: 13px; }
+    .ok { color: #6ee7b7; }
+    .bad { color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <h1>Orion Nexus Quant · Web</h1>
+  <div class="muted">输入美股代码，一键跑 5m × 5d 快速验证（研究/模拟用途）</div>
+
+  <div class="card">
+    <input id="symbol" value="AAPL" />
+    <button id="run">跑验证</button>
+    <span id="status" class="muted"></span>
+  </div>
+
+  <div id="meta" class="card" style="display:none"></div>
+  <div id="tableWrap" class="card" style="display:none"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fmtPct = (x) => `${(x * 100).toFixed(2)}%`;
+
+    async function run() {
+      const symbol = $("symbol").value.trim().toUpperCase() || "AAPL";
+      $("status").textContent = "运行中...";
+      $("meta").style.display = "none";
+      $("tableWrap").style.display = "none";
+
+      try {
+        const r = await fetch(`/api/backtest?symbol=${encodeURIComponent(symbol)}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "请求失败");
+
+        $("status").textContent = "完成";
+
+        $("meta").style.display = "block";
+        $("meta").innerHTML = `
+          <b>${data.symbol}</b> · Bars: ${data.bars}<br/>
+          Range: ${data.start} ~ ${data.end}<br/>
+          Latest: ${data.latest.time} / Price ${data.latest.price.toFixed(2)}<br/>
+          Signal: SMA=${data.latest['SMA(5,20)']}, MOM=${data.latest['Momentum(15)']}, MR=${data.latest['MeanRev(10)']}
+        `;
+
+        const rows = Object.entries(data.results).map(([name, v]) => {
+          const cls = v.total_return >= 0 ? "ok" : "bad";
+          return `<tr>
+            <td>${name}</td>
+            <td class="${cls}">${fmtPct(v.total_return)}</td>
+            <td>${v.sharpe.toFixed(2)}</td>
+            <td>${fmtPct(v.max_drawdown)}</td>
+            <td>${fmtPct(v.win_rate)}</td>
+            <td>${v.trades}</td>
+          </tr>`;
+        }).join("");
+
+        $("tableWrap").style.display = "block";
+        $("tableWrap").innerHTML = `
+          <table>
+            <thead>
+              <tr><th>Strategy</th><th>Total Return</th><th>Sharpe</th><th>MaxDD</th><th>WinRate</th><th>Trades</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="muted" style="margin-top:8px">仅研究用途，不构成投资建议。</div>
+        `;
+      } catch (e) {
+        $("status").textContent = `失败: ${e.message}`;
+      }
+    }
+
+    $("run").addEventListener("click", run);
+  </script>
+</body>
+</html>

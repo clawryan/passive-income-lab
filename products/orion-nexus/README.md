@@ -28,6 +28,17 @@ python3 products/orion-nexus/src/orion_cli.py paper-prep --symbol AAPL
 - **Yahoo Finance Chart API (匿名可访问)**: 可获取近实时分钟线（通常有分钟级延迟，常见约 15 分钟）。
 - 本项目当前默认 Stooq 做“今天可跑”演示，避免登录依赖。
 
+## Web 交互界面（Vercel）
+仓库已内置：
+- `web/index.html`（前端交互页）
+- `api/backtest.js`（服务端回测接口）
+- `vercel.json`（路由到首页）
+
+部署步骤：
+1. GitHub 导入仓库到 Vercel（Framework 选 Other）
+2. Deploy 后访问站点首页，输入 `AAPL/NVDA/TSLA` 即可一键验证
+3. 绑定 `.com` 域名：Vercel Project → Settings → Domains
+
 ## 合规声明
 - 仅使用公开数据与开源资料。
 - 不承诺收益，不宣传未经验证的超额回报。
