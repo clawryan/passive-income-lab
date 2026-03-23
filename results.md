@@ -55,3 +55,27 @@
 ### 安全与预算
 - 未执行 curl|sh，未下载可疑二进制，未进行实盘下单。
 - 预算可见性问题仍存在：无法在本地环境验证“当日剩余预算”。
+
+## 2026-03-24 凌晨冲刺（00:41-00:46）新增成果
+
+### 本轮目标
+- 以最低阻力补齐“真实A/B数据 -> 自动判定 -> 下一步动作”的执行闭环，减少手工复盘时间。
+
+### 新增产出
+- `analyze_ab_funnel.py`：A/B 漏斗自动分析（含 two-proportion z-test 近似显著性判定）。
+- `outputs/ab-test-micro-saas-2026-03-template.json`：可直接替换实测数据的模板。
+- `outputs/ab-test-micro-saas-latest.md`
+- `outputs/ab-test-micro-saas-latest.json`
+
+### 验证结果
+- 语法校验通过：`python3 -m py_compile analyze_ab_funnel.py`
+- 实跑产物已写入 outputs 目录（可在手机端直接查看 markdown 报告）。
+
+### 阻塞
+- 当前仍是模板数据，尚未接入真实渠道统计；判定结果仅用于流程验证。
+- 预算可见性仍不可验证（无法直接读取当日 token/$ 消耗）。
+
+### 下一步
+1. 将 Gumroad/独立站真实曝光与支付数据按同字段写入模板 JSON。
+2. 每24小时重跑一次脚本，累计到每版点击>=100后再做胜负决策。
+3. 若 B 在支付转化上显著领先，批量迁移标题策略到餐饮/电商子包。

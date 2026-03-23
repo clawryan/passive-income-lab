@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-24 00:42:51",
+  "input_file": "/Users/ryanzhu/.openclaw/workspace/passive-income-lab/outputs/ab-test-micro-saas-2026-03-template.json",
+  "sample_ok": false,
+  "decision": "继续收集样本",
+  "metrics": {
+    "A": {
+      "ctr": 0.075,
+      "checkout_start_rate": 0.125,
+      "paid_conversion": 0.041666666666666664
+    },
+    "B": {
+      "ctr": 0.08529411764705883,
+      "checkout_start_rate": 0.1724137931034483,
+      "paid_conversion": 0.06896551724137931
+    },
+    "paid_lift_vs_A": 0.6551724137931035,
+    "paid_z_score": 0.42809611482108106,
+    "paid_p_value": 0.668581145278675
+  },
+  "raw": {
+    "A": {
+      "impressions": 320,
+      "clicks": 24,
+      "checkout_starts": 3,
+      "paid_orders": 1
+    },
+    "B": {
+      "impressions": 340,
+      "clicks": 29,
+      "checkout_starts": 5,
+      "paid_orders": 2
+    }
+  }
+}

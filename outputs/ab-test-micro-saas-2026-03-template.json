@@ -1,0 +1,20 @@
+{
+  "experiment": "micro-saas-title-v1-v2",
+  "window": "2026-03-24",
+  "min_clicks_per_variant": 100,
+  "variants": {
+    "A": {
+      "impressions": 320,
+      "clicks": 24,
+      "checkout_starts": 3,
+      "paid_orders": 1
+    },
+    "B": {
+      "impressions": 340,
+      "clicks": 29,
+      "checkout_starts": 5,
+      "paid_orders": 2
+    }
+  },
+  "notes": "模板数据，可替换为真实渠道统计（Gumroad/独立站/社媒UTM）"
+}

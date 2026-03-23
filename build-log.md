@@ -17,3 +17,9 @@
 - 新增 paper-trading 准备命令：`paper-prep`，输出 `AAPL_paper_trade_plan.json`（仅模拟，不下实盘）。
 - 主线新增自动化脚本：`generate_sales_execution.py`，产出 24h/7d 变现动作与量化阈值清单。
 - 运行验证完成：backtest/render/paper-prep/checklist 全部可执行并已生成产物。
+
+## 2026-03-24 00:45 (Asia/Shanghai)
+- 新增 A/B 漏斗判定脚本：`analyze_ab_funnel.py`（输入曝光/点击/结账/支付，输出显著性与行动建议）。
+- 新增模板数据：`outputs/ab-test-micro-saas-2026-03-template.json`。
+- 生成最新报告：`outputs/ab-test-micro-saas-latest.md` 与 `outputs/ab-test-micro-saas-latest.json`。
+- 验证：`python3 -m py_compile analyze_ab_funnel.py` 与脚本实跑通过。
