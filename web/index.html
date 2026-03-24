@@ -76,6 +76,11 @@
       </div>
 
       <div class="grid g2">
+        <button id="exportAbJson" style="background:#16305f">导出 JSON 报告</button>
+        <button id="exportAbMd" style="background:#16305f">导出 Markdown 报告</button>
+      </div>
+
+      <div class="grid g2">
         <div class="card" id="abSummary"><h3>判定摘要</h3><div class="muted">等待运行</div></div>
         <div class="card" id="abActions"><h3>下一步</h3><div class="muted">等待运行</div></div>
       </div>
@@ -117,6 +122,69 @@ const $=id=>document.getElementById(id);
 const pct=x=>`${(x*100).toFixed(2)}%`;
 const cls=x=>x>=0?'good':'bad';
 const num=id=>Number($(id).value||0);
+let lastAbResult=null;
+
+function downloadFile(filename, content, mimeType){
+  const blob=new Blob([content],{type:mimeType});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildAbMarkdownReport(result,payload){
+  const lines=[
+    '# A/B Funnel Report',
+    '',
+    `- 生成时间: ${result.generatedAt}`,
+    `- 样本达标: ${result.sampleOk ? '是' : '否'}`,
+    `- 结论: ${result.decision}`,
+    `- 最小点击阈值: ${payload.min_clicks_per_variant}`,
+    '',
+    '## 输入数据',
+    '',
+    '| 版本 | 展现 | 点击 | 发起结账 | 支付订单 |',
+    '| --- | ---: | ---: | ---: | ---: |',
+    `| A | ${payload.variants.A.impressions} | ${payload.variants.A.clicks} | ${payload.variants.A.checkout_starts} | ${payload.variants.A.paid_orders} |`,
+    `| B | ${payload.variants.B.impressions} | ${payload.variants.B.clicks} | ${payload.variants.B.checkout_starts} | ${payload.variants.B.paid_orders} |`,
+    '',
+    '## 关键指标',
+    '',
+    '| 版本 | CTR | Checkout Start | Paid Conversion |',
+    '| --- | ---: | ---: | ---: |',
+    `| A | ${pct(result.metrics.A.ctr)} | ${pct(result.metrics.A.checkoutStartRate)} | ${pct(result.metrics.A.paidConversion)} |`,
+    `| B | ${pct(result.metrics.B.ctr)} | ${pct(result.metrics.B.checkoutStartRate)} | ${pct(result.metrics.B.paidConversion)} |`,
+    '',
+    `- Paid Lift (B vs A): ${pct(result.metrics.paidLiftVsA)}`,
+    `- p-value: ${result.metrics.paidPValue.toFixed(4)}`,
+    `- z-score: ${result.metrics.paidZScore.toFixed(4)}`,
+    '',
+    '## 下一步',
+    '',
+    ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
+  ];
+  return lines.join('\n');
+}
+
+function exportAB(format){
+  if(!lastAbResult){
+    $("abStatus").textContent='请先运行 A/B 判定';
+    return;
+  }
+  const ts=(lastAbResult.result.generatedAt||new Date().toISOString()).replace(/[:.]/g,'-');
+  if(format==='json'){
+    downloadFile(`ab-funnel-report-${ts}.json`,JSON.stringify(lastAbResult,null,2),'application/json');
+    $("abStatus").textContent='已导出 JSON 报告';
+    return;
+  }
+  const md=buildAbMarkdownReport(lastAbResult.result,lastAbResult.payload);
+  downloadFile(`ab-funnel-report-${ts}.md`,md,'text/markdown;charset=utf-8');
+  $("abStatus").textContent='已导出 Markdown 报告';
+}
 
 async function runAB(){
   $("abStatus").textContent='计算中...';
@@ -131,6 +199,7 @@ async function runAB(){
     const r=await fetch('/api/ab-funnel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json();
     if(!r.ok) throw new Error(d.error||'请求失败');
+    lastAbResult={payload,result:d};
     $("abStatus").textContent='完成';
 
     $("abSummary").innerHTML=`<h3>判定摘要</h3>
@@ -196,6 +265,8 @@ async function runPortfolio(){
 }
 
 $("runAb").addEventListener('click',runAB);
+$("exportAbJson").addEventListener('click',()=>exportAB('json'));
+$("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("run").addEventListener('click',runPortfolio);
 runAB();
 </script>
