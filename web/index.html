@@ -90,6 +90,16 @@
         <div class="card" id="abActions"><h3>下一步</h3><div class="muted">等待运行</div></div>
       </div>
       <div class="card" id="abMetrics"><h3>关键指标</h3><div class="muted">等待运行</div></div>
+      <div class="card stack">
+        <div class="section-title">
+          <div>
+            <h3>A/B 历史记录</h3>
+            <div class="muted">自动保留最近 12 次判定，便于在手机/电脑端连续跟踪趋势。</div>
+          </div>
+          <button id="clearAbHistory" style="max-width:180px;background:#4a1f37">清空历史</button>
+        </div>
+        <div id="abHistory"><div class="muted">暂无历史记录</div></div>
+      </div>
     </div>
 
     <div class="card stack">
@@ -127,6 +137,8 @@ const $=id=>document.getElementById(id);
 const pct=x=>`${(x*100).toFixed(2)}%`;
 const cls=x=>x>=0?'good':'bad';
 const num=id=>Number($(id).value||0);
+const AB_HISTORY_KEY='passive-income-lab.abHistory.v1';
+const AB_HISTORY_LIMIT=12;
 let lastAbResult=null;
 
 function downloadFile(filename, content, mimeType){
@@ -139,6 +151,56 @@ function downloadFile(filename, content, mimeType){
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function readAbHistory(){
+  try{
+    const raw=localStorage.getItem(AB_HISTORY_KEY);
+    const parsed=raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(_e){
+    return [];
+  }
+}
+
+function writeAbHistory(items){
+  localStorage.setItem(AB_HISTORY_KEY,JSON.stringify(items.slice(0,AB_HISTORY_LIMIT)));
+}
+
+function saveAbHistory(entry){
+  const next=[entry,...readAbHistory()].slice(0,AB_HISTORY_LIMIT);
+  writeAbHistory(next);
+  renderAbHistory();
+}
+
+function clearAbHistory(){
+  localStorage.removeItem(AB_HISTORY_KEY);
+  renderAbHistory();
+  $("abStatus").textContent='已清空 A/B 历史记录';
+}
+
+function renderAbHistory(){
+  const history=readAbHistory();
+  if(!history.length){
+    $("abHistory").innerHTML='<div class="muted">暂无历史记录</div>';
+    return;
+  }
+  const rows=history.map((item,idx)=>{
+    const delta=idx < history.length - 1 ? item.metrics.paidLiftVsA - history[idx+1].metrics.paidLiftVsA : null;
+    const deltaText=delta === null ? '—' : `${delta >= 0 ? '+' : ''}${(delta*100).toFixed(2)}pp`;
+    const deltaClass=delta === null ? '' : cls(delta);
+    return `<tr>
+      <td>${item.generatedAt.replace('T',' ').replace('Z',' UTC')}</td>
+      <td>${item.decision}</td>
+      <td>${item.sampleOk ? '是' : '否'}</td>
+      <td>${pct(item.metrics.A.paidConversion)}</td>
+      <td>${pct(item.metrics.B.paidConversion)}</td>
+      <td class="${cls(item.metrics.paidLiftVsA)}">${pct(item.metrics.paidLiftVsA)}</td>
+      <td>${item.metrics.paidPValue.toFixed(4)}</td>
+      <td class="${deltaClass}">${deltaText}</td>
+    </tr>`;
+  }).join('');
+  $("abHistory").innerHTML=`<table><thead><tr><th>时间</th><th>结论</th><th>样本达标</th><th>A 支付</th><th>B 支付</th><th>Lift</th><th>p-value</th><th>较上次变化</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function buildAbMarkdownReport(result,payload){
@@ -275,6 +337,13 @@ async function runAB(){
     const d=await r.json();
     if(!r.ok) throw new Error(d.error||'请求失败');
     lastAbResult={payload,result:d};
+    saveAbHistory({
+      generatedAt:d.generatedAt,
+      decision:d.decision,
+      sampleOk:d.sampleOk,
+      metrics:d.metrics,
+      payload
+    });
     $("abStatus").textContent='完成';
 
     $("abSummary").innerHTML=`<h3>判定摘要</h3>
@@ -357,7 +426,9 @@ $("exportAbJson").addEventListener('click',()=>exportAB('json'));
 $("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("copyAbSummary").addEventListener('click',copyAbSummary);
 $("copyAbLink").addEventListener('click',copyAbLink);
+$("clearAbHistory").addEventListener('click',clearAbHistory);
 $("run").addEventListener('click',runPortfolio);
+renderAbHistory();
 runAB();
 </script>
 </body>
