@@ -41,6 +41,9 @@
       </div>
 
       <div class="grid g4">
+        <label>实验名称 / 批次
+          <input id="experimentLabel" type="text" value="micro-saas-title-test-01" placeholder="如：gumroad-title-v2-round1" />
+        </label>
         <label>最小点击阈值
           <input id="minClicks" type="number" min="1" value="100" />
         </label>
@@ -94,7 +97,7 @@
         <div class="section-title">
           <div>
             <h3>A/B 历史记录</h3>
-            <div class="muted">自动保留最近 12 次判定，便于在手机/电脑端连续跟踪趋势。</div>
+            <div class="muted">自动保留最近 12 次判定，便于在手机/电脑端连续跟踪趋势；支持按实验名称区分批次。</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
@@ -195,6 +198,7 @@ function renderAbHistory(){
     const deltaClass=delta === null ? '' : cls(delta);
     return `<tr>
       <td>${item.generatedAt.replace('T',' ').replace('Z',' UTC')}</td>
+      <td>${item.experimentLabel || '未命名实验'}</td>
       <td>${item.decision}</td>
       <td>${item.sampleOk ? '是' : '否'}</td>
       <td>${pct(item.metrics.A.paidConversion)}</td>
@@ -204,13 +208,14 @@ function renderAbHistory(){
       <td class="${deltaClass}">${deltaText}</td>
     </tr>`;
   }).join('');
-  $("abHistory").innerHTML=`<table><thead><tr><th>时间</th><th>结论</th><th>样本达标</th><th>A 支付</th><th>B 支付</th><th>Lift</th><th>p-value</th><th>较上次变化</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $("abHistory").innerHTML=`<table><thead><tr><th>时间</th><th>实验</th><th>结论</th><th>样本达标</th><th>A 支付</th><th>B 支付</th><th>Lift</th><th>p-value</th><th>较上次变化</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function buildAbMarkdownReport(result,payload){
   const lines=[
     '# A/B Funnel Report',
     '',
+    `- 实验名称: ${payload.experiment_label || '未命名实验'}`,
     `- 生成时间: ${result.generatedAt}`,
     `- 样本达标: ${result.sampleOk ? '是' : '否'}`,
     `- 结论: ${result.decision}`,
@@ -243,6 +248,7 @@ function buildAbMarkdownReport(result,payload){
 
 function buildAbPlainSummary(result,payload){
   return [
+    `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
     `样本达标：${result.sampleOk ? '是' : '否'}（最小点击阈值 ${payload.min_clicks_per_variant}）`,
     `A：CTR ${pct(result.metrics.A.ctr)}｜结账 ${pct(result.metrics.A.checkoutStartRate)}｜支付 ${pct(result.metrics.A.paidConversion)}`,
@@ -253,9 +259,10 @@ function buildAbPlainSummary(result,payload){
 }
 
 function buildAbHistoryCsv(history){
-  const header=['generatedAt','decision','sampleOk','a_paid_conversion','b_paid_conversion','paid_lift_vs_a','paid_p_value','paid_z_score','min_clicks','a_clicks','b_clicks','a_paid_orders','b_paid_orders'];
+  const header=['generatedAt','experiment_label','decision','sampleOk','a_paid_conversion','b_paid_conversion','paid_lift_vs_a','paid_p_value','paid_z_score','min_clicks','a_clicks','b_clicks','a_paid_orders','b_paid_orders'];
   const rows=history.map(item=>[
     item.generatedAt,
+    item.experimentLabel || '',
     item.decision,
     item.sampleOk ? 'yes' : 'no',
     item.metrics.A.paidConversion,
@@ -281,17 +288,18 @@ function buildAbHistoryMarkdown(history){
     `- 导出时间: ${new Date().toISOString()}`,
     `- 记录数: ${history.length}`,
     '',
-    '| 时间 | 结论 | 样本达标 | A 支付 | B 支付 | Lift | p-value | z-score |',
-    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |'
+    '| 时间 | 实验 | 结论 | 样本达标 | A 支付 | B 支付 | Lift | p-value | z-score |',
+    '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |'
   ];
   history.forEach(item=>{
-    lines.push(`| ${item.generatedAt} | ${item.decision} | ${item.sampleOk ? '是' : '否'} | ${pct(item.metrics.A.paidConversion)} | ${pct(item.metrics.B.paidConversion)} | ${pct(item.metrics.paidLiftVsA)} | ${item.metrics.paidPValue.toFixed(4)} | ${item.metrics.paidZScore.toFixed(4)} |`);
+    lines.push(`| ${item.generatedAt} | ${item.experimentLabel || '未命名实验'} | ${item.decision} | ${item.sampleOk ? '是' : '否'} | ${pct(item.metrics.A.paidConversion)} | ${pct(item.metrics.B.paidConversion)} | ${pct(item.metrics.paidLiftVsA)} | ${item.metrics.paidPValue.toFixed(4)} | ${item.metrics.paidZScore.toFixed(4)} |`);
   });
   return lines.join('\n');
 }
 
 function getAbFormState(){
   return {
+    experimentLabel:($('experimentLabel').value||'').trim(),
     minClicks:num('minClicks'),
     a_impressions:num('a_impressions'),
     a_clicks:num('a_clicks'),
@@ -384,6 +392,7 @@ function exportAbHistory(format){
 async function runAB(){
   $("abStatus").textContent='计算中...';
   const payload={
+    experiment_label:($('experimentLabel').value||'').trim() || '未命名实验',
     min_clicks_per_variant:num('minClicks'),
     variants:{
       A:{impressions:num('a_impressions'),clicks:num('a_clicks'),checkout_starts:num('a_checkout'),paid_orders:num('a_paid')},
@@ -397,6 +406,7 @@ async function runAB(){
     lastAbResult={payload,result:d};
     saveAbHistory({
       generatedAt:d.generatedAt,
+      experimentLabel:payload.experiment_label,
       decision:d.decision,
       sampleOk:d.sampleOk,
       metrics:d.metrics,
@@ -405,7 +415,8 @@ async function runAB(){
     $("abStatus").textContent='完成';
 
     $("abSummary").innerHTML=`<h3>判定摘要</h3>
-      <div>样本达标：<b>${d.sampleOk ? '是' : '否'}</b></div>
+      <div>实验：<b>${payload.experiment_label}</b></div>
+      <div style="margin-top:8px">样本达标：<b>${d.sampleOk ? '是' : '否'}</b></div>
       <div style="margin-top:8px">结论：<b class="${d.decision.includes('胜出') ? 'good' : ''}">${d.decision}</b></div>
       <div class="mini muted" style="margin-top:8px">生成时间：${d.generatedAt}</div>`;
 
@@ -468,6 +479,7 @@ async function runPortfolio(){
 
 const params=new URLSearchParams(window.location.search);
 applyAbFormState({
+  experimentLabel:params.get('experimentLabel'),
   minClicks:params.get('minClicks'),
   a_impressions:params.get('a_impressions'),
   a_clicks:params.get('a_clicks'),
