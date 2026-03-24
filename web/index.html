@@ -81,6 +81,11 @@
       </div>
 
       <div class="grid g2">
+        <button id="copyAbSummary" style="background:#1b3b72">复制摘要到剪贴板</button>
+        <button id="copyAbLink" style="background:#1b3b72">复制分享链接</button>
+      </div>
+
+      <div class="grid g2">
         <div class="card" id="abSummary"><h3>判定摘要</h3><div class="muted">等待运行</div></div>
         <div class="card" id="abActions"><h3>下一步</h3><div class="muted">等待运行</div></div>
       </div>
@@ -168,6 +173,76 @@ function buildAbMarkdownReport(result,payload){
     ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
   ];
   return lines.join('\n');
+}
+
+function buildAbPlainSummary(result,payload){
+  return [
+    `A/B 判定：${result.decision}`,
+    `样本达标：${result.sampleOk ? '是' : '否'}（最小点击阈值 ${payload.min_clicks_per_variant}）`,
+    `A：CTR ${pct(result.metrics.A.ctr)}｜结账 ${pct(result.metrics.A.checkoutStartRate)}｜支付 ${pct(result.metrics.A.paidConversion)}`,
+    `B：CTR ${pct(result.metrics.B.ctr)}｜结账 ${pct(result.metrics.B.checkoutStartRate)}｜支付 ${pct(result.metrics.B.paidConversion)}`,
+    `Paid Lift（B vs A）：${pct(result.metrics.paidLiftVsA)}｜p-value ${result.metrics.paidPValue.toFixed(4)}｜z-score ${result.metrics.paidZScore.toFixed(4)}`,
+    `下一步：${result.nextActions.join('；')}`
+  ].join('\n');
+}
+
+function getAbFormState(){
+  return {
+    minClicks:num('minClicks'),
+    a_impressions:num('a_impressions'),
+    a_clicks:num('a_clicks'),
+    a_checkout:num('a_checkout'),
+    a_paid:num('a_paid'),
+    b_impressions:num('b_impressions'),
+    b_clicks:num('b_clicks'),
+    b_checkout:num('b_checkout'),
+    b_paid:num('b_paid')
+  };
+}
+
+function applyAbFormState(state){
+  Object.entries(state||{}).forEach(([key,value])=>{
+    const el=$(key);
+    if(el && value !== undefined && value !== null && value !== '') el.value=value;
+  });
+}
+
+function buildAbShareLink(){
+  const url=new URL(window.location.href);
+  const state=getAbFormState();
+  Object.entries(state).forEach(([key,value])=>url.searchParams.set(key,String(value)));
+  url.searchParams.set('tool','ab-funnel');
+  return url.toString();
+}
+
+async function copyText(text,successMessage){
+  try{
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const area=document.createElement('textarea');
+      area.value=text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+    $("abStatus").textContent=successMessage;
+  }catch(e){
+    $("abStatus").textContent='复制失败: '+e.message;
+  }
+}
+
+async function copyAbSummary(){
+  if(!lastAbResult){
+    $("abStatus").textContent='请先运行 A/B 判定';
+    return;
+  }
+  await copyText(buildAbPlainSummary(lastAbResult.result,lastAbResult.payload),'已复制摘要');
+}
+
+async function copyAbLink(){
+  await copyText(buildAbShareLink(),'已复制分享链接');
 }
 
 function exportAB(format){
@@ -264,9 +339,24 @@ async function runPortfolio(){
   }catch(e){$("status").textContent='失败: '+e.message;}
 }
 
+const params=new URLSearchParams(window.location.search);
+applyAbFormState({
+  minClicks:params.get('minClicks'),
+  a_impressions:params.get('a_impressions'),
+  a_clicks:params.get('a_clicks'),
+  a_checkout:params.get('a_checkout'),
+  a_paid:params.get('a_paid'),
+  b_impressions:params.get('b_impressions'),
+  b_clicks:params.get('b_clicks'),
+  b_checkout:params.get('b_checkout'),
+  b_paid:params.get('b_paid')
+});
+
 $("runAb").addEventListener('click',runAB);
 $("exportAbJson").addEventListener('click',()=>exportAB('json'));
 $("exportAbMd").addEventListener('click',()=>exportAB('md'));
+$("copyAbSummary").addEventListener('click',copyAbSummary);
+$("copyAbLink").addEventListener('click',copyAbLink);
 $("run").addEventListener('click',runPortfolio);
 runAB();
 </script>
