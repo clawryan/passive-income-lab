@@ -23,3 +23,11 @@
 - 新增模板数据：`outputs/ab-test-micro-saas-2026-03-template.json`。
 - 生成最新报告：`outputs/ab-test-micro-saas-latest.md` 与 `outputs/ab-test-micro-saas-latest.json`。
 - 验证：`python3 -m py_compile analyze_ab_funnel.py` 与脚本实跑通过。
+
+## 2026-03-24 08:xx (Asia/Shanghai)
+- 新增 API：`api/ab-funnel.js`，将离线 A/B 漏斗判定补成 Web 接口（POST JSON 即返回决策/显著性/下一步）。
+- 升级 Web 入口：`web/index.html`，现在首页同时支持：
+  - 数字产品 A/B Funnel Analyzer（手机/电脑可直接填数使用）
+  - Orion Nexus Quant Portfolio Monitor（保留）
+- 目的：把“真实渠道数据 -> 判定 -> 扩量动作”从本地脚本推进到浏览器可操作原型，降低复盘阻力。
+- 验证：`node -e "const h=require('./api/ab-funnel'); ..."` 本地接口冒烟通过；`python3 -m py_compile analyze_ab_funnel.py` 仍通过。

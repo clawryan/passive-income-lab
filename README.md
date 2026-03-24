@@ -14,3 +14,9 @@
 - `build-log.md`：构建与实验记录
 - `results.md`：阶段成果与指标
 - `plan-30d.md`：30天路线图
+- `web/index.html`：浏览器入口（A/B Funnel Analyzer + Orion Nexus Quant Monitor）
+- `api/ab-funnel.js`：数字产品 A/B 漏斗判定 API
+
+## 当前可直接操作原型
+- **数字产品 A/B Funnel Analyzer**：输入曝光/点击/结账/支付，输出显著性、胜负判定、下一步动作。
+- **Orion Nexus Quant Monitor**：查看策略信号、组合收益、基准对比（研究/模拟）。

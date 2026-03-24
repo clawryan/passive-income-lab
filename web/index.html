@@ -3,55 +3,158 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orion Nexus Quant Terminal</title>
+  <title>Passive Income Lab · Web Tools</title>
   <style>
-    body{font-family:Inter,system-ui,-apple-system,sans-serif;margin:0;background:#0a0f1e;color:#e8efff}
+    :root{
+      --bg:#0a0f1e;--card:#141c34;--line:#25335f;--text:#e8efff;--muted:#96a3c7;--blue:#3a7bff;--green:#7ef0ba;--red:#ff9ca9;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,-apple-system,sans-serif;margin:0;background:var(--bg);color:var(--text)}
     .wrap{max-width:1200px;margin:0 auto;padding:20px}
-    .grid{display:grid;gap:14px}
-    .g2{grid-template-columns:1fr 1fr}
-    .card{background:#141c34;border:1px solid #25335f;border-radius:12px;padding:14px}
-    h1,h2{margin:0 0 10px}
-    input,select,button{padding:10px;border-radius:8px;border:1px solid #2a3a67;background:#0f1730;color:#e8efff}
-    button{background:#3a7bff;cursor:pointer}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #25335f;text-align:left;font-size:13px}
-    .muted{opacity:.7;font-size:12px}
-    .good{color:#7ef0ba}.bad{color:#ff9ca9}
+    .grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+    h1,h2,h3{margin:0 0 10px}.muted{opacity:.78;font-size:12px;color:var(--muted)}
+    input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #2a3a67;background:#0f1730;color:var(--text)}
+    button{background:var(--blue);cursor:pointer;font-weight:600}
+    table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:top}
+    .good{color:var(--green)} .bad{color:var(--red)} .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#10214d;border:1px solid #2f4d99;font-size:12px}
+    .section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .stack{display:grid;gap:8px}.mini{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    @media (max-width: 900px){.g2,.g4{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <div class="wrap grid">
     <div class="card">
-      <h1>Orion Nexus Quant · Portfolio Monitor</h1>
-      <div class="muted">机构风格：自动选股、策略切换、组合监控、基准比较（研究/模拟）</div>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-        <input id="universe" value="AAPL,NVDA,MSFT,AMZN,META,TSLA" style="min-width:320px"/>
-        <select id="strategy">
+      <h1>Passive Income Lab · Web Tools</h1>
+      <div class="muted">面向电脑/手机直接操作的轻量原型。当前优先支持：数字产品 A/B 转化判定、量化研究监控。</div>
+    </div>
+
+    <div class="card stack">
+      <div class="section-title">
+        <div>
+          <h2>数字产品 A/B Funnel Analyzer</h2>
+          <div class="muted">把渠道数据填进来，直接得到“继续收样 / 推广 B / 保留 A”的判定。</div>
+        </div>
+        <span class="pill">收益主线</span>
+      </div>
+
+      <div class="grid g4">
+        <label>最小点击阈值
+          <input id="minClicks" type="number" min="1" value="100" />
+        </label>
+        <label>A 展现
+          <input id="a_impressions" type="number" min="0" value="1200" />
+        </label>
+        <label>A 点击
+          <input id="a_clicks" type="number" min="0" value="108" />
+        </label>
+        <label>A 发起结账
+          <input id="a_checkout" type="number" min="0" value="22" />
+        </label>
+        <label>A 支付订单
+          <input id="a_paid" type="number" min="0" value="6" />
+        </label>
+        <label>B 展现
+          <input id="b_impressions" type="number" min="0" value="1180" />
+        </label>
+        <label>B 点击
+          <input id="b_clicks" type="number" min="0" value="116" />
+        </label>
+        <label>B 发起结账
+          <input id="b_checkout" type="number" min="0" value="29" />
+        </label>
+        <label>B 支付订单
+          <input id="b_paid" type="number" min="0" value="10" />
+        </label>
+      </div>
+
+      <div class="grid g2">
+        <button id="runAb">运行 A/B 判定</button>
+        <div id="abStatus" class="muted" style="display:flex;align-items:center"></div>
+      </div>
+
+      <div class="grid g2">
+        <div class="card" id="abSummary"><h3>判定摘要</h3><div class="muted">等待运行</div></div>
+        <div class="card" id="abActions"><h3>下一步</h3><div class="muted">等待运行</div></div>
+      </div>
+      <div class="card" id="abMetrics"><h3>关键指标</h3><div class="muted">等待运行</div></div>
+    </div>
+
+    <div class="card stack">
+      <div class="section-title">
+        <div>
+          <h2>Orion Nexus Quant · Portfolio Monitor</h2>
+          <div class="muted">研究/模拟用途：自动选股、策略切换、组合监控、基准比较。</div>
+        </div>
+        <span class="pill">实验子项目</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="universe" value="AAPL,NVDA,MSFT,AMZN,META,TSLA" style="min-width:320px;flex:1"/>
+        <select id="strategy" style="max-width:180px">
           <option value="sma">SMA</option>
           <option value="momentum">Momentum</option>
           <option value="meanrev">MeanReversion</option>
         </select>
-        <select id="topN"><option>3</option><option>4</option><option>5</option></select>
+        <select id="topN" style="max-width:100px"><option>3</option><option>4</option><option>5</option></select>
         <button id="run">运行自动选股</button>
         <span id="status" class="muted"></span>
       </div>
-    </div>
 
-    <div class="grid g2">
-      <div class="card" id="portfolioCard"><h2>组合概览</h2><div class="muted">等待运行</div></div>
-      <div class="card" id="benchmarkCard"><h2>基准比较</h2><div class="muted">等待运行</div></div>
-    </div>
+      <div class="grid g2">
+        <div class="card" id="portfolioCard"><h3>组合概览</h3><div class="muted">等待运行</div></div>
+        <div class="card" id="benchmarkCard"><h3>基准比较</h3><div class="muted">等待运行</div></div>
+      </div>
 
-    <div class="card" id="selectedCard"><h2>入选证券与触发原因</h2><div class="muted">等待运行</div></div>
-    <div class="card" id="universeCard"><h2>全池监控</h2><div class="muted">等待运行</div></div>
+      <div class="card" id="selectedCard"><h3>入选证券与触发原因</h3><div class="muted">等待运行</div></div>
+      <div class="card" id="universeCard"><h3>全池监控</h3><div class="muted">等待运行</div></div>
+    </div>
   </div>
 
 <script>
 const $=id=>document.getElementById(id);
 const pct=x=>`${(x*100).toFixed(2)}%`;
 const cls=x=>x>=0?'good':'bad';
+const num=id=>Number($(id).value||0);
 
-async function run(){
+async function runAB(){
+  $("abStatus").textContent='计算中...';
+  const payload={
+    min_clicks_per_variant:num('minClicks'),
+    variants:{
+      A:{impressions:num('a_impressions'),clicks:num('a_clicks'),checkout_starts:num('a_checkout'),paid_orders:num('a_paid')},
+      B:{impressions:num('b_impressions'),clicks:num('b_clicks'),checkout_starts:num('b_checkout'),paid_orders:num('b_paid')}
+    }
+  };
+  try{
+    const r=await fetch('/api/ab-funnel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'请求失败');
+    $("abStatus").textContent='完成';
+
+    $("abSummary").innerHTML=`<h3>判定摘要</h3>
+      <div>样本达标：<b>${d.sampleOk ? '是' : '否'}</b></div>
+      <div style="margin-top:8px">结论：<b class="${d.decision.includes('胜出') ? 'good' : ''}">${d.decision}</b></div>
+      <div class="mini muted" style="margin-top:8px">生成时间：${d.generatedAt}</div>`;
+
+    $("abActions").innerHTML=`<h3>下一步</h3><ul>${d.nextActions.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+
+    $("abMetrics").innerHTML=`<h3>关键指标</h3>
+      <table><thead><tr><th>版本</th><th>CTR</th><th>Checkout Start</th><th>Paid Conversion</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td>${pct(d.metrics.A.ctr)}</td><td>${pct(d.metrics.A.checkoutStartRate)}</td><td>${pct(d.metrics.A.paidConversion)}</td></tr>
+        <tr><td>B</td><td>${pct(d.metrics.B.ctr)}</td><td>${pct(d.metrics.B.checkoutStartRate)}</td><td>${pct(d.metrics.B.paidConversion)}</td></tr>
+      </tbody></table>
+      <div style="margin-top:10px">Paid Lift (B vs A): <b class="${cls(d.metrics.paidLiftVsA)}">${pct(d.metrics.paidLiftVsA)}</b></div>
+      <div>p-value: <span class="mono">${d.metrics.paidPValue.toFixed(4)}</span></div>
+      <div>z-score: <span class="mono">${d.metrics.paidZScore.toFixed(4)}</span></div>`;
+  }catch(e){
+    $("abStatus").textContent='失败: '+e.message;
+  }
+}
+
+async function runPortfolio(){
   const universe=$("universe").value.trim();
   const strategy=$("strategy").value;
   const topN=$("topN").value;
@@ -62,13 +165,13 @@ async function run(){
     if(!r.ok) throw new Error(d.error||'请求失败');
     $("status").textContent='完成';
 
-    $("portfolioCard").innerHTML=`<h2>组合概览</h2>
+    $("portfolioCard").innerHTML=`<h3>组合概览</h3>
       <div>Holdings: <b>${d.portfolio.holdings.join(', ')||'N/A'}</b></div>
       <div class="${cls(d.portfolio.total_return)}">Total Return: ${pct(d.portfolio.total_return)}</div>
       <div>Sharpe: ${d.portfolio.sharpe.toFixed(2)}</div>
       <div>Max Drawdown: ${pct(d.portfolio.max_drawdown)}</div>`;
 
-    $("benchmarkCard").innerHTML=`<h2>基准比较（同区间）</h2>
+    $("benchmarkCard").innerHTML=`<h3>基准比较（同区间）</h3>
       <div class="${cls(d.benchmark.SPY)}">SPY: ${pct(d.benchmark.SPY)}</div>
       <div class="${cls(d.benchmark.QQQ)}">QQQ: ${pct(d.benchmark.QQQ)}</div>
       <div class="muted">目标：组合收益持续优于基准并控制回撤</div>`;
@@ -80,19 +183,21 @@ async function run(){
       <td>${pct(x.win_rate)}</td><td>${x.trades}</td>
       <td>${x.latest_price?.toFixed?.(2) ?? ''}</td><td>${x.latest_time||''}</td>
     </tr>`).join('');
-    $("selectedCard").innerHTML=`<h2>入选证券与触发原因</h2>
+    $("selectedCard").innerHTML=`<h3>入选证券与触发原因</h3>
       <table><thead><tr><th>Symbol</th><th>Reason</th><th>Return</th><th>Sharpe</th><th>MDD</th><th>WinRate</th><th>Trades</th><th>Price</th><th>Time</th></tr></thead><tbody>${selRows||'<tr><td colspan="9">无</td></tr>'}</tbody></table>`;
 
     const allRows=d.universe_metrics.map(x=> x.error
       ? `<tr><td>${x.symbol}</td><td colspan="8" class="bad">${x.error}</td></tr>`
       : `<tr><td>${x.symbol}</td><td>${x.reason}</td><td class="${cls(x.total_return)}">${pct(x.total_return)}</td><td>${x.sharpe.toFixed(2)}</td><td>${pct(x.max_drawdown)}</td><td>${pct(x.win_rate)}</td><td>${x.trades}</td><td>${x.latest_price.toFixed(2)}</td><td>${x.latest_time}</td></tr>`
     ).join('');
-    $("universeCard").innerHTML=`<h2>全池监控</h2>
+    $("universeCard").innerHTML=`<h3>全池监控</h3>
       <table><thead><tr><th>Symbol</th><th>Signal</th><th>Return</th><th>Sharpe</th><th>MDD</th><th>WinRate</th><th>Trades</th><th>Price</th><th>Time</th></tr></thead><tbody>${allRows}</tbody></table>`;
   }catch(e){$("status").textContent='失败: '+e.message;}
 }
 
-$("run").addEventListener('click',run);
+$("runAb").addEventListener('click',runAB);
+$("run").addEventListener('click',runPortfolio);
+runAB();
 </script>
 </body>
 </html>
