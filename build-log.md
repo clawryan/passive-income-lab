@@ -67,3 +67,10 @@
 - 历史 CSV / Markdown 导出已改为遵循当前筛选范围，便于直接导出单个实验批次做周报或阶段复盘。
 - 目的：把“多批次历史留档”进一步推进到“按实验快速复盘”，降低真实流量接入后的经营分析成本。
 - 验证：从 `web/index.html` 提取内联脚本后执行 `node --check /tmp/passive_income_lab_web_check.js` 通过。
+
+## 2026-03-25 11:0x (Asia/Shanghai)
+- 把 A/B 判定进一步推向“能直接做放量决策”：`web/index.html` 新增客单价、扩量点击数、单次点击成本输入，并新增“扩量收益测算”卡片。
+- 现在每次判定后会同步给出 A/B 在目标扩量点击下的预计订单、预计营收、预计净额，以及“若选择 B”的增量订单/营收/净额。
+- 单次摘要、Markdown 报告、历史 CSV / Markdown 导出都已带上收益测算字段，方便把统计显著性直接转换成经营判断。
+- 目的：减少“判定完还要手算值不值得扩量”的摩擦，更贴近被动收益产品的日常运营场景。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `abEconomics` 成功渲染增量营收字段；`api/ab-funnel.js` POST 冒烟仍返回 `200`、`decision`、`metrics`。

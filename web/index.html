@@ -71,6 +71,15 @@
         <label>B 支付订单
           <input id="b_paid" type="number" min="0" value="10" />
         </label>
+        <label>客单价（元）
+          <input id="productPrice" type="number" min="0" step="0.01" value="49" />
+        </label>
+        <label>扩量点击数（预估）
+          <input id="rolloutClicks" type="number" min="0" value="1000" />
+        </label>
+        <label>单次点击成本（元，可选）
+          <input id="costPerClick" type="number" min="0" step="0.01" value="0" />
+        </label>
       </div>
 
       <div class="grid g2">
@@ -93,6 +102,7 @@
         <div class="card" id="abActions"><h3>下一步</h3><div class="muted">等待运行</div></div>
       </div>
       <div class="card" id="abMetrics"><h3>关键指标</h3><div class="muted">等待运行</div></div>
+      <div class="card" id="abEconomics"><h3>扩量收益测算</h3><div class="muted">等待运行</div></div>
       <div class="card stack">
         <div class="section-title">
           <div>
@@ -152,6 +162,7 @@
 <script>
 const $=id=>document.getElementById(id);
 const pct=x=>`${(x*100).toFixed(2)}%`;
+const money=x=>`¥${Number(x||0).toFixed(2)}`;
 const cls=x=>x>=0?'good':'bad';
 const num=id=>Number($(id).value||0);
 const AB_HISTORY_KEY='passive-income-lab.abHistory.v1';
@@ -260,7 +271,37 @@ function renderAbHistory(){
   $("abHistory").innerHTML=`<table><thead><tr><th>时间</th><th>实验</th><th>结论</th><th>样本达标</th><th>A 支付</th><th>B 支付</th><th>Lift</th><th>p-value</th><th>较上次变化</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+function estimateAbEconomics(result,payload){
+  const scenario=payload.rollout || {};
+  const rolloutClicks=Number(scenario.rollout_clicks || 0);
+  const productPrice=Number(scenario.product_price || 0);
+  const costPerClick=Number(scenario.cost_per_click || 0);
+  const aOrders=rolloutClicks * Number(result.metrics.A.paidConversion || 0);
+  const bOrders=rolloutClicks * Number(result.metrics.B.paidConversion || 0);
+  const aRevenue=aOrders * productPrice;
+  const bRevenue=bOrders * productPrice;
+  const adCost=rolloutClicks * costPerClick;
+  const aNet=aRevenue - adCost;
+  const bNet=bRevenue - adCost;
+  return {
+    rolloutClicks,
+    productPrice,
+    costPerClick,
+    adCost,
+    aOrders,
+    bOrders,
+    aRevenue,
+    bRevenue,
+    aNet,
+    bNet,
+    deltaOrders:bOrders-aOrders,
+    deltaRevenue:bRevenue-aRevenue,
+    deltaNet:bNet-aNet
+  };
+}
+
 function buildAbMarkdownReport(result,payload){
+  const economics=estimateAbEconomics(result,payload);
   const lines=[
     '# A/B Funnel Report',
     '',
@@ -288,6 +329,16 @@ function buildAbMarkdownReport(result,payload){
     `- p-value: ${result.metrics.paidPValue.toFixed(4)}`,
     `- z-score: ${result.metrics.paidZScore.toFixed(4)}`,
     '',
+    '## 扩量收益测算',
+    '',
+    `- 客单价: ${money(economics.productPrice)}`,
+    `- 扩量点击数: ${economics.rolloutClicks}`,
+    `- 单次点击成本: ${money(economics.costPerClick)}`,
+    `- 预计广告成本: ${money(economics.adCost)}`,
+    `- A 预计订单 / 营收 / 净额: ${economics.aOrders.toFixed(2)} / ${money(economics.aRevenue)} / ${money(economics.aNet)}`,
+    `- B 预计订单 / 营收 / 净额: ${economics.bOrders.toFixed(2)} / ${money(economics.bRevenue)} / ${money(economics.bNet)}`,
+    `- 选择 B 的增量订单 / 增量营收 / 增量净额: ${economics.deltaOrders.toFixed(2)} / ${money(economics.deltaRevenue)} / ${money(economics.deltaNet)}`,
+    '',
     '## 下一步',
     '',
     ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
@@ -296,6 +347,7 @@ function buildAbMarkdownReport(result,payload){
 }
 
 function buildAbPlainSummary(result,payload){
+  const economics=estimateAbEconomics(result,payload);
   return [
     `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
@@ -303,28 +355,38 @@ function buildAbPlainSummary(result,payload){
     `A：CTR ${pct(result.metrics.A.ctr)}｜结账 ${pct(result.metrics.A.checkoutStartRate)}｜支付 ${pct(result.metrics.A.paidConversion)}`,
     `B：CTR ${pct(result.metrics.B.ctr)}｜结账 ${pct(result.metrics.B.checkoutStartRate)}｜支付 ${pct(result.metrics.B.paidConversion)}`,
     `Paid Lift（B vs A）：${pct(result.metrics.paidLiftVsA)}｜p-value ${result.metrics.paidPValue.toFixed(4)}｜z-score ${result.metrics.paidZScore.toFixed(4)}`,
+    `扩量测算：客单价 ${money(economics.productPrice)}｜扩量点击 ${economics.rolloutClicks}｜选 B 预计多 ${economics.deltaOrders.toFixed(2)} 单 / 多 ${money(economics.deltaRevenue)} 营收 / 多 ${money(economics.deltaNet)} 净额`,
     `下一步：${result.nextActions.join('；')}`
   ].join('\n');
 }
 
 function buildAbHistoryCsv(history){
-  const header=['generatedAt','experiment_label','decision','sampleOk','a_paid_conversion','b_paid_conversion','paid_lift_vs_a','paid_p_value','paid_z_score','min_clicks','a_clicks','b_clicks','a_paid_orders','b_paid_orders'];
-  const rows=history.map(item=>[
-    item.generatedAt,
-    item.experimentLabel || '',
-    item.decision,
-    item.sampleOk ? 'yes' : 'no',
-    item.metrics.A.paidConversion,
-    item.metrics.B.paidConversion,
-    item.metrics.paidLiftVsA,
-    item.metrics.paidPValue,
-    item.metrics.paidZScore,
-    item.payload.min_clicks_per_variant,
-    item.payload.variants.A.clicks,
-    item.payload.variants.B.clicks,
-    item.payload.variants.A.paid_orders,
-    item.payload.variants.B.paid_orders
-  ]);
+  const header=['generatedAt','experiment_label','decision','sampleOk','a_paid_conversion','b_paid_conversion','paid_lift_vs_a','paid_p_value','paid_z_score','min_clicks','a_clicks','b_clicks','a_paid_orders','b_paid_orders','product_price','rollout_clicks','cost_per_click','delta_orders_if_choose_b','delta_revenue_if_choose_b','delta_net_if_choose_b'];
+  const rows=history.map(item=>{
+    const economics=estimateAbEconomics(item,item.payload);
+    return [
+      item.generatedAt,
+      item.experimentLabel || '',
+      item.decision,
+      item.sampleOk ? 'yes' : 'no',
+      item.metrics.A.paidConversion,
+      item.metrics.B.paidConversion,
+      item.metrics.paidLiftVsA,
+      item.metrics.paidPValue,
+      item.metrics.paidZScore,
+      item.payload.min_clicks_per_variant,
+      item.payload.variants.A.clicks,
+      item.payload.variants.B.clicks,
+      item.payload.variants.A.paid_orders,
+      item.payload.variants.B.paid_orders,
+      economics.productPrice,
+      economics.rolloutClicks,
+      economics.costPerClick,
+      economics.deltaOrders,
+      economics.deltaRevenue,
+      economics.deltaNet
+    ];
+  });
   return [header,...rows]
     .map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(','))
     .join('\n');
@@ -337,11 +399,12 @@ function buildAbHistoryMarkdown(history){
     `- 导出时间: ${new Date().toISOString()}`,
     `- 记录数: ${history.length}`,
     '',
-    '| 时间 | 实验 | 结论 | 样本达标 | A 支付 | B 支付 | Lift | p-value | z-score |',
-    '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |'
+    '| 时间 | 实验 | 结论 | 样本达标 | A 支付 | B 支付 | Lift | 选 B 增量订单 | 选 B 增量营收 | p-value | z-score |',
+    '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
   ];
   history.forEach(item=>{
-    lines.push(`| ${item.generatedAt} | ${item.experimentLabel || '未命名实验'} | ${item.decision} | ${item.sampleOk ? '是' : '否'} | ${pct(item.metrics.A.paidConversion)} | ${pct(item.metrics.B.paidConversion)} | ${pct(item.metrics.paidLiftVsA)} | ${item.metrics.paidPValue.toFixed(4)} | ${item.metrics.paidZScore.toFixed(4)} |`);
+    const economics=estimateAbEconomics(item,item.payload);
+    lines.push(`| ${item.generatedAt} | ${item.experimentLabel || '未命名实验'} | ${item.decision} | ${item.sampleOk ? '是' : '否'} | ${pct(item.metrics.A.paidConversion)} | ${pct(item.metrics.B.paidConversion)} | ${pct(item.metrics.paidLiftVsA)} | ${economics.deltaOrders.toFixed(2)} | ${money(economics.deltaRevenue)} | ${item.metrics.paidPValue.toFixed(4)} | ${item.metrics.paidZScore.toFixed(4)} |`);
   });
   return lines.join('\n');
 }
@@ -357,7 +420,10 @@ function getAbFormState(){
     b_impressions:num('b_impressions'),
     b_clicks:num('b_clicks'),
     b_checkout:num('b_checkout'),
-    b_paid:num('b_paid')
+    b_paid:num('b_paid'),
+    productPrice:num('productPrice'),
+    rolloutClicks:num('rolloutClicks'),
+    costPerClick:num('costPerClick')
   };
 }
 
@@ -443,6 +509,11 @@ async function runAB(){
   const payload={
     experiment_label:($('experimentLabel').value||'').trim() || '未命名实验',
     min_clicks_per_variant:num('minClicks'),
+    rollout:{
+      product_price:num('productPrice'),
+      rollout_clicks:num('rolloutClicks'),
+      cost_per_click:num('costPerClick')
+    },
     variants:{
       A:{impressions:num('a_impressions'),clicks:num('a_clicks'),checkout_starts:num('a_checkout'),paid_orders:num('a_paid')},
       B:{impressions:num('b_impressions'),clicks:num('b_clicks'),checkout_starts:num('b_checkout'),paid_orders:num('b_paid')}
@@ -480,6 +551,17 @@ async function runAB(){
       <div style="margin-top:10px">Paid Lift (B vs A): <b class="${cls(d.metrics.paidLiftVsA)}">${pct(d.metrics.paidLiftVsA)}</b></div>
       <div>p-value: <span class="mono">${d.metrics.paidPValue.toFixed(4)}</span></div>
       <div>z-score: <span class="mono">${d.metrics.paidZScore.toFixed(4)}</span></div>`;
+
+    const economics=estimateAbEconomics(d,payload);
+    $("abEconomics").innerHTML=`<h3>扩量收益测算</h3>
+      <div>客单价：<b>${money(economics.productPrice)}</b>｜扩量点击：<b>${economics.rolloutClicks}</b>｜单次点击成本：<b>${money(economics.costPerClick)}</b></div>
+      <div style="margin-top:8px">预计广告成本：<b>${money(economics.adCost)}</b></div>
+      <table style="margin-top:10px"><thead><tr><th>版本</th><th>预计订单</th><th>预计营收</th><th>预计净额</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td>${economics.aOrders.toFixed(2)}</td><td>${money(economics.aRevenue)}</td><td>${money(economics.aNet)}</td></tr>
+        <tr><td>B</td><td>${economics.bOrders.toFixed(2)}</td><td>${money(economics.bRevenue)}</td><td>${money(economics.bNet)}</td></tr>
+      </tbody></table>
+      <div style="margin-top:10px">若选择 B：增量订单 <b class="${cls(economics.deltaOrders)}">${economics.deltaOrders.toFixed(2)}</b>｜增量营收 <b class="${cls(economics.deltaRevenue)}">${money(economics.deltaRevenue)}</b>｜增量净额 <b class="${cls(economics.deltaNet)}">${money(economics.deltaNet)}</b></div>`;
   }catch(e){
     $("abStatus").textContent='失败: '+e.message;
   }
@@ -537,7 +619,10 @@ applyAbFormState({
   b_impressions:params.get('b_impressions'),
   b_clicks:params.get('b_clicks'),
   b_checkout:params.get('b_checkout'),
-  b_paid:params.get('b_paid')
+  b_paid:params.get('b_paid'),
+  productPrice:params.get('productPrice'),
+  rolloutClicks:params.get('rolloutClicks'),
+  costPerClick:params.get('costPerClick')
 });
 
 $("runAb").addEventListener('click',runAB);
