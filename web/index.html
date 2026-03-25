@@ -113,6 +113,8 @@
             <select id="abHistoryFilter" style="max-width:260px">
               <option value="">全部实验</option>
             </select>
+            <button id="renameAbExperiment" style="max-width:220px;background:#2a4b8d">重命名当前实验</button>
+            <button id="deleteAbExperiment" style="max-width:220px;background:#6a2746">删除当前实验</button>
             <button id="exportAbHistoryJson" style="max-width:220px;background:#16305f">导出历史 JSON</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
@@ -125,7 +127,7 @@
           <div class="card" id="abHistorySummary"><div class="muted">暂无历史汇总</div></div>
           <div class="card">
             <h3>使用提示</h3>
-            <div class="muted">先按实验名筛选，再导出历史 Markdown / CSV，可直接做周报或按批次复盘。</div>
+            <div class="muted">先按实验名筛选；可直接重命名当前实验、删除当前实验的本地历史，再导出 Markdown / CSV 做周报或按批次复盘。</div>
           </div>
         </div>
         <div id="abHistory"><div class="muted">暂无历史记录</div></div>
@@ -245,6 +247,61 @@ function clearAbHistory(){
   refreshAbHistoryFilterOptions();
   renderAbHistory();
   $("abStatus").textContent='已清空 A/B 历史记录';
+}
+
+function renameSelectedAbExperiment(){
+  const selected=getAbSelectedExperiment();
+  if(!selected){
+    $('abStatus').textContent='请先在筛选框中选择一个实验后再重命名';
+    return;
+  }
+  const nextName=(window.prompt('请输入新的实验名称 / 批次',selected) || '').trim();
+  if(!nextName) {
+    $('abStatus').textContent='已取消重命名';
+    return;
+  }
+  const history=readAbHistory();
+  const renamed=history.map(item=>{
+    if((item.experimentLabel || '未命名实验') !== selected) return item;
+    return normalizeAbHistoryEntry({
+      ...item,
+      experimentLabel:nextName,
+      payload:{
+        ...item.payload,
+        experiment_label:nextName
+      }
+    });
+  }).filter(Boolean);
+  writeAbHistory(renamed);
+  refreshAbHistoryFilterOptions();
+  $('abHistoryFilter').value=nextName;
+  renderAbHistory();
+  $('abStatus').textContent=`已将实验「${selected}」重命名为「${nextName}」`;
+}
+
+function deleteSelectedAbExperiment(){
+  const selected=getAbSelectedExperiment();
+  if(!selected){
+    $('abStatus').textContent='请先在筛选框中选择一个实验后再删除';
+    return;
+  }
+  const history=readAbHistory();
+  const matched=history.filter(item=>(item.experimentLabel || '未命名实验') === selected).length;
+  if(!matched){
+    $('abStatus').textContent='当前实验没有可删除的历史记录';
+    return;
+  }
+  const confirmed=window.confirm(`确认删除实验「${selected}」的 ${matched} 条历史记录吗？此操作仅删除当前浏览器本地历史。`);
+  if(!confirmed){
+    $('abStatus').textContent='已取消删除';
+    return;
+  }
+  const remaining=history.filter(item=>(item.experimentLabel || '未命名实验') !== selected);
+  writeAbHistory(remaining);
+  refreshAbHistoryFilterOptions();
+  $('abHistoryFilter').value='';
+  renderAbHistory();
+  $('abStatus').textContent=`已删除实验「${selected}」的 ${matched} 条历史记录`;
 }
 
 function renderAbHistory(){
@@ -712,6 +769,8 @@ $("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
+$("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
+$("deleteAbExperiment").addEventListener('click',deleteSelectedAbExperiment);
 $("exportAbHistoryCsv").addEventListener('click',()=>exportAbHistory('csv'));
 $("exportAbHistoryMd").addEventListener('click',()=>exportAbHistory('md'));
 $("copyAbSummary").addEventListener('click',copyAbSummary);

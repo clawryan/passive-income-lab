@@ -81,3 +81,10 @@
 - 导出的 JSON 会带 `exportedAt / scope / count / history` 元数据，既可做跨设备迁移，也可作为经营实验的原始备份。
 - 目的：让 A/B 经营面板真正支持跨设备连续复盘，而不再被浏览器本地存储割裂。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node + JSDOM 冒烟验证已确认 JSON 导出与导入去重链路可用。
+
+## 2026-03-25 17:0x (Asia/Shanghai)
+- 继续补齐跨设备历史整理链路：`web/index.html` 的 A/B 历史记录区新增“重命名当前实验 / 删除当前实验”按钮。
+- 现在可先按实验名称筛选，再直接把当前批次统一重命名，或仅删除该实验在当前浏览器中的本地历史记录，不影响其他批次。
+- 删除操作增加二次确认提示；重命名会同步更新历史项的 `experimentLabel` 与导出时使用的 `payload.experiment_label`，避免后续导出周报时实验名不一致。
+- 目的：把“跨设备导入合并”进一步推进到“导入后可整理”，降低真实运营中批次命名混乱与错误留档的摩擦。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node 文本检查已确认新增按钮 ID 与 `renameSelectedAbExperiment` / `deleteSelectedAbExperiment` 事件绑定存在。
