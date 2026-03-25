@@ -1,0 +1,8 @@
+#!/bin/sh
+branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+if [ -z "$branch" ]; then
+  exit 0
+fi
+
+echo "[post-commit] auto-pushing origin/$branch ..."
+git push origin "$branch"
