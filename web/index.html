@@ -113,9 +113,12 @@
             <select id="abHistoryFilter" style="max-width:260px">
               <option value="">全部实验</option>
             </select>
+            <button id="exportAbHistoryJson" style="max-width:220px;background:#16305f">导出历史 JSON</button>
+            <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
             <button id="clearAbHistory" style="max-width:180px;background:#4a1f37">清空历史</button>
+            <input id="abHistoryImportFile" type="file" accept="application/json,.json" style="display:none" />
           </div>
         </div>
         <div class="grid g2">
@@ -409,6 +412,84 @@ function buildAbHistoryMarkdown(history){
   return lines.join('\n');
 }
 
+function normalizeAbHistoryEntry(item){
+  if(!item || typeof item !== 'object') return null;
+  if(!item.generatedAt || !item.metrics || !item.payload) return null;
+  const experimentLabel=(item.experimentLabel || item.payload?.experiment_label || '未命名实验').trim();
+  return {
+    generatedAt:item.generatedAt,
+    experimentLabel,
+    decision:item.decision || '未命名结论',
+    sampleOk:Boolean(item.sampleOk),
+    metrics:item.metrics,
+    payload:{
+      ...item.payload,
+      experiment_label:experimentLabel
+    }
+  };
+}
+
+function mergeAbHistoryEntries(existing,incoming){
+  const merged=new Map();
+  [...existing,...incoming].forEach(item=>{
+    const normalized=normalizeAbHistoryEntry(item);
+    if(!normalized) return;
+    const key=[
+      normalized.generatedAt,
+      normalized.experimentLabel,
+      normalized.payload?.variants?.A?.clicks,
+      normalized.payload?.variants?.B?.clicks,
+      normalized.payload?.variants?.A?.paid_orders,
+      normalized.payload?.variants?.B?.paid_orders
+    ].join('::');
+    merged.set(key,normalized);
+  });
+  return [...merged.values()]
+    .sort((a,b)=>new Date(b.generatedAt)-new Date(a.generatedAt))
+    .slice(0,AB_HISTORY_LIMIT);
+}
+
+function exportAbHistoryJson(){
+  const history=getAbFilteredHistory();
+  if(!history.length){
+    $('abStatus').textContent='当前筛选范围暂无可导出的 A/B 历史记录';
+    return;
+  }
+  const payload={
+    exportedAt:new Date().toISOString(),
+    scope:getAbSelectedExperiment() || 'all',
+    count:history.length,
+    history
+  };
+  const ts=payload.exportedAt.replace(/[:.]/g,'-');
+  downloadFile(`ab-funnel-history-${ts}.json`,JSON.stringify(payload,null,2),'application/json');
+  $('abStatus').textContent='已导出历史 JSON';
+}
+
+function importAbHistoryJson(){
+  $('abHistoryImportFile').click();
+}
+
+async function handleAbHistoryImport(event){
+  const file=event.target.files?.[0];
+  if(!file) return;
+  try{
+    const text=await file.text();
+    const parsed=JSON.parse(text);
+    const incoming=Array.isArray(parsed) ? parsed : parsed.history;
+    if(!Array.isArray(incoming)) throw new Error('JSON 中未找到 history 数组');
+    const merged=mergeAbHistoryEntries(readAbHistory(),incoming);
+    if(!merged.length) throw new Error('未识别到可导入的有效记录');
+    writeAbHistory(merged);
+    renderAbHistory();
+    $('abStatus').textContent=`已导入 ${merged.length} 条历史记录（含去重后结果）`;
+  }catch(e){
+    $('abStatus').textContent='导入失败: '+e.message;
+  }finally{
+    event.target.value='';
+  }
+}
+
 function getAbFormState(){
   return {
     experimentLabel:($('experimentLabel').value||'').trim(),
@@ -628,6 +709,9 @@ applyAbFormState({
 $("runAb").addEventListener('click',runAB);
 $("exportAbJson").addEventListener('click',()=>exportAB('json'));
 $("exportAbMd").addEventListener('click',()=>exportAB('md'));
+$("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
+$("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
+$("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("exportAbHistoryCsv").addEventListener('click',()=>exportAbHistory('csv'));
 $("exportAbHistoryMd").addEventListener('click',()=>exportAbHistory('md'));
 $("copyAbSummary").addEventListener('click',copyAbSummary);

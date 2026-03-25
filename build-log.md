@@ -74,3 +74,10 @@
 - 单次摘要、Markdown 报告、历史 CSV / Markdown 导出都已带上收益测算字段，方便把统计显著性直接转换成经营判断。
 - 目的：减少“判定完还要手算值不值得扩量”的摩擦，更贴近被动收益产品的日常运营场景。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `abEconomics` 成功渲染增量营收字段；`api/ab-funnel.js` POST 冒烟仍返回 `200`、`decision`、`metrics`。
+
+## 2026-03-25 14:0x (Asia/Shanghai)
+- 继续解决“手机/电脑各自保存一份历史”的断点：`web/index.html` 新增“导出历史 JSON / 导入历史 JSON”按钮，并支持通过隐藏文件选择器导入本地备份。
+- 新增历史记录归一化与去重合并逻辑：导入时会按 `generatedAt + experimentLabel + clicks + paid_orders` 聚合，避免同一批次重复写入。
+- 导出的 JSON 会带 `exportedAt / scope / count / history` 元数据，既可做跨设备迁移，也可作为经营实验的原始备份。
+- 目的：让 A/B 经营面板真正支持跨设备连续复盘，而不再被浏览器本地存储割裂。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node + JSDOM 冒烟验证已确认 JSON 导出与导入去重链路可用。
