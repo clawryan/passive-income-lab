@@ -88,3 +88,11 @@
 - 删除操作增加二次确认提示；重命名会同步更新历史项的 `experimentLabel` 与导出时使用的 `payload.experiment_label`，避免后续导出周报时实验名不一致。
 - 目的：把“跨设备导入合并”进一步推进到“导入后可整理”，降低真实运营中批次命名混乱与错误留档的摩擦。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node 文本检查已确认新增按钮 ID 与 `renameSelectedAbExperiment` / `deleteSelectedAbExperiment` 事件绑定存在。
+
+
+## 2026-03-25 22:0x (Asia/Shanghai)
+- 继续把 A/B 经营面板往“可直接做补样决策”推进：`web/index.html` 新增“补样预算测算”卡片。
+- 现在每次判定后会直接给出：距离最小点击阈值还差多少点击、按当前 CPC 预计还要花多少钱、按当前 CTR 反推每个版本大约还需多少展现。
+- 单次纯文本摘要、Markdown 报告、历史 CSV 导出也已带上补样预算字段，方便把“是否继续买量”直接同步到运营记录。
+- 目的：减少 A/B 尚未达显著时的手工估算，让手机/电脑端都能快速判断“继续补样还是停”。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `estimateAbTopUp()` 输出 50 次补样点击 / ¥60 预算，并且摘要包含“补样测算”段落。
