@@ -61,3 +61,9 @@
 - A/B 历史记录表、历史 CSV/Markdown 导出、单次 Markdown 报告、复制摘要均增加实验名称字段，便于区分 Gumroad/独立站、不同标题版本与不同日期批次。
 - 目的：把单条实验结论升级为“可分批次经营日志”，为接下来接入真实流量后的连续复盘做准备。
 - 验证：从 `web/index.html` 提取内联脚本后执行 `node --check /tmp/passive_income_lab_web_check.js` 通过；`api/ab-funnel.js` 本地冒烟仍返回 `200`、`decision`、`metrics` 与 `nextActions`。
+## 2026-03-25 08:0x (Asia/Shanghai)
+- 继续提升 A/B 经营面板的复盘效率：`web/index.html` 新增“实验筛选”下拉框与“批次汇总”卡片。
+- 现在可按实验名称筛选历史记录，并在同一界面查看该批次的记录数、样本达标次数、B 胜出次数、平均 Paid Lift、最新结论。
+- 历史 CSV / Markdown 导出已改为遵循当前筛选范围，便于直接导出单个实验批次做周报或阶段复盘。
+- 目的：把“多批次历史留档”进一步推进到“按实验快速复盘”，降低真实流量接入后的经营分析成本。
+- 验证：从 `web/index.html` 提取内联脚本后执行 `node --check /tmp/passive_income_lab_web_check.js` 通过。

@@ -99,10 +99,20 @@
             <h3>A/B 历史记录</h3>
             <div class="muted">自动保留最近 12 次判定，便于在手机/电脑端连续跟踪趋势；支持按实验名称区分批次。</div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="abHistoryFilter" style="max-width:260px">
+              <option value="">全部实验</option>
+            </select>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
             <button id="clearAbHistory" style="max-width:180px;background:#4a1f37">清空历史</button>
+          </div>
+        </div>
+        <div class="grid g2">
+          <div class="card" id="abHistorySummary"><div class="muted">暂无历史汇总</div></div>
+          <div class="card">
+            <h3>使用提示</h3>
+            <div class="muted">先按实验名筛选，再导出历史 Markdown / CSV，可直接做周报或按批次复盘。</div>
           </div>
         </div>
         <div id="abHistory"><div class="muted">暂无历史记录</div></div>
@@ -180,14 +190,53 @@ function saveAbHistory(entry){
   renderAbHistory();
 }
 
+function getAbSelectedExperiment(){
+  return ($('abHistoryFilter')?.value || '').trim();
+}
+
+function getAbFilteredHistory(){
+  const selected=getAbSelectedExperiment();
+  const history=readAbHistory();
+  return selected ? history.filter(item => (item.experimentLabel || '未命名实验') === selected) : history;
+}
+
+function refreshAbHistoryFilterOptions(){
+  const select=$('abHistoryFilter');
+  if(!select) return;
+  const selected=select.value || '';
+  const experiments=[...new Set(readAbHistory().map(item => item.experimentLabel || '未命名实验'))];
+  select.innerHTML=['<option value="">全部实验</option>',...experiments.map(name=>`<option value="${name.replace(/"/g,'&quot;')}">${name}</option>`)].join('');
+  select.value=experiments.includes(selected) || selected === '' ? selected : '';
+}
+
+function renderAbHistorySummary(history){
+  if(!history.length){
+    $('abHistorySummary').innerHTML='<div class="muted">暂无历史汇总</div>';
+    return;
+  }
+  const latest=history[0];
+  const avgLift=history.reduce((sum,item)=>sum + item.metrics.paidLiftVsA,0) / history.length;
+  const sampleOkCount=history.filter(item=>item.sampleOk).length;
+  const bWinCount=history.filter(item=>item.decision.includes('B 胜出')).length;
+  $('abHistorySummary').innerHTML=`<h3>批次汇总</h3>
+    <div>筛选范围：<b>${getAbSelectedExperiment() || '全部实验'}</b></div>
+    <div style="margin-top:8px">记录数：<b>${history.length}</b>｜样本达标：<b>${sampleOkCount}</b>｜B 胜出：<b>${bWinCount}</b></div>
+    <div style="margin-top:8px">平均 Paid Lift：<b class="${cls(avgLift)}">${pct(avgLift)}</b></div>
+    <div style="margin-top:8px">最新结论：<b>${latest.decision}</b></div>
+    <div class="mini muted" style="margin-top:8px">最近一次：${latest.generatedAt.replace('T',' ').replace('Z',' UTC')}</div>`;
+}
+
 function clearAbHistory(){
   localStorage.removeItem(AB_HISTORY_KEY);
+  refreshAbHistoryFilterOptions();
   renderAbHistory();
   $("abStatus").textContent='已清空 A/B 历史记录';
 }
 
 function renderAbHistory(){
-  const history=readAbHistory();
+  refreshAbHistoryFilterOptions();
+  const history=getAbFilteredHistory();
+  renderAbHistorySummary(history);
   if(!history.length){
     $("abHistory").innerHTML='<div class="muted">暂无历史记录</div>';
     return;
@@ -374,9 +423,9 @@ function exportAB(format){
 }
 
 function exportAbHistory(format){
-  const history=readAbHistory();
+  const history=getAbFilteredHistory();
   if(!history.length){
-    $("abStatus").textContent='暂无可导出的 A/B 历史记录';
+    $("abStatus").textContent='当前筛选范围暂无可导出的 A/B 历史记录';
     return;
   }
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
@@ -499,6 +548,7 @@ $("exportAbHistoryMd").addEventListener('click',()=>exportAbHistory('md'));
 $("copyAbSummary").addEventListener('click',copyAbSummary);
 $("copyAbLink").addEventListener('click',copyAbLink);
 $("clearAbHistory").addEventListener('click',clearAbHistory);
+$("abHistoryFilter").addEventListener('change',renderAbHistory);
 $("run").addEventListener('click',runPortfolio);
 renderAbHistory();
 runAB();
