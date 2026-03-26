@@ -321,3 +321,29 @@
 1. 用真实 Gumroad/独立站数据验证补样卡片是否能指导连续 2-3 轮买量。
 2. 若使用频繁，继续补“目标显著性/目标样本量”估算，进一步减少手算。
 3. 真实样本稳定后，再考虑把 A/B 面板单独包装成可售微工具页。
+
+## 2026-03-26 11:00 执行推进（新增成果）
+
+### 本轮目标
+- 把 A/B 经营面板从“可导出全部历史”继续推进到“可按实验单独打包分享”，降低跨设备/协作者接力时的噪音。
+
+### 新增产出
+- `web/index.html`
+  - 新增“导出当前实验分享包”按钮
+  - 新增 `exportSelectedAbExperimentBundle()`，按当前筛选实验导出单实验 JSON 包
+  - 分享包内包含 `history / latestDecision / latestGeneratedAt / shareLink / exportedAt`
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 页面脚本语法检查通过：`node --check /tmp/passive_income_lab_web_check.js`
+- 文本级检查通过：已确认 `exportSelectedAbExperimentBundle` 函数、`exportSelectedAbShare` 按钮与对应事件绑定存在
+
+### 阻塞
+- 仍缺真实渠道样本，暂时只能验证“操作链路更顺”，还不能证明对真实收入的提升幅度。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 用真实实验批次导出首个分享包，在手机/电脑之间验证“导出 -> 导入 -> 继续复盘”链路。
+2. 若协作场景出现，再补“只读 HTML 分享页”或“单实验 Markdown 周报一键导出”。
+3. 一旦拿到真实样本，优先补“目标显著性/目标样本量”测算，进一步指导补样预算。

@@ -103,3 +103,10 @@
 - 现在用户可把 Passive Income Lab Web Tools 安装到手机主屏或电脑桌面；已访问过的页面壳、manifest、图标与 service worker 可离线打开，降低通勤/碎片时间使用阻力。
 - `README.md` 已同步更新，明确当前原型支持 PWA 安装 / 离线访问。
 - 验证：`python3 -m json.tool web/manifest.webmanifest` 通过；`node --check web/sw.js` 通过；提取页面脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；本地 `python3 -m http.server 8765` 冒烟时，`/web/manifest.webmanifest` 与 `/web/sw.js` 均返回 `200`。
+
+## 2026-03-26 11:0x (Asia/Shanghai)
+- 继续补齐 A/B 面板的跨设备接力能力：`web/index.html` 的 A/B 历史区新增“导出当前实验分享包”按钮。
+- 现在可先按实验名称筛选，再导出单个实验的 JSON 分享包；包内包含该实验历史、最新结论、导出时间以及可直接打开当前表单状态的 `shareLink`。
+- 目的：把“导出全部历史 JSON”进一步推进到“只带走当前经营批次”，便于发给协作者、在另一台设备继续复盘，或沉淀为单实验资产而不混入其他批次。
+- `README.md` 已同步更新，明确当前原型支持当前实验分享包导出。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；文本级检查已确认 `exportSelectedAbExperimentBundle` 函数、`exportSelectedAbShare` 按钮与事件绑定均存在。

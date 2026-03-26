@@ -129,6 +129,7 @@
             <button id="renameAbExperiment" style="max-width:220px;background:#2a4b8d">重命名当前实验</button>
             <button id="deleteAbExperiment" style="max-width:220px;background:#6a2746">删除当前实验</button>
             <button id="exportAbHistoryJson" style="max-width:220px;background:#16305f">导出历史 JSON</button>
+            <button id="exportSelectedAbShare" style="max-width:220px;background:#1b3b72">导出当前实验分享包</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
@@ -598,6 +599,54 @@ function exportAbHistoryJson(){
   $('abStatus').textContent='已导出历史 JSON';
 }
 
+function exportSelectedAbExperimentBundle(){
+  const selected=getAbSelectedExperiment();
+  if(!selected){
+    $('abStatus').textContent='请先在筛选框中选择一个实验后再导出分享包';
+    return;
+  }
+  const history=getAbFilteredHistory();
+  if(!history.length){
+    $('abStatus').textContent='当前实验暂无可导出的历史记录';
+    return;
+  }
+  const latest=history[0];
+  const latestPayload=latest.payload || {};
+  const shareState={
+    experimentLabel:selected,
+    minClicks:latestPayload.min_clicks_per_variant,
+    a_impressions:latestPayload.variants?.A?.impressions,
+    a_clicks:latestPayload.variants?.A?.clicks,
+    a_checkout:latestPayload.variants?.A?.checkout_starts,
+    a_paid:latestPayload.variants?.A?.paid_orders,
+    b_impressions:latestPayload.variants?.B?.impressions,
+    b_clicks:latestPayload.variants?.B?.clicks,
+    b_checkout:latestPayload.variants?.B?.checkout_starts,
+    b_paid:latestPayload.variants?.B?.paid_orders,
+    productPrice:latestPayload.rollout?.product_price,
+    rolloutClicks:latestPayload.rollout?.rollout_clicks,
+    costPerClick:latestPayload.rollout?.cost_per_click
+  };
+  const shareUrl=new URL(window.location.href);
+  Object.entries(shareState).forEach(([key,value])=>{
+    if(value !== undefined && value !== null && value !== '') shareUrl.searchParams.set(key,String(value));
+  });
+  shareUrl.searchParams.set('tool','ab-funnel');
+  const payload={
+    exportedAt:new Date().toISOString(),
+    scope:selected,
+    count:history.length,
+    latestDecision:latest.decision,
+    latestGeneratedAt:latest.generatedAt,
+    shareLink:shareUrl.toString(),
+    history
+  };
+  const safeName=selected.replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'') || 'experiment';
+  const ts=payload.exportedAt.replace(/[:.]/g,'-');
+  downloadFile(`ab-funnel-share-${safeName}-${ts}.json`,JSON.stringify(payload,null,2),'application/json');
+  $('abStatus').textContent=`已导出实验「${selected}」分享包`;
+}
+
 function importAbHistoryJson(){
   $('abHistoryImportFile').click();
 }
@@ -853,6 +902,7 @@ $("runAb").addEventListener('click',runAB);
 $("exportAbJson").addEventListener('click',()=>exportAB('json'));
 $("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
+$("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBundle);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
