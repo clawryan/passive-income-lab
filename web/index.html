@@ -92,6 +92,15 @@
         <label>单次点击成本（元，可选）
           <input id="costPerClick" type="number" min="0" step="0.01" value="0" />
         </label>
+        <label>目标 Paid Lift（%）
+          <input id="targetLift" type="number" min="1" step="1" value="15" />
+        </label>
+        <label>目标置信度（%）
+          <input id="targetConfidence" type="number" min="50" max="99.9" step="0.1" value="90" />
+        </label>
+        <label>目标检验把握（%）
+          <input id="targetPower" type="number" min="50" max="99" step="1" value="80" />
+        </label>
       </div>
 
       <div class="grid g2">
@@ -116,6 +125,7 @@
       <div class="card" id="abMetrics"><h3>关键指标</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abEconomics"><h3>扩量收益测算</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abTopUp"><h3>补样预算测算</h3><div class="muted">等待运行</div></div>
+      <div class="card" id="abSamplePlan"><h3>目标样本量测算</h3><div class="muted">等待运行</div></div>
       <div class="card stack">
         <div class="section-title">
           <div>
@@ -404,6 +414,68 @@ function estimateAbTopUp(result,payload){
   };
 }
 
+function inverseNormalCdf(p){
+  const clamped=Math.min(Math.max(p,1e-6),1-1e-6);
+  const a=[-39.69683028665376,220.9460984245205,-275.9285104469687,138.357751867269, -30.66479806614716,2.506628277459239];
+  const b=[-54.47609879822406,161.5858368580409,-155.6989798598866,66.80131188771972,-13.28068155288572];
+  const c=[-0.007784894002430293,-0.3223964580411365,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783];
+  const d=[0.007784695709041462,0.3224671290700398,2.445134137142996,3.754408661907416];
+  const plow=0.02425;
+  const phigh=1-plow;
+  let q, r;
+  if(clamped < plow){
+    q=Math.sqrt(-2*Math.log(clamped));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+  if(clamped > phigh){
+    q=Math.sqrt(-2*Math.log(1-clamped));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+  q=clamped-0.5;
+  r=q*q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+
+function estimateAbSamplePlan(result,payload){
+  const baseline=Math.max(Number(result.metrics?.A?.paidConversion || 0),1e-4);
+  const currentB=Math.max(Number(result.metrics?.B?.paidConversion || 0),baseline);
+  const targetLift=Math.max(Number(payload.plan?.target_lift || 0.15),0.01);
+  const confidence=Math.min(Math.max(Number(payload.plan?.confidence || 0.9),0.5),0.999);
+  const power=Math.min(Math.max(Number(payload.plan?.power || 0.8),0.5),0.99);
+  const expectedB=Math.min(baseline * (1 + targetLift),0.999);
+  const delta=Math.max(Math.abs(expectedB - baseline),1e-4);
+  const alpha=Math.max(1 - confidence,1e-6);
+  const zAlpha=inverseNormalCdf(1 - alpha / 2);
+  const zBeta=inverseNormalCdf(power);
+  const pooledAvg=(baseline + expectedB) / 2;
+  const varianceTerm=Math.sqrt(Math.max(2 * pooledAvg * (1 - pooledAvg),1e-8));
+  const armVariance=Math.sqrt(Math.max(baseline * (1 - baseline) + expectedB * (1 - expectedB),1e-8));
+  const requiredPerVariant=Math.ceil(Math.pow((zAlpha * varianceTerm + zBeta * armVariance) / delta,2));
+  const currentClicks={
+    A:Number(payload.variants?.A?.clicks || 0),
+    B:Number(payload.variants?.B?.clicks || 0)
+  };
+  const currentMax=Math.max(currentClicks.A,currentClicks.B);
+  const topUpPerVariant={
+    A:Math.max(requiredPerVariant - currentClicks.A,0),
+    B:Math.max(requiredPerVariant - currentClicks.B,0)
+  };
+  const costPerClick=Number(payload.rollout?.cost_per_click || 0);
+  return {
+    baseline,
+    currentB,
+    targetLift,
+    confidence,
+    power,
+    expectedB,
+    requiredPerVariant,
+    topUpPerVariant,
+    totalTopUpClicks:topUpPerVariant.A + topUpPerVariant.B,
+    estimatedSpend:(topUpPerVariant.A + topUpPerVariant.B) * costPerClick,
+    alreadyCovered:currentMax >= requiredPerVariant
+  };
+}
+
 function buildAbTopUpLines(result,payload){
   const topUp=estimateAbTopUp(result,payload);
   const lines=[
@@ -421,6 +493,7 @@ function buildAbTopUpLines(result,payload){
 
 function buildAbMarkdownReport(result,payload){
   const economics=estimateAbEconomics(result,payload);
+  const samplePlan=estimateAbSamplePlan(result,payload);
   const lines=[
     '# A/B Funnel Report',
     '',
@@ -464,6 +537,16 @@ function buildAbMarkdownReport(result,payload){
     '',
     ...buildAbTopUpLines(result,payload),
     '',
+    '## 目标样本量测算',
+    '',
+    `- 目标 Paid Lift: ${pct(samplePlan.targetLift)}`,
+    `- 目标置信度: ${pct(samplePlan.confidence)}`,
+    `- 目标检验把握: ${pct(samplePlan.power)}`,
+    `- 基线 Paid Conversion（A）: ${pct(samplePlan.baseline)} ｜ 目标 B Paid Conversion: ${pct(samplePlan.expectedB)}`,
+    `- 达到目标检测力所需点击 / 版本: ${samplePlan.requiredPerVariant}`,
+    `- 仍需补样点击（A / B）: ${samplePlan.topUpPerVariant.A} / ${samplePlan.topUpPerVariant.B}`,
+    `- 若按当前 CPC 估算，还需预算: ${money(samplePlan.estimatedSpend)}`,
+    '',
     '## 下一步',
     '',
     ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
@@ -474,6 +557,7 @@ function buildAbMarkdownReport(result,payload){
 function buildAbPlainSummary(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const topUp=estimateAbTopUp(result,payload);
+  const samplePlan=estimateAbSamplePlan(result,payload);
   return [
     `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
@@ -484,6 +568,7 @@ function buildAbPlainSummary(result,payload){
     `扩量测算：客单价 ${money(economics.productPrice)}｜扩量点击 ${economics.rolloutClicks}｜A 保本 CPC ${money(economics.aBreakEvenCpc)}｜B 保本 CPC ${money(economics.bBreakEvenCpc)}｜选 B 额外可承受 CPC ${money(economics.incrementalBreakEvenCpc)}`,
     `若选 B：预计多 ${economics.deltaOrders.toFixed(2)} 单 / 多 ${money(economics.deltaRevenue)} 营收 / 多 ${money(economics.deltaNet)} 净额`,
     `补样测算：还差 ${topUp.totalClicksNeeded} 点击达阈值，预计再花 ${money(topUp.totalSpendNeeded)}；A/B 分别还差 ${topUp.perVariant[0].clicksNeeded}/${topUp.perVariant[1].clicksNeeded} 点击`,
+    `目标样本量：若想以 ${pct(samplePlan.confidence)} 置信度、${pct(samplePlan.power)} 把握检测 ${pct(samplePlan.targetLift)} Paid Lift，约需每版 ${samplePlan.requiredPerVariant} 点击；当前还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}`,
     `下一步：${result.nextActions.join('；')}`
   ].join('\n');
 }
@@ -625,7 +710,10 @@ function exportSelectedAbExperimentBundle(){
     b_paid:latestPayload.variants?.B?.paid_orders,
     productPrice:latestPayload.rollout?.product_price,
     rolloutClicks:latestPayload.rollout?.rollout_clicks,
-    costPerClick:latestPayload.rollout?.cost_per_click
+    costPerClick:latestPayload.rollout?.cost_per_click,
+    targetLift:Number(latestPayload.plan?.target_lift || 0) * 100,
+    targetConfidence:Number(latestPayload.plan?.confidence || 0) * 100,
+    targetPower:Number(latestPayload.plan?.power || 0) * 100
   };
   const shareUrl=new URL(window.location.href);
   Object.entries(shareState).forEach(([key,value])=>{
@@ -685,7 +773,10 @@ function getAbFormState(){
     b_paid:num('b_paid'),
     productPrice:num('productPrice'),
     rolloutClicks:num('rolloutClicks'),
-    costPerClick:num('costPerClick')
+    costPerClick:num('costPerClick'),
+    targetLift:num('targetLift'),
+    targetConfidence:num('targetConfidence'),
+    targetPower:num('targetPower')
   };
 }
 
@@ -776,6 +867,11 @@ async function runAB(){
       rollout_clicks:num('rolloutClicks'),
       cost_per_click:num('costPerClick')
     },
+    plan:{
+      target_lift:num('targetLift') / 100,
+      confidence:num('targetConfidence') / 100,
+      power:num('targetPower') / 100
+    },
     variants:{
       A:{impressions:num('a_impressions'),clicks:num('a_clicks'),checkout_starts:num('a_checkout'),paid_orders:num('a_paid')},
       B:{impressions:num('b_impressions'),clicks:num('b_clicks'),checkout_starts:num('b_checkout'),paid_orders:num('b_paid')}
@@ -816,6 +912,7 @@ async function runAB(){
 
     const economics=estimateAbEconomics(d,payload);
     const topUp=estimateAbTopUp(d,payload);
+    const samplePlan=estimateAbSamplePlan(d,payload);
     $("abEconomics").innerHTML=`<h3>扩量收益测算</h3>
       <div>客单价：<b>${money(economics.productPrice)}</b>｜扩量点击：<b>${economics.rolloutClicks}</b>｜单次点击成本：<b>${money(economics.costPerClick)}</b></div>
       <div style="margin-top:8px">预计广告成本：<b>${money(economics.adCost)}</b></div>
@@ -835,6 +932,13 @@ async function runAB(){
         ${topUp.perVariant.map(item=>`<tr><td>${item.name}</td><td>${item.clicks}</td><td>${item.clicksNeeded}</td><td>${item.impressionsNeeded === null ? '无法估算' : item.impressionsNeeded}</td><td>${money(item.spendNeeded)}</td></tr>`).join('')}
       </tbody></table>
       <div class="mini muted" style="margin-top:8px">展现预估基于当前 CTR 反推，仅用于决定是否继续买量补样。</div>`;
+
+    $("abSamplePlan").innerHTML=`<h3>目标样本量测算</h3>
+      <div>目标 Paid Lift：<b>${pct(samplePlan.targetLift)}</b>｜置信度：<b>${pct(samplePlan.confidence)}</b>｜检验把握：<b>${pct(samplePlan.power)}</b></div>
+      <div style="margin-top:8px">A 当前支付转化基线：<b>${pct(samplePlan.baseline)}</b>｜目标 B 支付转化：<b>${pct(samplePlan.expectedB)}</b></div>
+      <div style="margin-top:8px">达到该检测力所需点击 / 版本：<b>${samplePlan.requiredPerVariant}</b>｜仍需补样：<b>A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}</b></div>
+      <div style="margin-top:8px">若按当前 CPC 估算，额外预算约：<b>${money(samplePlan.estimatedSpend)}</b></div>
+      <div class="mini muted" style="margin-top:8px">这是基于双侧两比例近似的经营估算，用于回答“这轮实验还值不值得继续买量到能看出 ${pct(samplePlan.targetLift)} 提升”。</div>`;
   }catch(e){
     $("abStatus").textContent='失败: '+e.message;
   }
@@ -895,7 +999,10 @@ applyAbFormState({
   b_paid:params.get('b_paid'),
   productPrice:params.get('productPrice'),
   rolloutClicks:params.get('rolloutClicks'),
-  costPerClick:params.get('costPerClick')
+  costPerClick:params.get('costPerClick'),
+  targetLift:params.get('targetLift'),
+  targetConfidence:params.get('targetConfidence'),
+  targetPower:params.get('targetPower')
 });
 
 $("runAb").addEventListener('click',runAB);

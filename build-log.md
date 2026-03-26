@@ -110,3 +110,10 @@
 - 目的：把“导出全部历史 JSON”进一步推进到“只带走当前经营批次”，便于发给协作者、在另一台设备继续复盘，或沉淀为单实验资产而不混入其他批次。
 - `README.md` 已同步更新，明确当前原型支持当前实验分享包导出。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；文本级检查已确认 `exportSelectedAbExperimentBundle` 函数、`exportSelectedAbShare` 按钮与事件绑定均存在。
+
+## 2026-03-26 14:0x (Asia/Shanghai)
+- 选择了更接近真实买量决策的下一步：在 `web/index.html` 新增“目标样本量测算”卡片，并增加 `targetLift / targetConfidence / targetPower` 三个输入。
+- 新增 `estimateAbSamplePlan()` 与 `inverseNormalCdf()`：基于双侧两比例近似，按 A 当前支付转化基线估算“若想检测到目标 Paid Lift，大约每版需要多少点击”。
+- 单次摘要、Markdown 报告、分享链接回填、实验分享包都已带上目标样本量参数，便于手机/电脑端继续接力同一轮实验。
+- 目的：把“是否继续补样”从只看最小点击阈值，推进到“是否值得补到能检测出 15%/20% 提升”的经营判断。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认示例数据下成功输出 `requiredPerVariant=9998`，且页面摘要包含“目标样本量”段落。
