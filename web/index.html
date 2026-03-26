@@ -476,6 +476,33 @@ function estimateAbSamplePlan(result,payload){
   };
 }
 
+function estimateAbSpendGuardrail(result,payload){
+  const economics=estimateAbEconomics(result,payload);
+  const samplePlan=estimateAbSamplePlan(result,payload);
+  const targetAdditionalOrders=samplePlan.totalTopUpClicks * samplePlan.expectedB;
+  const targetAdditionalRevenue=targetAdditionalOrders * economics.productPrice;
+  const targetBreakEvenCpc=samplePlan.expectedB * economics.productPrice;
+  const targetIncrementalCpc=Math.max((samplePlan.expectedB - samplePlan.baseline) * economics.productPrice,0);
+  const budgetHeadroom=Math.max(targetAdditionalRevenue - samplePlan.estimatedSpend,0);
+  const budgetHeadroomRatio=targetAdditionalRevenue > 0 ? budgetHeadroom / targetAdditionalRevenue : 0;
+  const currentCpc=Number(economics.costPerClick || 0);
+  let verdict='需结合渠道质量判断';
+  if(currentCpc > 0){
+    verdict=currentCpc <= targetIncrementalCpc
+      ? '当前 CPC 落在目标增量可承受区间内，可继续补样'
+      : '当前 CPC 已高于目标增量可承受区间，补样前先降 CPC 或抬高转化';
+  }
+  return {
+    targetAdditionalOrders,
+    targetAdditionalRevenue,
+    targetBreakEvenCpc,
+    targetIncrementalCpc,
+    budgetHeadroom,
+    budgetHeadroomRatio,
+    verdict
+  };
+}
+
 function buildAbTopUpLines(result,payload){
   const topUp=estimateAbTopUp(result,payload);
   const lines=[
@@ -494,6 +521,7 @@ function buildAbTopUpLines(result,payload){
 function buildAbMarkdownReport(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
+  const guardrail=estimateAbSpendGuardrail(result,payload);
   const lines=[
     '# A/B Funnel Report',
     '',
@@ -547,6 +575,15 @@ function buildAbMarkdownReport(result,payload){
     `- 仍需补样点击（A / B）: ${samplePlan.topUpPerVariant.A} / ${samplePlan.topUpPerVariant.B}`,
     `- 若按当前 CPC 估算，还需预算: ${money(samplePlan.estimatedSpend)}`,
     '',
+    '## 投放上限 / 可承受买量',
+    '',
+    `- 若补到目标样本量，目标版本预计新增订单: ${guardrail.targetAdditionalOrders.toFixed(2)}`,
+    `- 若补到目标样本量，目标版本预计新增营收上限: ${money(guardrail.targetAdditionalRevenue)}`,
+    `- 为达到目标样本量可承受的整体保本 CPC: ${money(guardrail.targetBreakEvenCpc)}`,
+    `- 仅由目标 Lift 带来的增量可承受 CPC: ${money(guardrail.targetIncrementalCpc)}`,
+    `- 按当前 CPC 补样后的剩余收入缓冲: ${money(guardrail.budgetHeadroom)}（${pct(guardrail.budgetHeadroomRatio)}）`,
+    `- 判断: ${guardrail.verdict}`,
+    '',
     '## 下一步',
     '',
     ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
@@ -558,6 +595,7 @@ function buildAbPlainSummary(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const topUp=estimateAbTopUp(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
+  const guardrail=estimateAbSpendGuardrail(result,payload);
   return [
     `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
@@ -569,6 +607,7 @@ function buildAbPlainSummary(result,payload){
     `若选 B：预计多 ${economics.deltaOrders.toFixed(2)} 单 / 多 ${money(economics.deltaRevenue)} 营收 / 多 ${money(economics.deltaNet)} 净额`,
     `补样测算：还差 ${topUp.totalClicksNeeded} 点击达阈值，预计再花 ${money(topUp.totalSpendNeeded)}；A/B 分别还差 ${topUp.perVariant[0].clicksNeeded}/${topUp.perVariant[1].clicksNeeded} 点击`,
     `目标样本量：若想以 ${pct(samplePlan.confidence)} 置信度、${pct(samplePlan.power)} 把握检测 ${pct(samplePlan.targetLift)} Paid Lift，约需每版 ${samplePlan.requiredPerVariant} 点击；当前还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}`,
+    `投放上限：目标版整体保本 CPC ${money(guardrail.targetBreakEvenCpc)}｜增量可承受 CPC ${money(guardrail.targetIncrementalCpc)}｜收入缓冲 ${money(guardrail.budgetHeadroom)}｜判断：${guardrail.verdict}`,
     `下一步：${result.nextActions.join('；')}`
   ].join('\n');
 }
@@ -913,6 +952,7 @@ async function runAB(){
     const economics=estimateAbEconomics(d,payload);
     const topUp=estimateAbTopUp(d,payload);
     const samplePlan=estimateAbSamplePlan(d,payload);
+    const guardrail=estimateAbSpendGuardrail(d,payload);
     $("abEconomics").innerHTML=`<h3>扩量收益测算</h3>
       <div>客单价：<b>${money(economics.productPrice)}</b>｜扩量点击：<b>${economics.rolloutClicks}</b>｜单次点击成本：<b>${money(economics.costPerClick)}</b></div>
       <div style="margin-top:8px">预计广告成本：<b>${money(economics.adCost)}</b></div>
@@ -939,6 +979,12 @@ async function runAB(){
       <div style="margin-top:8px">达到该检测力所需点击 / 版本：<b>${samplePlan.requiredPerVariant}</b>｜仍需补样：<b>A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}</b></div>
       <div style="margin-top:8px">若按当前 CPC 估算，额外预算约：<b>${money(samplePlan.estimatedSpend)}</b></div>
       <div class="mini muted" style="margin-top:8px">这是基于双侧两比例近似的经营估算，用于回答“这轮实验还值不值得继续买量到能看出 ${pct(samplePlan.targetLift)} 提升”。</div>`;
+
+    $("abGuardrail").innerHTML=`<h3>投放上限 / 可承受买量</h3>
+      <div>目标版整体保本 CPC：<b>${money(guardrail.targetBreakEvenCpc)}</b>｜增量可承受 CPC：<b>${money(guardrail.targetIncrementalCpc)}</b></div>
+      <div style="margin-top:8px">若补到目标样本量：预计新增订单 <b>${guardrail.targetAdditionalOrders.toFixed(2)}</b>｜预计新增营收上限 <b>${money(guardrail.targetAdditionalRevenue)}</b></div>
+      <div style="margin-top:8px">按当前 CPC 补样后的收入缓冲：<b>${money(guardrail.budgetHeadroom)}</b>｜缓冲率：<b>${pct(guardrail.budgetHeadroomRatio)}</b></div>
+      <div class="mini muted" style="margin-top:8px">${guardrail.verdict}。这里把“目标样本量”直接折算成可承受的 CPC 与预算余量，帮助判断是否继续买量。</div>`;
   }catch(e){
     $("abStatus").textContent='失败: '+e.message;
   }
