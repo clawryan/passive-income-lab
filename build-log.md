@@ -96,3 +96,10 @@
 - 单次纯文本摘要、Markdown 报告、历史 CSV 导出也已带上补样预算字段，方便把“是否继续买量”直接同步到运营记录。
 - 目的：减少 A/B 尚未达显著时的手工估算，让手机/电脑端都能快速判断“继续补样还是停”。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `estimateAbTopUp()` 输出 50 次补样点击 / ¥60 预算，并且摘要包含“补样测算”段落。
+
+## 2026-03-26 08:0x (Asia/Shanghai)
+- 选择了“高收益 / 低阻力”的移动端可用性改进：把 `web/index.html` 补成可安装的 PWA。
+- 新增 `web/manifest.webmanifest`、`web/sw.js`、`web/icon.svg`，并在首页加入“安装到主屏 / 桌面”“刷新离线缓存”入口与状态提示。
+- 现在用户可把 Passive Income Lab Web Tools 安装到手机主屏或电脑桌面；已访问过的页面壳、manifest、图标与 service worker 可离线打开，降低通勤/碎片时间使用阻力。
+- `README.md` 已同步更新，明确当前原型支持 PWA 安装 / 离线访问。
+- 验证：`python3 -m json.tool web/manifest.webmanifest` 通过；`node --check web/sw.js` 通过；提取页面脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；本地 `python3 -m http.server 8765` 冒烟时，`/web/manifest.webmanifest` 与 `/web/sw.js` 均返回 `200`。

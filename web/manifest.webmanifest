@@ -1,0 +1,19 @@
+{
+  "name": "Passive Income Lab · Web Tools",
+  "short_name": "Income Lab",
+  "description": "面向手机与电脑直接操作的被动收益实验工具箱，当前包含 A/B Funnel Analyzer 与 Orion Nexus Quant Monitor。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#0a0f1e",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/web/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

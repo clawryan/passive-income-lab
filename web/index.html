@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Passive Income Lab · Web Tools</title>
+  <meta name="theme-color" content="#0a0f1e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Income Lab" />
+  <link rel="manifest" href="/web/manifest.webmanifest" />
+  <link rel="icon" href="/web/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/web/icon.svg" />
   <style>
     :root{
       --bg:#0a0f1e;--card:#141c34;--line:#25335f;--text:#e8efff;--muted:#96a3c7;--blue:#3a7bff;--green:#7ef0ba;--red:#ff9ca9;
@@ -20,7 +27,7 @@
     table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:top}
     .good{color:var(--green)} .bad{color:var(--red)} .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#10214d;border:1px solid #2f4d99;font-size:12px}
     .section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-    .stack{display:grid;gap:8px}.mini{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .stack{display:grid;gap:8px}.mini{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ghost{background:#16305f}.hidden{display:none !important}
     @media (max-width: 900px){.g2,.g4{grid-template-columns:1fr}}
   </style>
 </head>
@@ -28,7 +35,12 @@
   <div class="wrap grid">
     <div class="card">
       <h1>Passive Income Lab · Web Tools</h1>
-      <div class="muted">面向电脑/手机直接操作的轻量原型。当前优先支持：数字产品 A/B 转化判定、量化研究监控。</div>
+      <div class="muted">面向电脑/手机直接操作的轻量原型。当前优先支持：数字产品 A/B 转化判定、量化研究监控；现在支持安装到主屏与离线打开。</div>
+      <div class="toolbar" style="margin-top:12px">
+        <button id="installApp" class="ghost hidden" style="width:auto;padding:10px 14px">安装到主屏 / 桌面</button>
+        <button id="refreshApp" class="ghost" style="width:auto;padding:10px 14px">刷新离线缓存</button>
+        <span id="pwaStatus" class="muted">PWA 准备中…</span>
+      </div>
     </div>
 
     <div class="card stack">
@@ -174,6 +186,7 @@ const num=id=>Number($(id).value||0);
 const AB_HISTORY_KEY='passive-income-lab.abHistory.v1';
 const AB_HISTORY_LIMIT=12;
 let lastAbResult=null;
+let deferredInstallPrompt=null;
 
 function downloadFile(filename, content, mimeType){
   const blob=new Blob([content],{type:mimeType});
@@ -851,6 +864,64 @@ $("copyAbLink").addEventListener('click',copyAbLink);
 $("clearAbHistory").addEventListener('click',clearAbHistory);
 $("abHistoryFilter").addEventListener('change',renderAbHistory);
 $("run").addEventListener('click',runPortfolio);
+
+async function refreshOfflineCache(){
+  if (!('serviceWorker' in navigator)) {
+    $('pwaStatus').textContent='当前浏览器不支持离线缓存';
+    return;
+  }
+  const registration = await navigator.serviceWorker.ready;
+  if (registration.active) {
+    registration.active.postMessage({type:'SKIP_WAITING'});
+  }
+  $('pwaStatus').textContent='已请求刷新离线缓存；重新打开页面后生效';
+}
+
+function updateInstallButton(){
+  const button=$('installApp');
+  if (!button) return;
+  button.classList.toggle('hidden', !deferredInstallPrompt);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try{
+      await navigator.serviceWorker.register('/web/sw.js');
+      $('pwaStatus').textContent = navigator.onLine ? '已支持安装与离线打开' : '离线模式：已加载本地缓存';
+    }catch(e){
+      $('pwaStatus').textContent = 'PWA 注册失败: ' + e.message;
+    }
+  });
+} else {
+  $('pwaStatus').textContent='当前浏览器不支持 PWA / 离线缓存';
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  $('pwaStatus').textContent = '可安装：已就绪';
+  updateInstallButton();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  $('pwaStatus').textContent = '已安装到主屏 / 桌面';
+  updateInstallButton();
+});
+
+$('installApp').addEventListener('click', async () => {
+  if (!deferredInstallPrompt) {
+    $('pwaStatus').textContent = '当前环境暂未触发安装提示，可直接用浏览器“添加到主屏幕”';
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice.catch(() => null);
+  deferredInstallPrompt = null;
+  updateInstallButton();
+});
+
+$('refreshApp').addEventListener('click', () => { refreshOfflineCache().catch(e => { $('pwaStatus').textContent = '刷新缓存失败: ' + e.message; }); });
+
 renderAbHistory();
 runAB();
 </script>

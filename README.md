@@ -20,3 +20,4 @@
 ## 当前可直接操作原型
 - **数字产品 A/B Funnel Analyzer**：输入曝光/点击/结账/支付，输出显著性、胜负判定、下一步动作。
 - **Orion Nexus Quant Monitor**：查看策略信号、组合收益、基准对比（研究/模拟）。
+- **PWA 安装 / 离线访问**：`web/index.html` 现已补齐 manifest + service worker，可安装到手机主屏或电脑桌面，并支持离线打开已缓存的工具壳。
