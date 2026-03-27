@@ -139,3 +139,11 @@
 - 单次摘要、Markdown 报告同步新增“信号灯”信息，方便直接贴到运营记录或手机端快速复盘。
 - 目的：减少用户在多个表格之间来回比对，把统计判断更直接地转成经营动作。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认新卡片成功渲染 `建议动作`，且纯文本摘要包含 `信号灯：` 段落。
+
+## 2026-03-27 14:0x (Asia/Shanghai)
+- 继续沿着“直接可执行”推进：`web/index.html` 新增“24h 运营清单”卡片。
+- 新增 `buildAbExecutionChecklist()` / `buildAbExecutionChecklistLines()`：把判定结论、补样预算、目标样本量、CPC 风险整合成 `现在 / 24h / 72h` 的行动清单。
+- 单次纯文本摘要、Markdown 报告同步加入“24h 清单”段落，方便直接复制到运营记录、待办或协作者消息中。
+- `README.md` 已同步更新，明确当前原型支持 24h 运营清单。
+- 目的：把“看懂结论”再往前推一步，变成“拿到结果后今天具体做什么”，更贴近被动收益产品的日常经营闭环。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `abExecutionPlan` 卡片成功渲染，且 Markdown/纯文本摘要包含 `24h 运营清单` / `24h 清单：`。

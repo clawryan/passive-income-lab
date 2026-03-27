@@ -128,6 +128,7 @@
       <div class="card" id="abSamplePlan"><h3>目标样本量测算</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abGuardrail"><h3>投放上限 / 可承受买量</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abCpcSensitivity"><h3>CPC 场景敏感度</h3><div class="muted">等待运行</div></div>
+      <div class="card" id="abExecutionPlan"><h3>24h 运营清单</h3><div class="muted">等待运行</div></div>
       <div class="card stack">
         <div class="section-title">
           <div>
@@ -611,6 +612,81 @@ function buildAbDecisionBoardLines(result,payload){
   ];
 }
 
+function buildAbExecutionChecklist(result,payload){
+  const economics=estimateAbEconomics(result,payload);
+  const topUp=estimateAbTopUp(result,payload);
+  const samplePlan=estimateAbSamplePlan(result,payload);
+  const guardrail=estimateAbSpendGuardrail(result,payload);
+  const board=evaluateAbDecisionBoard(result,payload);
+  const checklist=[];
+
+  checklist.push({
+    owner:'现在',
+    title:'记录本轮结论',
+    detail:`把“${result.decision} / ${board.recommendation}”同步到运营记录，并保留实验名「${payload.experiment_label || '未命名实验'}」与生成时间 ${result.generatedAt}`
+  });
+
+  if(!result.sampleOk || topUp.totalClicksNeeded > 0){
+    checklist.push({
+      owner:'24h',
+      title:'先补样，不急着放量',
+      detail:`当前还差 ${topUp.totalClicksNeeded} 点击到最小阈值；按当前 CPC 约需 ${money(topUp.totalSpendNeeded)}。优先把 A/B 点击补到 ${payload.min_clicks_per_variant}+ 再复盘。`
+    });
+  }else if(result.decision.startsWith('B 胜出') && economics.deltaNet > 0){
+    checklist.push({
+      owner:'24h',
+      title:'继续小额放量验证 B',
+      detail:`若维持当前 CPC ${money(economics.costPerClick)}，预计选 B 可多赚 ${money(economics.deltaNet)}；先用小预算验证 B 是否持续领先。`
+    });
+  }else{
+    checklist.push({
+      owner:'24h',
+      title:'保持流量稳定，避免误判',
+      detail:'样本虽已到阈值，但信号仍不够干净；先维持当前投放节奏，再等下一轮数据。'
+    });
+  }
+
+  if(guardrail.targetIncrementalCpc > 0 && economics.costPerClick > guardrail.targetIncrementalCpc){
+    checklist.push({
+      owner:'24h',
+      title:'先压 CPC，再决定是否继续买量',
+      detail:`当前 CPC ${money(economics.costPerClick)} 已高于增量可承受 CPC ${money(guardrail.targetIncrementalCpc)}；优先优化渠道/素材，而不是直接加预算。`
+    });
+  }else{
+    checklist.push({
+      owner:'24h',
+      title:'盯住 CPC 波动',
+      detail:`当前 CPC ${money(economics.costPerClick)} 仍在可承受区间；若后续高于 ${money(guardrail.targetIncrementalCpc)}，应暂停扩量复查素材与受众。`
+    });
+  }
+
+  checklist.push({
+    owner:'72h',
+    title:'决定是否值得补到目标检测力',
+    detail:`若想检测 ${pct(samplePlan.targetLift)} Paid Lift，约需每版 ${samplePlan.requiredPerVariant} 点击；当前还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}。`
+  });
+
+  if(result.decision.startsWith('B 胜出') && economics.deltaNet > 0 && (economics.costPerClick === 0 || economics.costPerClick <= guardrail.targetIncrementalCpc)){
+    checklist.push({
+      owner:'72h',
+      title:'复制获胜方案到其他垂直子包',
+      detail:'若下一轮仍是 B 胜出，把获胜标题/首屏/报价结构复制到餐饮、电商或其他数字产品页。'
+    });
+  }else{
+    checklist.push({
+      owner:'72h',
+      title:'保留本轮实验资产，避免盲目扩散',
+      detail:'导出 Markdown 报告或实验分享包，等真实数据稳定后再复制到其他子项目。'
+    });
+  }
+
+  return checklist;
+}
+
+function buildAbExecutionChecklistLines(result,payload){
+  return buildAbExecutionChecklist(result,payload).map((item,idx)=>`${idx+1}. [${item.owner}] ${item.title}：${item.detail}`);
+}
+
 function buildAbMarkdownReport(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
@@ -691,6 +767,10 @@ function buildAbMarkdownReport(result,payload){
     '',
     ...cpcSensitivity.rows.map(row=>`- ${row.label}: CPC ${money(row.cpc)} ｜ 广告成本 ${money(row.adCost)} ｜ B 净额 ${money(row.bNet)} ｜ 相对 A 多 ${money(row.deltaNet)} ｜ ${row.verdict}`),
     '',
+    '## 24h 运营清单',
+    '',
+    ...buildAbExecutionChecklistLines(result,payload),
+    '',
     '## 下一步',
     '',
     ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
@@ -705,6 +785,7 @@ function buildAbPlainSummary(result,payload){
   const guardrail=estimateAbSpendGuardrail(result,payload);
   const cpcSensitivity=estimateAbCpcSensitivity(result,payload);
   const decisionBoard=evaluateAbDecisionBoard(result,payload);
+  const executionChecklist=buildAbExecutionChecklist(result,payload);
   return [
     `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
@@ -719,6 +800,7 @@ function buildAbPlainSummary(result,payload){
     `目标样本量：若想以 ${pct(samplePlan.confidence)} 置信度、${pct(samplePlan.power)} 把握检测 ${pct(samplePlan.targetLift)} Paid Lift，约需每版 ${samplePlan.requiredPerVariant} 点击；当前还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}`,
     `投放上限：目标版整体保本 CPC ${money(guardrail.targetBreakEvenCpc)}｜增量可承受 CPC ${money(guardrail.targetIncrementalCpc)}｜收入缓冲 ${money(guardrail.budgetHeadroom)}｜判断：${guardrail.verdict}`,
     `CPC 场景：${cpcSensitivity.rows.map(row=>`${row.label} ${money(row.cpc)} -> B 净额 ${money(row.bNet)} / 相对 A 多 ${money(row.deltaNet)}`).join('；')}`,
+    `24h 清单：${executionChecklist.map(item=>`[${item.owner}] ${item.title}`).join('；')}`,
     `下一步：${result.nextActions.join('；')}`
   ].join('\n');
 }
@@ -1066,6 +1148,7 @@ async function runAB(){
     const guardrail=estimateAbSpendGuardrail(d,payload);
     const cpcSensitivity=estimateAbCpcSensitivity(d,payload);
     const decisionBoard=evaluateAbDecisionBoard(d,payload);
+    const executionChecklist=buildAbExecutionChecklist(d,payload);
     $("abDecisionBoard").innerHTML=`<h3>投放决策信号灯</h3>
       <div>把统计、样本、CPC 与利润压缩成一眼能看的执行建议。</div>
       <ul style="margin-top:10px">
@@ -1115,6 +1198,11 @@ async function runAB(){
         ${cpcSensitivity.rows.map(row=>`<tr><td>${row.label}</td><td>${money(row.cpc)}</td><td>${money(row.adCost)}</td><td>${money(row.aNet)}</td><td>${money(row.bNet)}</td><td class="${cls(row.deltaNet)}">${money(row.deltaNet)}</td><td>${row.verdict}</td></tr>`).join('')}
       </tbody></table>
       <div class="mini muted" style="margin-top:8px">当前最优场景：<b>${cpcSensitivity.bestRow ? `${cpcSensitivity.bestRow.label}（B 净额 ${money(cpcSensitivity.bestRow.bNet)}）` : '暂无'}</b>。适合在手机端快速比较“便宜量 / 当前量 / 更贵量”是否还值得继续投。</div>`;
+    $("abExecutionPlan").innerHTML=`<h3>24h 运营清单</h3>
+      <div>把统计结论直接压缩成可执行动作，方便手机端照着做。</div>
+      <ol style="margin-top:10px;padding-left:20px">
+        ${executionChecklist.map(item=>`<li><b>[${item.owner}] ${item.title}</b><div class="mini muted" style="margin-top:4px">${item.detail}</div></li>`).join('')}
+      </ol>`;
   }catch(e){
     $("abStatus").textContent='失败: '+e.message;
   }
