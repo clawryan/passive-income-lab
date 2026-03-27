@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-27 22:0x (Asia/Shanghai)
+- 继续选择“高收益 / 低阻力”的移动端闭环：`web/index.html` 新增“手机原生分享摘要 / 手机原生分享当前实验”按钮。
+- 新增 `buildSelectedAbExperimentBundle()` 与 `shareText()`，复用现有分享链接和实验分享包逻辑，在支持 Web Share API 的手机浏览器里可直接调起系统分享面板。
+- 兼容降级：若浏览器不支持原生分享，则自动回退为复制摘要+链接，或复制当前实验摘要，避免手机端点了按钮却无响应。
+- `README.md` 已同步更新当前原型能力说明。
+- 验证：提取页面内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；文本级检查已确认新增 `shareAbSummary` / `shareSelectedAbBundle` 按钮与事件绑定存在。
+
 ## 2026-03-27 20:0x (Asia/Shanghai)
 - 继续选择“高收益 / 低阻力”的执行闭环增强：`web/index.html` 新增“复制 24h 清单”与“导出运营待办 JSON”按钮。
 - 新增 `buildAbExecutionTodoExport()`：把实验名、结论、建议动作、核心转化指标、扩量净额与分时段 checklist 打包成结构化 JSON，方便手机端任务工具或后续自动化接入。

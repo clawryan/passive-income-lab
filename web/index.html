@@ -124,6 +124,11 @@
       </div>
 
       <div class="grid g2">
+        <button id="shareAbSummary" style="background:#24548f">手机原生分享摘要</button>
+        <button id="shareSelectedAbBundle" style="background:#24548f">手机原生分享当前实验</button>
+      </div>
+
+      <div class="grid g2">
         <div class="card" id="abSummary"><h3>判定摘要</h3><div class="muted">等待运行</div></div>
         <div class="card" id="abActions"><h3>下一步</h3><div class="muted">等待运行</div></div>
       </div>
@@ -956,52 +961,9 @@ function exportAbHistoryJson(){
 }
 
 function exportSelectedAbExperimentBundle(){
-  const selected=getAbSelectedExperiment();
-  if(!selected){
-    $('abStatus').textContent='请先在筛选框中选择一个实验后再导出分享包';
-    return;
-  }
-  const history=getAbFilteredHistory();
-  if(!history.length){
-    $('abStatus').textContent='当前实验暂无可导出的历史记录';
-    return;
-  }
-  const latest=history[0];
-  const latestPayload=latest.payload || {};
-  const shareState={
-    experimentLabel:selected,
-    minClicks:latestPayload.min_clicks_per_variant,
-    a_impressions:latestPayload.variants?.A?.impressions,
-    a_clicks:latestPayload.variants?.A?.clicks,
-    a_checkout:latestPayload.variants?.A?.checkout_starts,
-    a_paid:latestPayload.variants?.A?.paid_orders,
-    b_impressions:latestPayload.variants?.B?.impressions,
-    b_clicks:latestPayload.variants?.B?.clicks,
-    b_checkout:latestPayload.variants?.B?.checkout_starts,
-    b_paid:latestPayload.variants?.B?.paid_orders,
-    productPrice:latestPayload.rollout?.product_price,
-    rolloutClicks:latestPayload.rollout?.rollout_clicks,
-    costPerClick:latestPayload.rollout?.cost_per_click,
-    targetLift:Number(latestPayload.plan?.target_lift || 0) * 100,
-    targetConfidence:Number(latestPayload.plan?.confidence || 0) * 100,
-    targetPower:Number(latestPayload.plan?.power || 0) * 100
-  };
-  const shareUrl=new URL(window.location.href);
-  Object.entries(shareState).forEach(([key,value])=>{
-    if(value !== undefined && value !== null && value !== '') shareUrl.searchParams.set(key,String(value));
-  });
-  shareUrl.searchParams.set('tool','ab-funnel');
-  const payload={
-    exportedAt:new Date().toISOString(),
-    scope:selected,
-    count:history.length,
-    latestDecision:latest.decision,
-    latestGeneratedAt:latest.generatedAt,
-    shareLink:shareUrl.toString(),
-    history
-  };
-  const safeName=selected.replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'') || 'experiment';
-  const ts=payload.exportedAt.replace(/[:.]/g,'-');
+  const bundle=buildSelectedAbExperimentBundle();
+  if(!bundle) return;
+  const {selected,payload,safeName,ts}=bundle;
   downloadFile(`ab-funnel-share-${safeName}-${ts}.json`,JSON.stringify(payload,null,2),'application/json');
   $('abStatus').textContent=`已导出实验「${selected}」分享包`;
 }
@@ -1103,6 +1065,105 @@ async function copyAbChecklist(){
 
 async function copyAbLink(){
   await copyText(buildAbShareLink(),'已复制分享链接');
+}
+
+function buildSelectedAbExperimentBundle(){
+  const selected=getAbSelectedExperiment();
+  if(!selected){
+    $('abStatus').textContent='请先在筛选框中选择一个实验';
+    return null;
+  }
+  const history=getAbFilteredHistory();
+  if(!history.length){
+    $('abStatus').textContent='当前实验暂无可分享的历史记录';
+    return null;
+  }
+  const latest=history[0];
+  const latestPayload=latest.payload || {};
+  const shareState={
+    experimentLabel:selected,
+    minClicks:latestPayload.min_clicks_per_variant,
+    a_impressions:latestPayload.variants?.A?.impressions,
+    a_clicks:latestPayload.variants?.A?.clicks,
+    a_checkout:latestPayload.variants?.A?.checkout_starts,
+    a_paid:latestPayload.variants?.A?.paid_orders,
+    b_impressions:latestPayload.variants?.B?.impressions,
+    b_clicks:latestPayload.variants?.B?.clicks,
+    b_checkout:latestPayload.variants?.B?.checkout_starts,
+    b_paid:latestPayload.variants?.B?.paid_orders,
+    productPrice:latestPayload.rollout?.product_price,
+    rolloutClicks:latestPayload.rollout?.rollout_clicks,
+    costPerClick:latestPayload.rollout?.cost_per_click,
+    targetLift:Number(latestPayload.plan?.target_lift || 0) * 100,
+    targetConfidence:Number(latestPayload.plan?.confidence || 0) * 100,
+    targetPower:Number(latestPayload.plan?.power || 0) * 100
+  };
+  const shareUrl=new URL(window.location.href);
+  Object.entries(shareState).forEach(([key,value])=>{
+    if(value !== undefined && value !== null && value !== '') shareUrl.searchParams.set(key,String(value));
+  });
+  shareUrl.searchParams.set('tool','ab-funnel');
+  const payload={
+    exportedAt:new Date().toISOString(),
+    scope:selected,
+    count:history.length,
+    latestDecision:latest.decision,
+    latestGeneratedAt:latest.generatedAt,
+    shareLink:shareUrl.toString(),
+    history
+  };
+  const safeName=selected.replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'') || 'experiment';
+  const ts=payload.exportedAt.replace(/[:.]/g,'-');
+  return {selected,payload,safeName,ts};
+}
+
+async function shareText(payload,successMessage,fallbackAction){
+  if(navigator.share){
+    try{
+      await navigator.share(payload);
+      $('abStatus').textContent=successMessage;
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError'){
+        $('abStatus').textContent='已取消分享';
+        return;
+      }
+    }
+  }
+  await fallbackAction();
+}
+
+async function shareAbSummary(){
+  if(!lastAbResult){
+    $('abStatus').textContent='请先运行 A/B 判定';
+    return;
+  }
+  const text=buildAbPlainSummary(lastAbResult.result,lastAbResult.payload);
+  const url=buildAbShareLink();
+  await shareText({
+    title:`A/B 判定：${lastAbResult.payload.experiment_label || '未命名实验'}`,
+    text,
+    url
+  },'已调起系统分享摘要',()=>copyText(`${text}
+
+分享链接：${url}`,'当前浏览器不支持原生分享，已复制摘要与链接'));
+}
+
+async function shareSelectedAbBundle(){
+  const bundle=buildSelectedAbExperimentBundle();
+  if(!bundle) return;
+  const {selected,payload}=bundle;
+  const summary=`实验：${selected}
+最新结论：${payload.latestDecision}
+记录数：${payload.count}
+继续接力：${payload.shareLink}`;
+  await shareText({
+    title:`A/B 实验分享包：${selected}`,
+    text:summary,
+    url:payload.shareLink
+  },`已调起系统分享：${selected}`,()=>copyText(`${summary}
+
+JSON 分享包请使用“导出当前实验分享包”按钮下载。`,'当前浏览器不支持原生分享，已复制实验摘要'));
 }
 
 function exportAB(format){
@@ -1338,6 +1399,8 @@ $("exportAbHistoryMd").addEventListener('click',()=>exportAbHistory('md'));
 $("copyAbSummary").addEventListener('click',copyAbSummary);
 $("copyAbChecklist").addEventListener('click',copyAbChecklist);
 $("copyAbLink").addEventListener('click',copyAbLink);
+$("shareAbSummary").addEventListener('click',shareAbSummary);
+$("shareSelectedAbBundle").addEventListener('click',shareSelectedAbBundle);
 $("clearAbHistory").addEventListener('click',clearAbHistory);
 $("abHistoryFilter").addEventListener('change',renderAbHistory);
 $("run").addEventListener('click',runPortfolio);
