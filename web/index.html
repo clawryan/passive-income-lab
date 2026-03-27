@@ -110,7 +110,12 @@
 
       <div class="grid g2">
         <button id="exportAbJson" style="background:#16305f">导出 JSON 报告</button>
+        <button id="exportAbTodoJson" style="background:#16305f">导出运营待办 JSON</button>
+      </div>
+
+      <div class="grid g2">
         <button id="exportAbMd" style="background:#16305f">导出 Markdown 报告</button>
+        <button id="copyAbChecklist" style="background:#1b3b72">复制 24h 清单</button>
       </div>
 
       <div class="grid g2">
@@ -687,6 +692,40 @@ function buildAbExecutionChecklistLines(result,payload){
   return buildAbExecutionChecklist(result,payload).map((item,idx)=>`${idx+1}. [${item.owner}] ${item.title}：${item.detail}`);
 }
 
+function buildAbExecutionTodoExport(result,payload){
+  const decisionBoard=evaluateAbDecisionBoard(result,payload);
+  const economics=estimateAbEconomics(result,payload);
+  const checklist=buildAbExecutionChecklist(result,payload);
+  return {
+    generatedAt:result.generatedAt,
+    experimentLabel:payload.experiment_label || '未命名实验',
+    decision:result.decision,
+    recommendation:decisionBoard.recommendation,
+    sampleOk:result.sampleOk,
+    metrics:{
+      paidLiftVsA:result.metrics.paidLiftVsA,
+      paidPValue:result.metrics.paidPValue,
+      paidZScore:result.metrics.paidZScore,
+      aPaidConversion:result.metrics.A.paidConversion,
+      bPaidConversion:result.metrics.B.paidConversion
+    },
+    rollout:{
+      productPrice:economics.productPrice,
+      rolloutClicks:economics.rolloutClicks,
+      costPerClick:economics.costPerClick,
+      deltaOrders:economics.deltaOrders,
+      deltaRevenue:economics.deltaRevenue,
+      deltaNet:economics.deltaNet
+    },
+    checklist:checklist.map((item,idx)=>({
+      step:idx+1,
+      owner:item.owner,
+      title:item.title,
+      detail:item.detail
+    }))
+  };
+}
+
 function buildAbMarkdownReport(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
@@ -1053,6 +1092,15 @@ async function copyAbSummary(){
   await copyText(buildAbPlainSummary(lastAbResult.result,lastAbResult.payload),'已复制摘要');
 }
 
+async function copyAbChecklist(){
+  if(!lastAbResult){
+    $("abStatus").textContent='请先运行 A/B 判定';
+    return;
+  }
+  const lines=buildAbExecutionChecklistLines(lastAbResult.result,lastAbResult.payload);
+  await copyText(lines.join('\n'),'已复制 24h 清单');
+}
+
 async function copyAbLink(){
   await copyText(buildAbShareLink(),'已复制分享链接');
 }
@@ -1066,6 +1114,12 @@ function exportAB(format){
   if(format==='json'){
     downloadFile(`ab-funnel-report-${ts}.json`,JSON.stringify(lastAbResult,null,2),'application/json');
     $("abStatus").textContent='已导出 JSON 报告';
+    return;
+  }
+  if(format==='todo-json'){
+    const todoExport=buildAbExecutionTodoExport(lastAbResult.result,lastAbResult.payload);
+    downloadFile(`ab-execution-checklist-${ts}.json`,JSON.stringify(todoExport,null,2),'application/json');
+    $("abStatus").textContent='已导出运营待办 JSON';
     return;
   }
   const md=buildAbMarkdownReport(lastAbResult.result,lastAbResult.payload);
@@ -1271,6 +1325,7 @@ applyAbFormState({
 
 $("runAb").addEventListener('click',runAB);
 $("exportAbJson").addEventListener('click',()=>exportAB('json'));
+$("exportAbTodoJson").addEventListener('click',()=>exportAB('todo-json'));
 $("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
 $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBundle);
@@ -1281,6 +1336,7 @@ $("deleteAbExperiment").addEventListener('click',deleteSelectedAbExperiment);
 $("exportAbHistoryCsv").addEventListener('click',()=>exportAbHistory('csv'));
 $("exportAbHistoryMd").addEventListener('click',()=>exportAbHistory('md'));
 $("copyAbSummary").addEventListener('click',copyAbSummary);
+$("copyAbChecklist").addEventListener('click',copyAbChecklist);
 $("copyAbLink").addEventListener('click',copyAbLink);
 $("clearAbHistory").addEventListener('click',clearAbHistory);
 $("abHistoryFilter").addEventListener('change',renderAbHistory);

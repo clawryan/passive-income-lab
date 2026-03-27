@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-27 20:0x (Asia/Shanghai)
+- 继续选择“高收益 / 低阻力”的执行闭环增强：`web/index.html` 新增“复制 24h 清单”与“导出运营待办 JSON”按钮。
+- 新增 `buildAbExecutionTodoExport()`：把实验名、结论、建议动作、核心转化指标、扩量净额与分时段 checklist 打包成结构化 JSON，方便手机端任务工具或后续自动化接入。
+- 保留原有 Markdown/摘要导出，同时新增更轻量的待办交接格式，减少“看完结论还要手工抄到待办系统”的摩擦。
+- `README.md` 已同步更新当前原型能力说明。
+- 验证：`node --check web/index.html` 无法直接用于 HTML，因此继续采用提取内联脚本方式校验；提取后 `node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `buildAbExecutionTodoExport()` 返回 `recommendation` 与 5 条 checklist，且按钮事件绑定存在。
+
 ## 2026-03-16 00:38 (Asia/Shanghai)
 - 新增产品线：`products/orion-nexus`
 - 交付文档：定位/架构/对标矩阵/迁移与风控/治理与贡献指南
