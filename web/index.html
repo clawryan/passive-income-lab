@@ -562,11 +562,61 @@ function buildAbTopUpLines(result,payload){
   return lines;
 }
 
+function evaluateAbDecisionBoard(result,payload){
+  const economics=estimateAbEconomics(result,payload);
+  const topUp=estimateAbTopUp(result,payload);
+  const samplePlan=estimateAbSamplePlan(result,payload);
+  const guardrail=estimateAbSpendGuardrail(result,payload);
+  const confidenceStatus=result.sampleOk && result.metrics.paidPValue < 0.1
+    ? '绿灯：样本达标且差异已接近显著'
+    : result.sampleOk
+      ? '黄灯：样本达标，但差异仍不够显著'
+      : '黄灯：先补样，再谈放量';
+  const profitStatus=economics.deltaNet > 0
+    ? `绿灯：若选 B，当前扩量假设下预计多赚 ${money(economics.deltaNet)}`
+    : `红灯：若选 B，当前扩量假设下预计少赚 ${money(Math.abs(economics.deltaNet))}`;
+  const cpcStatus=guardrail.targetIncrementalCpc > 0 && economics.costPerClick > guardrail.targetIncrementalCpc
+    ? `红灯：当前 CPC ${money(economics.costPerClick)} 已高于增量可承受 CPC ${money(guardrail.targetIncrementalCpc)}`
+    : `绿灯：当前 CPC ${money(economics.costPerClick)} 仍在可承受区间内`;
+  const sampleStatus=topUp.totalClicksNeeded > 0
+    ? `黄灯：至少还差 ${topUp.totalClicksNeeded} 点击到最小阈值；若追求目标检测力，还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}`
+    : `绿灯：已达最小点击阈值；若追求目标检测力，还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}`;
+
+  let recommendation='继续观察，不要急着加预算';
+  if(result.decision.startsWith('B 胜出') && economics.deltaNet > 0 && (economics.costPerClick <= guardrail.targetIncrementalCpc || economics.costPerClick === 0)){
+    recommendation='继续放量验证 B，并把获胜首屏/标题复制到其他垂直子包';
+  }else if(!result.sampleOk || topUp.totalClicksNeeded > 0){
+    recommendation='先小额补样，把每版点击补到阈值以上，再决定是否放量';
+  }else if(economics.deltaNet <= 0 || (guardrail.targetIncrementalCpc > 0 && economics.costPerClick > guardrail.targetIncrementalCpc)){
+    recommendation='暂停加预算，优先降 CPC 或提升支付转化后再测';
+  }
+
+  return {
+    confidenceStatus,
+    profitStatus,
+    cpcStatus,
+    sampleStatus,
+    recommendation
+  };
+}
+
+function buildAbDecisionBoardLines(result,payload){
+  const board=evaluateAbDecisionBoard(result,payload);
+  return [
+    `- 统计信号：${board.confidenceStatus}`,
+    `- 利润信号：${board.profitStatus}`,
+    `- CPC 风险：${board.cpcStatus}`,
+    `- 样本缺口：${board.sampleStatus}`,
+    `- 建议动作：${board.recommendation}`
+  ];
+}
+
 function buildAbMarkdownReport(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
   const guardrail=estimateAbSpendGuardrail(result,payload);
   const cpcSensitivity=estimateAbCpcSensitivity(result,payload);
+  const decisionBoard=evaluateAbDecisionBoard(result,payload);
   const lines=[
     '# A/B Funnel Report',
     '',
@@ -593,6 +643,14 @@ function buildAbMarkdownReport(result,payload){
     `- Paid Lift (B vs A): ${pct(result.metrics.paidLiftVsA)}`,
     `- p-value: ${result.metrics.paidPValue.toFixed(4)}`,
     `- z-score: ${result.metrics.paidZScore.toFixed(4)}`,
+    '',
+    '## 投放决策信号灯',
+    '',
+    `- 统计信号: ${decisionBoard.confidenceStatus}`,
+    `- 利润信号: ${decisionBoard.profitStatus}`,
+    `- CPC 风险: ${decisionBoard.cpcStatus}`,
+    `- 样本缺口: ${decisionBoard.sampleStatus}`,
+    `- 建议动作: ${decisionBoard.recommendation}`,
     '',
     '## 扩量收益测算',
     '',
@@ -646,6 +704,7 @@ function buildAbPlainSummary(result,payload){
   const samplePlan=estimateAbSamplePlan(result,payload);
   const guardrail=estimateAbSpendGuardrail(result,payload);
   const cpcSensitivity=estimateAbCpcSensitivity(result,payload);
+  const decisionBoard=evaluateAbDecisionBoard(result,payload);
   return [
     `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
@@ -653,6 +712,7 @@ function buildAbPlainSummary(result,payload){
     `A：CTR ${pct(result.metrics.A.ctr)}｜结账 ${pct(result.metrics.A.checkoutStartRate)}｜支付 ${pct(result.metrics.A.paidConversion)}`,
     `B：CTR ${pct(result.metrics.B.ctr)}｜结账 ${pct(result.metrics.B.checkoutStartRate)}｜支付 ${pct(result.metrics.B.paidConversion)}`,
     `Paid Lift（B vs A）：${pct(result.metrics.paidLiftVsA)}｜p-value ${result.metrics.paidPValue.toFixed(4)}｜z-score ${result.metrics.paidZScore.toFixed(4)}`,
+    `信号灯：${decisionBoard.confidenceStatus}｜${decisionBoard.profitStatus}｜${decisionBoard.cpcStatus}`,
     `扩量测算：客单价 ${money(economics.productPrice)}｜扩量点击 ${economics.rolloutClicks}｜A 保本 CPC ${money(economics.aBreakEvenCpc)}｜B 保本 CPC ${money(economics.bBreakEvenCpc)}｜选 B 额外可承受 CPC ${money(economics.incrementalBreakEvenCpc)}`,
     `若选 B：预计多 ${economics.deltaOrders.toFixed(2)} 单 / 多 ${money(economics.deltaRevenue)} 营收 / 多 ${money(economics.deltaNet)} 净额`,
     `补样测算：还差 ${topUp.totalClicksNeeded} 点击达阈值，预计再花 ${money(topUp.totalSpendNeeded)}；A/B 分别还差 ${topUp.perVariant[0].clicksNeeded}/${topUp.perVariant[1].clicksNeeded} 点击`,
@@ -1005,6 +1065,16 @@ async function runAB(){
     const samplePlan=estimateAbSamplePlan(d,payload);
     const guardrail=estimateAbSpendGuardrail(d,payload);
     const cpcSensitivity=estimateAbCpcSensitivity(d,payload);
+    const decisionBoard=evaluateAbDecisionBoard(d,payload);
+    $("abDecisionBoard").innerHTML=`<h3>投放决策信号灯</h3>
+      <div>把统计、样本、CPC 与利润压缩成一眼能看的执行建议。</div>
+      <ul style="margin-top:10px">
+        <li>${decisionBoard.confidenceStatus}</li>
+        <li>${decisionBoard.profitStatus}</li>
+        <li>${decisionBoard.cpcStatus}</li>
+        <li>${decisionBoard.sampleStatus}</li>
+      </ul>
+      <div class="mini muted" style="margin-top:8px">建议动作：<b>${decisionBoard.recommendation}</b></div>`;
     $("abEconomics").innerHTML=`<h3>扩量收益测算</h3>
       <div>客单价：<b>${money(economics.productPrice)}</b>｜扩量点击：<b>${economics.rolloutClicks}</b>｜单次点击成本：<b>${money(economics.costPerClick)}</b></div>
       <div style="margin-top:8px">预计广告成本：<b>${money(economics.adCost)}</b></div>

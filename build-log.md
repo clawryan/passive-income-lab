@@ -132,3 +132,10 @@
 - `README.md` 已同步更新当前原型能力说明。
 - 目的：把“知道当前 CPC 能不能投”进一步推进到“知道 CPC 波动后还稳不稳”，更贴近真实投放时的动态出价判断。
 - 验证：提取页面脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；`api/ab-funnel.js` POST 冒烟仍返回 `200`、`decision`、`sampleOk` 与完整 `metrics`。
+
+## 2026-03-27 11:0x (Asia/Shanghai)
+- 继续把 A/B 面板从“能算”推进到“能更快下决策”：`web/index.html` 新增“投放决策信号灯”卡片。
+- 新增 `evaluateAbDecisionBoard()`：将统计显著性、补样缺口、CPC 风险、扩量净额压缩成 4 条信号，并给出单条建议动作（继续放量 / 先补样 / 暂停加预算）。
+- 单次摘要、Markdown 报告同步新增“信号灯”信息，方便直接贴到运营记录或手机端快速复盘。
+- 目的：减少用户在多个表格之间来回比对，把统计判断更直接地转成经营动作。
+- 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认新卡片成功渲染 `建议动作`，且纯文本摘要包含 `信号灯：` 段落。
