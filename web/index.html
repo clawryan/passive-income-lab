@@ -127,6 +127,7 @@
       <div class="card" id="abTopUp"><h3>补样预算测算</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abSamplePlan"><h3>目标样本量测算</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abGuardrail"><h3>投放上限 / 可承受买量</h3><div class="muted">等待运行</div></div>
+      <div class="card" id="abCpcSensitivity"><h3>CPC 场景敏感度</h3><div class="muted">等待运行</div></div>
       <div class="card stack">
         <div class="section-title">
           <div>
@@ -504,6 +505,48 @@ function estimateAbSpendGuardrail(result,payload){
   };
 }
 
+function estimateAbCpcSensitivity(result,payload){
+  const economics=estimateAbEconomics(result,payload);
+  const guardrail=estimateAbSpendGuardrail(result,payload);
+  const baselineCpc=Math.max(Number(economics.costPerClick || 0),0);
+  const candidateCpcs=[
+    baselineCpc > 0 ? baselineCpc * 0.8 : 0,
+    baselineCpc > 0 ? baselineCpc : guardrail.targetIncrementalCpc,
+    baselineCpc > 0 ? baselineCpc * 1.2 : guardrail.targetBreakEvenCpc
+  ].map(value=>Number.isFinite(value) ? Math.max(value,0) : 0);
+  const unique=[];
+  candidateCpcs.forEach(value=>{
+    if(!unique.some(existing=>Math.abs(existing - value) < 1e-9)) unique.push(value);
+  });
+  const labels=baselineCpc > 0
+    ? ['当前 CPC -20%','当前 CPC','当前 CPC +20%']
+    : ['免费流量 / 0 CPC','增量可承受 CPC','目标版整体保本 CPC'];
+  const rows=unique.map((cpc,idx)=>{
+    const adCost=economics.rolloutClicks * cpc;
+    const aNet=economics.aRevenue - adCost;
+    const bNet=economics.bRevenue - adCost;
+    const deltaNet=bNet - aNet;
+    let verdict='继续观察';
+    if(cpc <= economics.incrementalBreakEvenCpc) verdict='B 优势仍能覆盖流量成本';
+    else if(cpc <= economics.bBreakEvenCpc) verdict='B 仍保本，但优势开始变薄';
+    else verdict='该 CPC 下 B 很难跑出正利润';
+    return {
+      label:labels[Math.min(idx,labels.length-1)],
+      cpc,
+      adCost,
+      aNet,
+      bNet,
+      deltaNet,
+      verdict
+    };
+  });
+  const bestRow=rows.reduce((best,row)=> row.bNet > (best?.bNet ?? -Infinity) ? row : best, null);
+  return {
+    rows,
+    bestRow
+  };
+}
+
 function buildAbTopUpLines(result,payload){
   const topUp=estimateAbTopUp(result,payload);
   const lines=[
@@ -523,6 +566,7 @@ function buildAbMarkdownReport(result,payload){
   const economics=estimateAbEconomics(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
   const guardrail=estimateAbSpendGuardrail(result,payload);
+  const cpcSensitivity=estimateAbCpcSensitivity(result,payload);
   const lines=[
     '# A/B Funnel Report',
     '',
@@ -585,6 +629,10 @@ function buildAbMarkdownReport(result,payload){
     `- 按当前 CPC 补样后的剩余收入缓冲: ${money(guardrail.budgetHeadroom)}（${pct(guardrail.budgetHeadroomRatio)}）`,
     `- 判断: ${guardrail.verdict}`,
     '',
+    '## CPC 场景敏感度',
+    '',
+    ...cpcSensitivity.rows.map(row=>`- ${row.label}: CPC ${money(row.cpc)} ｜ 广告成本 ${money(row.adCost)} ｜ B 净额 ${money(row.bNet)} ｜ 相对 A 多 ${money(row.deltaNet)} ｜ ${row.verdict}`),
+    '',
     '## 下一步',
     '',
     ...result.nextActions.map((item,idx)=>`${idx+1}. ${item}`)
@@ -597,6 +645,7 @@ function buildAbPlainSummary(result,payload){
   const topUp=estimateAbTopUp(result,payload);
   const samplePlan=estimateAbSamplePlan(result,payload);
   const guardrail=estimateAbSpendGuardrail(result,payload);
+  const cpcSensitivity=estimateAbCpcSensitivity(result,payload);
   return [
     `实验：${payload.experiment_label || '未命名实验'}`,
     `A/B 判定：${result.decision}`,
@@ -609,6 +658,7 @@ function buildAbPlainSummary(result,payload){
     `补样测算：还差 ${topUp.totalClicksNeeded} 点击达阈值，预计再花 ${money(topUp.totalSpendNeeded)}；A/B 分别还差 ${topUp.perVariant[0].clicksNeeded}/${topUp.perVariant[1].clicksNeeded} 点击`,
     `目标样本量：若想以 ${pct(samplePlan.confidence)} 置信度、${pct(samplePlan.power)} 把握检测 ${pct(samplePlan.targetLift)} Paid Lift，约需每版 ${samplePlan.requiredPerVariant} 点击；当前还差 A ${samplePlan.topUpPerVariant.A} / B ${samplePlan.topUpPerVariant.B}`,
     `投放上限：目标版整体保本 CPC ${money(guardrail.targetBreakEvenCpc)}｜增量可承受 CPC ${money(guardrail.targetIncrementalCpc)}｜收入缓冲 ${money(guardrail.budgetHeadroom)}｜判断：${guardrail.verdict}`,
+    `CPC 场景：${cpcSensitivity.rows.map(row=>`${row.label} ${money(row.cpc)} -> B 净额 ${money(row.bNet)} / 相对 A 多 ${money(row.deltaNet)}`).join('；')}`,
     `下一步：${result.nextActions.join('；')}`
   ].join('\n');
 }
@@ -954,6 +1004,7 @@ async function runAB(){
     const topUp=estimateAbTopUp(d,payload);
     const samplePlan=estimateAbSamplePlan(d,payload);
     const guardrail=estimateAbSpendGuardrail(d,payload);
+    const cpcSensitivity=estimateAbCpcSensitivity(d,payload);
     $("abEconomics").innerHTML=`<h3>扩量收益测算</h3>
       <div>客单价：<b>${money(economics.productPrice)}</b>｜扩量点击：<b>${economics.rolloutClicks}</b>｜单次点击成本：<b>${money(economics.costPerClick)}</b></div>
       <div style="margin-top:8px">预计广告成本：<b>${money(economics.adCost)}</b></div>
@@ -986,6 +1037,14 @@ async function runAB(){
       <div style="margin-top:8px">若补到目标样本量：预计新增订单 <b>${guardrail.targetAdditionalOrders.toFixed(2)}</b>｜预计新增营收上限 <b>${money(guardrail.targetAdditionalRevenue)}</b></div>
       <div style="margin-top:8px">按当前 CPC 补样后的收入缓冲：<b>${money(guardrail.budgetHeadroom)}</b>｜缓冲率：<b>${pct(guardrail.budgetHeadroomRatio)}</b></div>
       <div class="mini muted" style="margin-top:8px">${guardrail.verdict}。这里把“目标样本量”直接折算成可承受的 CPC 与预算余量，帮助判断是否继续买量。</div>`;
+
+    $("abCpcSensitivity").innerHTML=`<h3>CPC 场景敏感度</h3>
+      <div>基于当前扩量点击 <b>${economics.rolloutClicks}</b> 与现有转化率，快速预估不同买量价格下还能剩多少利润。</div>
+      <table style="margin-top:10px"><thead><tr><th>场景</th><th>CPC</th><th>广告成本</th><th>A 净额</th><th>B 净额</th><th>相对 A 多赚</th><th>判断</th></tr></thead>
+      <tbody>
+        ${cpcSensitivity.rows.map(row=>`<tr><td>${row.label}</td><td>${money(row.cpc)}</td><td>${money(row.adCost)}</td><td>${money(row.aNet)}</td><td>${money(row.bNet)}</td><td class="${cls(row.deltaNet)}">${money(row.deltaNet)}</td><td>${row.verdict}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="mini muted" style="margin-top:8px">当前最优场景：<b>${cpcSensitivity.bestRow ? `${cpcSensitivity.bestRow.label}（B 净额 ${money(cpcSensitivity.bestRow.bNet)}）` : '暂无'}</b>。适合在手机端快速比较“便宜量 / 当前量 / 更贵量”是否还值得继续投。</div>`;
   }catch(e){
     $("abStatus").textContent='失败: '+e.message;
   }

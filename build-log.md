@@ -124,3 +124,11 @@
 - 单次摘要、Markdown 报告同步带上投放上限结论，避免用户看完样本量后还要再手算“CPC 高不高、这轮买量会不会把优势吃掉”。
 - 目的：把“统计上值不值得补样”进一步收敛成“经营上此刻要不要继续买量”。
 - 验证：重新提取页面脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认页面成功渲染 `增量可承受 CPC` 文案与新卡片。
+
+## 2026-03-27 08:0x (Asia/Shanghai)
+- 继续选择“高收益 / 低阻力”的移动端经营增强：`web/index.html` 新增“CPC 场景敏感度”卡片。
+- 新增 `estimateAbCpcSensitivity()`：基于当前扩量点击、A/B 转化与当前 CPC，自动对比 3 档场景（当前 CPC -20% / 当前 CPC / 当前 CPC +20%；若未填 CPC 则退化为 0 / 增量可承受 CPC / 整体保本 CPC）。
+- 单次摘要、Markdown 报告同步新增 CPC 场景行，用户可直接看到不同买量价格下 B 净额还能剩多少、相对 A 还多赚多少。
+- `README.md` 已同步更新当前原型能力说明。
+- 目的：把“知道当前 CPC 能不能投”进一步推进到“知道 CPC 波动后还稳不稳”，更贴近真实投放时的动态出价判断。
+- 验证：提取页面脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；`api/ab-funnel.js` POST 冒烟仍返回 `200`、`decision`、`sampleOk` 与完整 `metrics`。
