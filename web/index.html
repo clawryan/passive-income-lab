@@ -138,6 +138,7 @@
       <div class="card" id="abSamplePlan"><h3>目标样本量测算</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abGuardrail"><h3>投放上限 / 可承受买量</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abCpcSensitivity"><h3>CPC 场景敏感度</h3><div class="muted">等待运行</div></div>
+      <div class="card" id="abDecisionBoard"><h3>投放决策信号灯</h3><div class="muted">等待运行</div></div>
       <div class="card" id="abExecutionPlan"><h3>24h 运营清单</h3><div class="muted">等待运行</div></div>
       <div class="card stack">
         <div class="section-title">
@@ -148,6 +149,9 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <select id="abHistoryFilter" style="max-width:260px">
               <option value="">全部实验</option>
+            </select>
+            <select id="abRecommendationFilter" style="max-width:320px">
+              <option value="">全部建议动作</option>
             </select>
             <button id="renameAbExperiment" style="max-width:220px;background:#2a4b8d">重命名当前实验</button>
             <button id="deleteAbExperiment" style="max-width:220px;background:#6a2746">删除当前实验</button>
@@ -164,7 +168,7 @@
           <div class="card" id="abHistorySummary"><div class="muted">暂无历史汇总</div></div>
           <div class="card">
             <h3>使用提示</h3>
-            <div class="muted">先按实验名筛选；可直接重命名当前实验、删除当前实验的本地历史，再导出 Markdown / CSV 做周报或按批次复盘。</div>
+            <div class="muted">先按实验名或建议动作筛选；可直接重命名当前实验、删除当前实验的本地历史，再导出 Markdown / CSV 做周报或按批次复盘。</div>
           </div>
         </div>
         <div id="abHistory"><div class="muted">暂无历史记录</div></div>
@@ -248,10 +252,23 @@ function getAbSelectedExperiment(){
   return ($('abHistoryFilter')?.value || '').trim();
 }
 
+function getAbSelectedRecommendation(){
+  return ($('abRecommendationFilter')?.value || '').trim();
+}
+
+function getAbRecommendation(item){
+  return evaluateAbDecisionBoard(item,item.payload).recommendation;
+}
+
 function getAbFilteredHistory(){
   const selected=getAbSelectedExperiment();
+  const selectedRecommendation=getAbSelectedRecommendation();
   const history=readAbHistory();
-  return selected ? history.filter(item => (item.experimentLabel || '未命名实验') === selected) : history;
+  return history.filter(item => {
+    const experimentOk=!selected || (item.experimentLabel || '未命名实验') === selected;
+    const recommendationOk=!selectedRecommendation || getAbRecommendation(item) === selectedRecommendation;
+    return experimentOk && recommendationOk;
+  });
 }
 
 function refreshAbHistoryFilterOptions(){
@@ -261,6 +278,13 @@ function refreshAbHistoryFilterOptions(){
   const experiments=[...new Set(readAbHistory().map(item => item.experimentLabel || '未命名实验'))];
   select.innerHTML=['<option value="">全部实验</option>',...experiments.map(name=>`<option value="${name.replace(/"/g,'&quot;')}">${name}</option>`)].join('');
   select.value=experiments.includes(selected) || selected === '' ? selected : '';
+
+  const recommendationSelect=$('abRecommendationFilter');
+  if(!recommendationSelect) return;
+  const selectedRecommendation=recommendationSelect.value || '';
+  const recommendations=[...new Set(readAbHistory().map(item => getAbRecommendation(item)))];
+  recommendationSelect.innerHTML=['<option value="">全部建议动作</option>',...recommendations.map(name=>`<option value="${name.replace(/"/g,'&quot;')}">${name}</option>`)].join('');
+  recommendationSelect.value=recommendations.includes(selectedRecommendation) || selectedRecommendation === '' ? selectedRecommendation : '';
 }
 
 function renderAbHistorySummary(history){
@@ -273,7 +297,7 @@ function renderAbHistorySummary(history){
   const sampleOkCount=history.filter(item=>item.sampleOk).length;
   const bWinCount=history.filter(item=>item.decision.includes('B 胜出')).length;
   $('abHistorySummary').innerHTML=`<h3>批次汇总</h3>
-    <div>筛选范围：<b>${getAbSelectedExperiment() || '全部实验'}</b></div>
+    <div>筛选范围：<b>${getAbSelectedExperiment() || '全部实验'}</b>｜建议动作：<b>${getAbSelectedRecommendation() || '全部建议动作'}</b></div>
     <div style="margin-top:8px">记录数：<b>${history.length}</b>｜样本达标：<b>${sampleOkCount}</b>｜B 胜出：<b>${bWinCount}</b></div>
     <div style="margin-top:8px">平均 Paid Lift：<b class="${cls(avgLift)}">${pct(avgLift)}</b></div>
     <div style="margin-top:8px">最新结论：<b>${latest.decision}</b></div>
@@ -357,7 +381,7 @@ function renderAbHistory(){
     return `<tr>
       <td>${item.generatedAt.replace('T',' ').replace('Z',' UTC')}</td>
       <td>${item.experimentLabel || '未命名实验'}</td>
-      <td>${item.decision}</td>
+      <td>${item.decision}<div class="mini muted" style="margin-top:4px">${getAbRecommendation(item)}</div></td>
       <td>${item.sampleOk ? '是' : '否'}</td>
       <td>${pct(item.metrics.A.paidConversion)}</td>
       <td>${pct(item.metrics.B.paidConversion)}</td>
@@ -850,14 +874,16 @@ function buildAbPlainSummary(result,payload){
 }
 
 function buildAbHistoryCsv(history){
-  const header=['generatedAt','experiment_label','decision','sampleOk','a_paid_conversion','b_paid_conversion','paid_lift_vs_a','paid_p_value','paid_z_score','min_clicks','a_clicks','b_clicks','a_paid_orders','b_paid_orders','product_price','rollout_clicks','cost_per_click','a_break_even_cpc','b_break_even_cpc','incremental_break_even_cpc_if_choose_b','delta_orders_if_choose_b','delta_revenue_if_choose_b','delta_net_if_choose_b','remaining_clicks_to_threshold','remaining_budget_to_threshold','a_remaining_clicks','b_remaining_clicks'];
+  const header=['generatedAt','experiment_label','decision','recommendation','sampleOk','a_paid_conversion','b_paid_conversion','paid_lift_vs_a','paid_p_value','paid_z_score','min_clicks','a_clicks','b_clicks','a_paid_orders','b_paid_orders','product_price','rollout_clicks','cost_per_click','a_break_even_cpc','b_break_even_cpc','incremental_break_even_cpc_if_choose_b','delta_orders_if_choose_b','delta_revenue_if_choose_b','delta_net_if_choose_b','remaining_clicks_to_threshold','remaining_budget_to_threshold','a_remaining_clicks','b_remaining_clicks'];
   const rows=history.map(item=>{
     const economics=estimateAbEconomics(item,item.payload);
     const topUp=estimateAbTopUp(item,item.payload);
+    const recommendation=getAbRecommendation(item);
     return [
       item.generatedAt,
       item.experimentLabel || '',
       item.decision,
+      recommendation,
       item.sampleOk ? 'yes' : 'no',
       item.metrics.A.paidConversion,
       item.metrics.B.paidConversion,
@@ -896,12 +922,13 @@ function buildAbHistoryMarkdown(history){
     `- 导出时间: ${new Date().toISOString()}`,
     `- 记录数: ${history.length}`,
     '',
-    '| 时间 | 实验 | 结论 | 样本达标 | A 支付 | B 支付 | Lift | A 保本 CPC | B 保本 CPC | 选 B 增量营收 | p-value | z-score |',
-    '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
+    '| 时间 | 实验 | 结论 | 建议动作 | 样本达标 | A 支付 | B 支付 | Lift | A 保本 CPC | B 保本 CPC | 选 B 增量营收 | p-value | z-score |',
+    '| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
   ];
   history.forEach(item=>{
     const economics=estimateAbEconomics(item,item.payload);
-    lines.push(`| ${item.generatedAt} | ${item.experimentLabel || '未命名实验'} | ${item.decision} | ${item.sampleOk ? '是' : '否'} | ${pct(item.metrics.A.paidConversion)} | ${pct(item.metrics.B.paidConversion)} | ${pct(item.metrics.paidLiftVsA)} | ${money(economics.aBreakEvenCpc)} | ${money(economics.bBreakEvenCpc)} | ${money(economics.deltaRevenue)} | ${item.metrics.paidPValue.toFixed(4)} | ${item.metrics.paidZScore.toFixed(4)} |`);
+    const recommendation=getAbRecommendation(item);
+    lines.push(`| ${item.generatedAt} | ${item.experimentLabel || '未命名实验'} | ${item.decision} | ${recommendation} | ${item.sampleOk ? '是' : '否'} | ${pct(item.metrics.A.paidConversion)} | ${pct(item.metrics.B.paidConversion)} | ${pct(item.metrics.paidLiftVsA)} | ${money(economics.aBreakEvenCpc)} | ${money(economics.bBreakEvenCpc)} | ${money(economics.deltaRevenue)} | ${item.metrics.paidPValue.toFixed(4)} | ${item.metrics.paidZScore.toFixed(4)} |`);
   });
   return lines.join('\n');
 }
@@ -1403,6 +1430,7 @@ $("shareAbSummary").addEventListener('click',shareAbSummary);
 $("shareSelectedAbBundle").addEventListener('click',shareSelectedAbBundle);
 $("clearAbHistory").addEventListener('click',clearAbHistory);
 $("abHistoryFilter").addEventListener('change',renderAbHistory);
+$("abRecommendationFilter").addEventListener('change',renderAbHistory);
 $("run").addEventListener('click',runPortfolio);
 
 async function refreshOfflineCache(){

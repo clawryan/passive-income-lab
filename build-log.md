@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-28 08:0x (Asia/Shanghai)
+- 继续选择“高收益 / 低阻力”的复盘增强：`web/index.html` 新增“建议动作”筛选下拉，可按“继续放量验证 B / 先小额补样 / 暂停加预算”等动作过滤历史记录。
+- 历史汇总、历史表格、CSV / Markdown 导出现在都会保留该筛选范围，并在导出里补上 `recommendation` 字段，便于直接整理经营周报或协作者交接。
+- 顺手修复了一个真实可用性问题：页面脚本会写入 `abDecisionBoard`，但 DOM 里此前没有对应卡片；现已补齐卡片，避免页面默认 `runAB()` 时因空节点报错。
+- `README.md` 与 `results.md` 已同步更新当前能力说明。
+- 验证：重新提取内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；文本级检查已确认 `abRecommendationFilter`、`abDecisionBoard`、`getAbRecommendation()` 与事件绑定存在。
+
 ## 2026-03-27 22:0x (Asia/Shanghai)
 - 继续选择“高收益 / 低阻力”的移动端闭环：`web/index.html` 新增“手机原生分享摘要 / 手机原生分享当前实验”按钮。
 - 新增 `buildSelectedAbExperimentBundle()` 与 `shareText()`，复用现有分享链接和实验分享包逻辑，在支持 Web Share API 的手机浏览器里可直接调起系统分享面板。
