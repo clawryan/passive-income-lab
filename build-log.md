@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-28 22:0x (Asia/Shanghai)
+- 这轮优先补最近几次都卡住的同一个阻塞：虽然已经有当前实验周报 Markdown / JSON / 文本摘要，但缺少一键可复现的样本历史，导致手机端和浏览器里的端到端验收仍要手工造数据。
+- `web/index.html` 的 A/B 历史区新增“载入周报演示样本”按钮；实现 `buildAbDemoHistoryEntries()` 与 `loadAbDemoHistory()`，一次写入 3 条同实验的模拟历史，并自动切到该实验筛选与最新表单状态。
+- 结果：现在打开页面后无需先跑真实投放数据，也能立刻验证“周报 Markdown / JSON 导出、周报摘要复制、实验分享包”这一整条协作交付链路。
+- `README.md` 已同步补充演示样本说明。
+- 验证：提取页面内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `loadAbDemoHistory()` 会写入 3 条演示历史，并且 `buildSelectedAbWeeklySummaryText()` 返回包含 `demo-micro-saas-title-lift / 建议动作分布 / 分享链接` 的摘要文本。
+
 ## 2026-03-28 20:0x (Asia/Shanghai)
 - 没有继续堆新的分析卡片，而是补了一个更适合手机端/聊天场景的最后一公里：`web/index.html` 的 A/B 历史区新增“复制当前实验周报摘要”按钮。
 - 新增 `buildSelectedAbWeeklySummaryText()` 与 `copySelectedAbWeeklySummary()`：复用已存在的周报聚合结果，输出可直接贴到飞书/微信/备忘录的纯文本摘要，包含记录数、最新结论、建议动作分布、最佳/最弱 Lift、最新 24h 清单与分享链接。

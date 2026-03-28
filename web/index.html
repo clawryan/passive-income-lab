@@ -160,6 +160,7 @@
             <button id="exportSelectedAbWeeklyMd" style="max-width:220px;background:#1c4d62">导出当前实验周报</button>
             <button id="exportSelectedAbWeeklyJson" style="max-width:220px;background:#1c4d62">导出当前实验周报 JSON</button>
             <button id="copySelectedAbWeeklySummary" style="max-width:220px;background:#1c4d62">复制当前实验周报摘要</button>
+            <button id="loadAbDemoHistory" style="max-width:220px;background:#24548f">载入周报演示样本</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
@@ -998,6 +999,109 @@ function exportSelectedAbExperimentBundle(){
   $('abStatus').textContent=`已导出实验「${selected}」分享包`;
 }
 
+function buildAbDemoHistoryEntries(){
+  const experiment='demo-micro-saas-title-lift';
+  const base={
+    min_clicks_per_variant:100,
+    rollout:{product_price:49,rollout_clicks:1000,cost_per_click:0.55},
+    plan:{target_lift:0.15,confidence:0.9,power:0.8}
+  };
+  return [
+    {
+      generatedAt:'2026-03-28T08:10:00.000Z',
+      experimentLabel:experiment,
+      decision:'样本不足，继续收样后再决定是否推广 B',
+      sampleOk:false,
+      metrics:{
+        A:{ctr:0.09,checkoutStartRate:0.1895,paidConversion:0.0526},
+        B:{ctr:0.095,checkoutStartRate:0.2143,paidConversion:0.0612},
+        paidLiftVsA:0.1634,
+        paidPValue:0.2841,
+        paidZScore:1.0712
+      },
+      payload:{
+        ...base,
+        experiment_label:experiment,
+        variants:{
+          A:{impressions:980,clicks:95,checkout_starts:18,paid_orders:5},
+          B:{impressions:970,clicks:98,checkout_starts:21,paid_orders:6}
+        }
+      }
+    },
+    {
+      generatedAt:'2026-03-28T12:40:00.000Z',
+      experimentLabel:experiment,
+      decision:'B 胜出，可小流量继续验证支付转化',
+      sampleOk:true,
+      metrics:{
+        A:{ctr:0.09,checkoutStartRate:0.2037,paidConversion:0.0556},
+        B:{ctr:0.0975,checkoutStartRate:0.2348,paidConversion:0.0870},
+        paidLiftVsA:0.5652,
+        paidPValue:0.0864,
+        paidZScore:1.7154
+      },
+      payload:{
+        ...base,
+        experiment_label:experiment,
+        variants:{
+          A:{impressions:1200,clicks:108,checkout_starts:22,paid_orders:6},
+          B:{impressions:1180,clicks:115,checkout_starts:27,paid_orders:10}
+        }
+      }
+    },
+    {
+      generatedAt:'2026-03-28T18:20:00.000Z',
+      experimentLabel:experiment,
+      decision:'B 胜出，可逐步放量验证',
+      sampleOk:true,
+      metrics:{
+        A:{ctr:0.0944,checkoutStartRate:0.2059,paidConversion:0.0588},
+        B:{ctr:0.1025,checkoutStartRate:0.2397,paidConversion:0.0890},
+        paidLiftVsA:0.5136,
+        paidPValue:0.0417,
+        paidZScore:2.0361
+      },
+      payload:{
+        ...base,
+        experiment_label:experiment,
+        variants:{
+          A:{impressions:1440,clicks:136,checkout_starts:28,paid_orders:8},
+          B:{impressions:1425,clicks:146,checkout_starts:35,paid_orders:13}
+        }
+      }
+    }
+  ].map(normalizeAbHistoryEntry).filter(Boolean);
+}
+
+function loadAbDemoHistory(){
+  const incoming=buildAbDemoHistoryEntries();
+  const merged=mergeAbHistoryEntries(readAbHistory(),incoming);
+  writeAbHistory(merged);
+  applyAbFormState({
+    experimentLabel:'demo-micro-saas-title-lift',
+    minClicks:100,
+    a_impressions:1440,
+    a_clicks:136,
+    a_checkout:28,
+    a_paid:8,
+    b_impressions:1425,
+    b_clicks:146,
+    b_checkout:35,
+    b_paid:13,
+    productPrice:49,
+    rolloutClicks:1000,
+    costPerClick:0.55,
+    targetLift:15,
+    targetConfidence:90,
+    targetPower:80
+  });
+  refreshAbHistoryFilterOptions();
+  $('abHistoryFilter').value='demo-micro-saas-title-lift';
+  $('abRecommendationFilter').value='';
+  renderAbHistory();
+  $('abStatus').textContent='已载入 3 条周报演示样本，可直接测试周报导出 / 摘要复制 / 分享包';
+}
+
 function importAbHistoryJson(){
   $('abHistoryImportFile').click();
 }
@@ -1574,6 +1678,7 @@ $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBu
 $("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown);
 $("exportSelectedAbWeeklyJson").addEventListener('click',exportSelectedAbWeeklyJson);
 $("copySelectedAbWeeklySummary").addEventListener('click',copySelectedAbWeeklySummary);
+$("loadAbDemoHistory").addEventListener('click',loadAbDemoHistory);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
