@@ -159,6 +159,7 @@
             <button id="exportSelectedAbShare" style="max-width:220px;background:#1b3b72">导出当前实验分享包</button>
             <button id="exportSelectedAbWeeklyMd" style="max-width:220px;background:#1c4d62">导出当前实验周报</button>
             <button id="exportSelectedAbWeeklyJson" style="max-width:220px;background:#1c4d62">导出当前实验周报 JSON</button>
+            <button id="copySelectedAbWeeklySummary" style="max-width:220px;background:#1c4d62">复制当前实验周报摘要</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
@@ -1267,6 +1268,36 @@ function exportSelectedAbWeeklyJson(){
   $('abStatus').textContent=`已导出实验「${bundle.selected}」周报 JSON`;
 }
 
+function buildSelectedAbWeeklySummaryText(){
+  const built=buildSelectedAbWeeklyReport();
+  if(!built) return null;
+  const {report}=built;
+  const recommendationText=report.recommendationSummary.length
+    ? report.recommendationSummary.map(item=>`${item.recommendation} ${item.count}次`).join('；')
+    : '暂无数据';
+  const checklistLines=(report.latest.checklist || []).slice(0,3).map((line,idx)=>`${idx+1}. ${line}`);
+  const lines=[
+    `A/B 实验周报摘要｜${report.experiment}`,
+    `记录数：${report.count}｜建议动作筛选：${report.recommendationFilter}`,
+    `最新结论：${report.latest.decision}`,
+    `最新建议动作：${report.latest.recommendation}`,
+    `最近一次：${report.latest.generatedAt}`,
+    `建议动作分布：${recommendationText}`,
+    `最佳 Lift：${pct(report.extremes.best.paidLiftVsA)}（${report.extremes.best.generatedAt}）`,
+    `最弱 Lift：${pct(report.extremes.weakest.paidLiftVsA)}（${report.extremes.weakest.generatedAt}）`,
+    '最新 24h 清单：',
+    ...(checklistLines.length ? checklistLines : ['1. 暂无清单']),
+    `分享链接：${report.shareLink}`
+  ];
+  return {built,text:lines.join('\n')};
+}
+
+async function copySelectedAbWeeklySummary(){
+  const built=buildSelectedAbWeeklySummaryText();
+  if(!built) return;
+  await copyText(built.text,`已复制实验「${built.built.bundle.selected}」周报摘要`);
+}
+
 async function shareText(payload,successMessage,fallbackAction){
   if(navigator.share){
     try{
@@ -1542,6 +1573,7 @@ $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
 $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBundle);
 $("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown);
 $("exportSelectedAbWeeklyJson").addEventListener('click',exportSelectedAbWeeklyJson);
+$("copySelectedAbWeeklySummary").addEventListener('click',copySelectedAbWeeklySummary);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);

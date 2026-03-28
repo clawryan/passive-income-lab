@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-28 20:0x (Asia/Shanghai)
+- 没有继续堆新的分析卡片，而是补了一个更适合手机端/聊天场景的最后一公里：`web/index.html` 的 A/B 历史区新增“复制当前实验周报摘要”按钮。
+- 新增 `buildSelectedAbWeeklySummaryText()` 与 `copySelectedAbWeeklySummary()`：复用已存在的周报聚合结果，输出可直接贴到飞书/微信/备忘录的纯文本摘要，包含记录数、最新结论、建议动作分布、最佳/最弱 Lift、最新 24h 清单与分享链接。
+- 这样周报链路变成三种交付形态：Markdown（人读）、JSON（自动化）、纯文本摘要（消息发送/手机快速复盘），减少“导出了文件还要再手工摘一段摘要”的摩擦。
+- `README.md` 已同步更新当前原型能力说明。
+- 验证：提取页面内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `buildSelectedAbWeeklySummaryText()` 返回包含“建议动作分布 / 最新 24h 清单 / 分享链接”的文本，且 `copySelectedAbWeeklySummary` 按钮与事件绑定存在。
+
 ## 2026-03-28 17:0x (Asia/Shanghai)
 - 沿着上一轮的“周报导出”继续收口，没有再加新分析面板，而是把单实验周报补成双格式导出：除了 Markdown，现在还支持结构化 JSON。
 - `web/index.html` 新增“导出当前实验周报 JSON”按钮，并把周报聚合逻辑抽成 `buildSelectedAbWeeklyReport()`，统一供 Markdown / JSON 两种导出复用，减少后续字段漂移。
