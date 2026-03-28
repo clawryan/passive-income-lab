@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-28 11:0x (Asia/Shanghai)
+- 继续选择“高收益 / 低阻力”的经营沉淀能力：`web/index.html` 的 A/B 历史区新增“导出当前实验周报”按钮。
+- 新增 `buildSelectedAbWeeklyMarkdown()` / `exportSelectedAbWeeklyMarkdown()`：在选中某个实验后，自动汇总最新结论、建议动作分布、最佳/最弱 Lift、最新 24h 运营清单，以及该实验历史明细并导出为 Markdown。
+- 周报导出会复用当前筛选的建议动作范围；若已按“继续放量 / 先补样 / 暂停加预算”等动作筛选，可直接导出对应经营视角的周报。
+- `README.md` 已同步更新当前原型能力说明。
+- 验证：提取页面内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；文本级检查已确认 `exportSelectedAbWeeklyMd` 按钮、`buildSelectedAbWeeklyMarkdown()` 与事件绑定存在。
+
 ## 2026-03-28 08:0x (Asia/Shanghai)
 - 继续选择“高收益 / 低阻力”的复盘增强：`web/index.html` 新增“建议动作”筛选下拉，可按“继续放量验证 B / 先小额补样 / 暂停加预算”等动作过滤历史记录。
 - 历史汇总、历史表格、CSV / Markdown 导出现在都会保留该筛选范围，并在导出里补上 `recommendation` 字段，便于直接整理经营周报或协作者交接。

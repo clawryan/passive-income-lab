@@ -157,6 +157,7 @@
             <button id="deleteAbExperiment" style="max-width:220px;background:#6a2746">删除当前实验</button>
             <button id="exportAbHistoryJson" style="max-width:220px;background:#16305f">导出历史 JSON</button>
             <button id="exportSelectedAbShare" style="max-width:220px;background:#1b3b72">导出当前实验分享包</button>
+            <button id="exportSelectedAbWeeklyMd" style="max-width:220px;background:#1c4d62">导出当前实验周报</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
@@ -1417,6 +1418,7 @@ $("exportAbTodoJson").addEventListener('click',()=>exportAB('todo-json'));
 $("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
 $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBundle);
+$("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
