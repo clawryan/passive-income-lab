@@ -1,5 +1,11 @@
 # Build Log
 
+## 2026-03-28 14:0x (Asia/Shanghai)
+- 这轮没有继续堆新卡片，而是补上一个真实缺口：`web/index.html` 虽然已有“导出当前实验周报”按钮和事件绑定，但缺少 `buildSelectedAbWeeklyMarkdown()` / `exportSelectedAbWeeklyMarkdown()` 的实际实现。
+- 现已补齐单实验周报导出逻辑：基于当前实验与建议动作筛选，自动输出摘要、建议动作分布、最佳/最弱 Lift、最新 24h 清单与历史明细，并下载为 Markdown。
+- 目的：把“结果文件里写着有周报导出”修正成“页面里真的能导出周报”，优先修可用性债务而不是继续虚增功能列表。
+- 验证：重新提取页面内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；文本级检查已确认 `function buildSelectedAbWeeklyMarkdown`、`function exportSelectedAbWeeklyMarkdown` 与 `exportSelectedAbWeeklyMd` 按钮事件绑定同时存在。
+
 ## 2026-03-28 11:0x (Asia/Shanghai)
 - 继续选择“高收益 / 低阻力”的经营沉淀能力：`web/index.html` 的 A/B 历史区新增“导出当前实验周报”按钮。
 - 新增 `buildSelectedAbWeeklyMarkdown()` / `exportSelectedAbWeeklyMarkdown()`：在选中某个实验后，自动汇总最新结论、建议动作分布、最佳/最弱 Lift、最新 24h 运营清单，以及该实验历史明细并导出为 Markdown。

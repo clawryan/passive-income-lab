@@ -1,5 +1,31 @@
 # Results
 
+## 2026-03-28 14:0x 下午推进（新增成果）
+
+### 本轮目标
+- 优先修复会影响真实交付的可用性债务：把“导出当前实验周报”从按钮占位补成真正可下载的 Markdown 周报。
+
+### 新增产出
+- `web/index.html`
+  - 补齐 `buildSelectedAbWeeklyMarkdown()`
+  - 补齐 `exportSelectedAbWeeklyMarkdown()`
+  - 周报现会真实汇总摘要、建议动作分布、最佳/最弱 Lift、最新 24h 清单与历史明细，并下载为 `ab-weekly-*.md`
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 重新提取页面内联脚本后，`node --check /tmp/passive_income_lab_web_check.js` 通过
+- 文本级检查通过：`function buildSelectedAbWeeklyMarkdown`、`function exportSelectedAbWeeklyMarkdown` 与 `$("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown)` 均存在
+
+### 阻塞
+- 当前验证仍是语法/文本级；由于缺少浏览器内真实历史样本，本轮未生成一份真实周报文件做端到端验收。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 用一组真实或模拟历史样本在浏览器里点一次“导出当前实验周报”，补做端到端验收。
+2. 若周报字段顺手，再继续补结构化 `weekly-report.json`，方便自动化流或手机端任务工具接入。
+3. 若真实使用发现字段过多，优先收缩周报结构而不是继续加新面板。
+
 ## 2026-03-28 11:0x 上午推进（新增成果）
 
 ### 本轮目标

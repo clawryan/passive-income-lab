@@ -1145,6 +1145,65 @@ function buildSelectedAbExperimentBundle(){
   return {selected,payload,safeName,ts};
 }
 
+function buildSelectedAbWeeklyMarkdown(){
+  const bundle=buildSelectedAbExperimentBundle();
+  if(!bundle) return null;
+  const {selected,payload}=bundle;
+  const history=payload.history;
+  const latest=history[0];
+  const latestPayload=latest.payload || {};
+  const recommendationCounts=history.reduce((acc,item)=>{
+    const key=getAbRecommendation(item);
+    acc[key]=(acc[key] || 0) + 1;
+    return acc;
+  },{});
+  const recommendationLines=Object.entries(recommendationCounts)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([name,count])=>`- ${name}: ${count} 次`);
+  const bestLiftItem=history.reduce((best,item)=>!best || item.metrics.paidLiftVsA > best.metrics.paidLiftVsA ? item : best,null);
+  const weakestLiftItem=history.reduce((worst,item)=>!worst || item.metrics.paidLiftVsA < worst.metrics.paidLiftVsA ? item : worst,null);
+  const checklistLines=buildAbExecutionChecklistLines(latest,latestPayload).map(line=>`- ${line.replace(/^\d+\.\s*/,'')}`);
+  const detailRows=history.map((item,idx)=>{
+    const economics=estimateAbEconomics(item,item.payload);
+    return `${idx+1}. ${item.generatedAt}｜结论：${item.decision}｜建议动作：${getAbRecommendation(item)}｜样本达标：${item.sampleOk ? '是' : '否'}｜A 支付：${pct(item.metrics.A.paidConversion)}｜B 支付：${pct(item.metrics.B.paidConversion)}｜Lift：${pct(item.metrics.paidLiftVsA)}｜增量净额：${money(economics.deltaNet)}｜p-value：${item.metrics.paidPValue.toFixed(4)}`;
+  });
+  const lines=[
+    `# A/B 实验周报：${selected}`,
+    '',
+    '## 摘要',
+    `- 导出时间：${payload.exportedAt}`,
+    `- 筛选实验：${selected}`,
+    `- 建议动作筛选：${getAbSelectedRecommendation() || '全部建议动作'}`,
+    `- 记录数：${history.length}`,
+    `- 最新结论：${latest.decision}`,
+    `- 最新建议动作：${getAbRecommendation(latest)}`,
+    `- 最近一次：${latest.generatedAt}`,
+    `- 分享链接：${payload.shareLink}`,
+    '',
+    '## 建议动作分布',
+    ...(recommendationLines.length ? recommendationLines : ['- 暂无数据']),
+    '',
+    '## 最佳 / 最弱 Lift',
+    `- 最佳：${bestLiftItem.generatedAt}｜${pct(bestLiftItem.metrics.paidLiftVsA)}｜${bestLiftItem.decision}`,
+    `- 最弱：${weakestLiftItem.generatedAt}｜${pct(weakestLiftItem.metrics.paidLiftVsA)}｜${weakestLiftItem.decision}`,
+    '',
+    '## 最新 24h 运营清单',
+    ...(checklistLines.length ? checklistLines : ['- 暂无清单']),
+    '',
+    '## 历史明细',
+    ...(detailRows.length ? detailRows : ['- 暂无历史'])
+  ];
+  return {bundle,markdown:lines.join('\n')};
+}
+
+function exportSelectedAbWeeklyMarkdown(){
+  const report=buildSelectedAbWeeklyMarkdown();
+  if(!report) return;
+  const {bundle,markdown}=report;
+  downloadFile(`ab-weekly-${bundle.safeName}-${bundle.ts}.md`,markdown,'text/markdown;charset=utf-8');
+  $('abStatus').textContent=`已导出实验「${bundle.selected}」周报`;
+}
+
 async function shareText(payload,successMessage,fallbackAction){
   if(navigator.share){
     try{
