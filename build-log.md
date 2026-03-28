@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-28 17:0x (Asia/Shanghai)
+- 沿着上一轮的“周报导出”继续收口，没有再加新分析面板，而是把单实验周报补成双格式导出：除了 Markdown，现在还支持结构化 JSON。
+- `web/index.html` 新增“导出当前实验周报 JSON”按钮，并把周报聚合逻辑抽成 `buildSelectedAbWeeklyReport()`，统一供 Markdown / JSON 两种导出复用，减少后续字段漂移。
+- JSON 周报现包含：实验名、建议动作筛选、分享链接、最新结论与 24h 清单、建议动作分布、最佳/最弱 Lift、历史摘要列表，便于接入手机端自动化、任务系统或后续 API。
+- `README.md` 已同步更新当前原型能力说明。
+- 验证：提取页面内联脚本后 `node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `buildSelectedAbWeeklyReport()` 返回 `recommendationSummary/history/extremes/latest.checklist` 等字段，且 `exportSelectedAbWeeklyJson` 按钮与事件绑定存在。
+
 ## 2026-03-28 14:0x (Asia/Shanghai)
 - 这轮没有继续堆新卡片，而是补上一个真实缺口：`web/index.html` 虽然已有“导出当前实验周报”按钮和事件绑定，但缺少 `buildSelectedAbWeeklyMarkdown()` / `exportSelectedAbWeeklyMarkdown()` 的实际实现。
 - 现已补齐单实验周报导出逻辑：基于当前实验与建议动作筛选，自动输出摘要、建议动作分布、最佳/最弱 Lift、最新 24h 清单与历史明细，并下载为 Markdown。

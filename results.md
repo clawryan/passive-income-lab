@@ -1,5 +1,33 @@
 # Results
 
+## 2026-03-28 17:0x 傍晚推进（新增成果）
+
+### 本轮目标
+- 把单实验周报从“能导出 Markdown”推进到“能直接接自动化”，补齐结构化 JSON 导出。
+
+### 新增产出
+- `web/index.html`
+  - 新增“导出当前实验周报 JSON”按钮
+  - 新增 `buildSelectedAbWeeklyReport()`，统一聚合周报数据
+  - 新增 `exportSelectedAbWeeklyJson()`，导出结构化周报 JSON
+  - `buildSelectedAbWeeklyMarkdown()` 改为复用统一聚合结果，降低 Markdown / JSON 字段漂移
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 提取页面内联脚本后，`node --check /tmp/passive_income_lab_web_check.js` 通过
+- Node VM 冒烟通过：已确认 `buildSelectedAbWeeklyReport()` 返回 `recommendationSummary / extremes / latest.checklist / history` 等字段
+- 文本级检查通过：已确认 `exportSelectedAbWeeklyJson` 按钮与事件绑定存在
+
+### 阻塞
+- 仍缺浏览器内真实实验历史，暂未做“点按钮生成真实 JSON 文件再导入下游工具”的端到端验收。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 用一组真实或模拟历史样本在浏览器里分别点一次 Markdown / JSON 周报导出，补端到端验收。
+2. 若 JSON 结构顺手，可继续补“复制周报摘要”或对接轻量 webhook/API。
+3. 若真实使用中发现字段过重，优先收缩导出结构而不是继续堆新卡片。
+
 ## 2026-03-28 14:0x 下午推进（新增成果）
 
 ### 本轮目标

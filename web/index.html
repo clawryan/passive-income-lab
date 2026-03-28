@@ -158,6 +158,7 @@
             <button id="exportAbHistoryJson" style="max-width:220px;background:#16305f">导出历史 JSON</button>
             <button id="exportSelectedAbShare" style="max-width:220px;background:#1b3b72">导出当前实验分享包</button>
             <button id="exportSelectedAbWeeklyMd" style="max-width:220px;background:#1c4d62">导出当前实验周报</button>
+            <button id="exportSelectedAbWeeklyJson" style="max-width:220px;background:#1c4d62">导出当前实验周报 JSON</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
@@ -1145,7 +1146,7 @@ function buildSelectedAbExperimentBundle(){
   return {selected,payload,safeName,ts};
 }
 
-function buildSelectedAbWeeklyMarkdown(){
+function buildSelectedAbWeeklyReport(){
   const bundle=buildSelectedAbExperimentBundle();
   if(!bundle) return null;
   const {selected,payload}=bundle;
@@ -1157,35 +1158,89 @@ function buildSelectedAbWeeklyMarkdown(){
     acc[key]=(acc[key] || 0) + 1;
     return acc;
   },{});
-  const recommendationLines=Object.entries(recommendationCounts)
+  const recommendationSummary=Object.entries(recommendationCounts)
     .sort((a,b)=>b[1]-a[1])
-    .map(([name,count])=>`- ${name}: ${count} 次`);
+    .map(([name,count])=>({recommendation:name,count}));
   const bestLiftItem=history.reduce((best,item)=>!best || item.metrics.paidLiftVsA > best.metrics.paidLiftVsA ? item : best,null);
   const weakestLiftItem=history.reduce((worst,item)=>!worst || item.metrics.paidLiftVsA < worst.metrics.paidLiftVsA ? item : worst,null);
-  const checklistLines=buildAbExecutionChecklistLines(latest,latestPayload).map(line=>`- ${line.replace(/^\d+\.\s*/,'')}`);
+  const checklistLines=buildAbExecutionChecklistLines(latest,latestPayload).map(line=>line.replace(/^\d+\.\s*/,''));
   const detailRows=history.map((item,idx)=>{
     const economics=estimateAbEconomics(item,item.payload);
-    return `${idx+1}. ${item.generatedAt}｜结论：${item.decision}｜建议动作：${getAbRecommendation(item)}｜样本达标：${item.sampleOk ? '是' : '否'}｜A 支付：${pct(item.metrics.A.paidConversion)}｜B 支付：${pct(item.metrics.B.paidConversion)}｜Lift：${pct(item.metrics.paidLiftVsA)}｜增量净额：${money(economics.deltaNet)}｜p-value：${item.metrics.paidPValue.toFixed(4)}`;
+    return {
+      index:idx+1,
+      generatedAt:item.generatedAt,
+      decision:item.decision,
+      recommendation:getAbRecommendation(item),
+      sampleOk:Boolean(item.sampleOk),
+      paidConversionA:item.metrics.A.paidConversion,
+      paidConversionB:item.metrics.B.paidConversion,
+      paidLiftVsA:item.metrics.paidLiftVsA,
+      deltaNet:economics.deltaNet,
+      paidPValue:item.metrics.paidPValue
+    };
   });
+  return {
+    bundle,
+    report:{
+      exportedAt:payload.exportedAt,
+      experiment:selected,
+      recommendationFilter:getAbSelectedRecommendation() || '全部建议动作',
+      shareLink:payload.shareLink,
+      count:history.length,
+      latest:{
+        generatedAt:latest.generatedAt,
+        decision:latest.decision,
+        recommendation:getAbRecommendation(latest),
+        checklist:checklistLines,
+        payload:latestPayload,
+        result:latest
+      },
+      recommendationSummary,
+      extremes:{
+        best:{
+          generatedAt:bestLiftItem.generatedAt,
+          decision:bestLiftItem.decision,
+          recommendation:getAbRecommendation(bestLiftItem),
+          paidLiftVsA:bestLiftItem.metrics.paidLiftVsA
+        },
+        weakest:{
+          generatedAt:weakestLiftItem.generatedAt,
+          decision:weakestLiftItem.decision,
+          recommendation:getAbRecommendation(weakestLiftItem),
+          paidLiftVsA:weakestLiftItem.metrics.paidLiftVsA
+        }
+      },
+      history:detailRows
+    }
+  };
+}
+
+function buildSelectedAbWeeklyMarkdown(){
+  const built=buildSelectedAbWeeklyReport();
+  if(!built) return null;
+  const {bundle,report}=built;
+  const recommendationLines=report.recommendationSummary.map(item=>`- ${item.recommendation}: ${item.count} 次`);
+  const checklistLines=(report.latest.checklist || []).map(line=>`- ${line}`);
+  const detailRows=report.history.map(item=>`${item.index}. ${item.generatedAt}｜结论：${item.decision}｜建议动作：${item.recommendation}｜样本达标：${item.sampleOk ? '是' : '否'}｜A 支付：${pct(item.paidConversionA)}｜B 支付：${pct(item.paidConversionB)}｜Lift：${pct(item.paidLiftVsA)}｜增量净额：${money(item.deltaNet)}｜p-value：${item.paidPValue.toFixed(4)}`);
   const lines=[
-    `# A/B 实验周报：${selected}`,
+    `# A/B 实验周报：${report.experiment}`,
     '',
     '## 摘要',
-    `- 导出时间：${payload.exportedAt}`,
-    `- 筛选实验：${selected}`,
-    `- 建议动作筛选：${getAbSelectedRecommendation() || '全部建议动作'}`,
-    `- 记录数：${history.length}`,
-    `- 最新结论：${latest.decision}`,
-    `- 最新建议动作：${getAbRecommendation(latest)}`,
-    `- 最近一次：${latest.generatedAt}`,
-    `- 分享链接：${payload.shareLink}`,
+    `- 导出时间：${report.exportedAt}`,
+    `- 筛选实验：${report.experiment}`,
+    `- 建议动作筛选：${report.recommendationFilter}`,
+    `- 记录数：${report.count}`,
+    `- 最新结论：${report.latest.decision}`,
+    `- 最新建议动作：${report.latest.recommendation}`,
+    `- 最近一次：${report.latest.generatedAt}`,
+    `- 分享链接：${report.shareLink}`,
     '',
     '## 建议动作分布',
     ...(recommendationLines.length ? recommendationLines : ['- 暂无数据']),
     '',
     '## 最佳 / 最弱 Lift',
-    `- 最佳：${bestLiftItem.generatedAt}｜${pct(bestLiftItem.metrics.paidLiftVsA)}｜${bestLiftItem.decision}`,
-    `- 最弱：${weakestLiftItem.generatedAt}｜${pct(weakestLiftItem.metrics.paidLiftVsA)}｜${weakestLiftItem.decision}`,
+    `- 最佳：${report.extremes.best.generatedAt}｜${pct(report.extremes.best.paidLiftVsA)}｜${report.extremes.best.decision}`,
+    `- 最弱：${report.extremes.weakest.generatedAt}｜${pct(report.extremes.weakest.paidLiftVsA)}｜${report.extremes.weakest.decision}`,
     '',
     '## 最新 24h 运营清单',
     ...(checklistLines.length ? checklistLines : ['- 暂无清单']),
@@ -1193,15 +1248,23 @@ function buildSelectedAbWeeklyMarkdown(){
     '## 历史明细',
     ...(detailRows.length ? detailRows : ['- 暂无历史'])
   ];
-  return {bundle,markdown:lines.join('\n')};
+  return {bundle,report,markdown:lines.join('\n')};
 }
 
 function exportSelectedAbWeeklyMarkdown(){
-  const report=buildSelectedAbWeeklyMarkdown();
-  if(!report) return;
-  const {bundle,markdown}=report;
+  const built=buildSelectedAbWeeklyMarkdown();
+  if(!built) return;
+  const {bundle,markdown}=built;
   downloadFile(`ab-weekly-${bundle.safeName}-${bundle.ts}.md`,markdown,'text/markdown;charset=utf-8');
-  $('abStatus').textContent=`已导出实验「${bundle.selected}」周报`;
+  $('abStatus').textContent=`已导出实验「${bundle.selected}」周报 Markdown`;
+}
+
+function exportSelectedAbWeeklyJson(){
+  const built=buildSelectedAbWeeklyReport();
+  if(!built) return;
+  const {bundle,report}=built;
+  downloadFile(`ab-weekly-${bundle.safeName}-${bundle.ts}.json`,JSON.stringify(report,null,2),'application/json;charset=utf-8');
+  $('abStatus').textContent=`已导出实验「${bundle.selected}」周报 JSON`;
 }
 
 async function shareText(payload,successMessage,fallbackAction){
@@ -1478,6 +1541,7 @@ $("exportAbMd").addEventListener('click',()=>exportAB('md'));
 $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
 $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBundle);
 $("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown);
+$("exportSelectedAbWeeklyJson").addEventListener('click',exportSelectedAbWeeklyJson);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
