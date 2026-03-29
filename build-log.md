@@ -1,5 +1,13 @@
 # Build Log
 
+## 2026-03-29 08:0x (Asia/Shanghai)
+- 这轮不再继续堆新的 A/B 分析卡片，而是补齐“可部署 / 可验证”的最短链路：现有 Web + PWA 已能用，但仓库内缺少统一的本地预览与验证脚手架，导致后续部署、验收和交接成本偏高。
+- 新增 `package.json`：补上 `npm run dev`、`npm run check:web`、`npm run smoke:ab`、`npm run validate` 四个脚本，统一本地预览与基础验证入口。
+- 新增 `scripts/check-web.mjs`：自动从 `web/index.html` 提取内联脚本并执行 `node --check`，避免继续手工复制到 `/tmp` 才能做语法校验。
+- 新增 `scripts/smoke-ab.mjs`：直接调用 `api/ab-funnel.js` 做本地 POST 冒烟，校验 `decision / metrics / nextActions / sampleOk / generatedAt` 等核心字段。
+- `README.md` 已同步补充本地预览、Vercel 部署和一键验证步骤，降低把工具部署到手机/电脑可访问地址的阻力。
+- 结果：现在仓库具备更清晰的“开发 -> 验证 -> 部署”最小闭环，后续更容易把现有原型推到真实可访问链接上，而不是只停留在本地代码层。
+
 ## 2026-03-28 22:0x (Asia/Shanghai)
 - 这轮优先补最近几次都卡住的同一个阻塞：虽然已经有当前实验周报 Markdown / JSON / 文本摘要，但缺少一键可复现的样本历史，导致手机端和浏览器里的端到端验收仍要手工造数据。
 - `web/index.html` 的 A/B 历史区新增“载入周报演示样本”按钮；实现 `buildAbDemoHistoryEntries()` 与 `loadAbDemoHistory()`，一次写入 3 条同实验的模拟历史，并自动切到该实验筛选与最新表单状态。

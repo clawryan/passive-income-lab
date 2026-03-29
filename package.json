@@ -1,0 +1,12 @@
+{
+  "name": "passive-income-lab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Passive Income Lab web tools and lightweight APIs",
+  "scripts": {
+    "dev": "python3 -m http.server 8765",
+    "check:web": "node scripts/check-web.mjs",
+    "smoke:ab": "node scripts/smoke-ab.mjs",
+    "validate": "npm run check:web && npm run smoke:ab"
+  }
+}

@@ -33,4 +33,29 @@
 - **单实验周报 JSON**：同一份周报现在也可导出结构化 JSON，包含最新结论、建议动作分布、最佳/最弱 Lift、24h 清单与历史摘要，便于手机端自动化、任务工具或后续 API 接入。
 - **单实验周报摘要复制**：可一键复制当前实验的文本周报摘要，直接贴到飞书/微信/备忘录，无需先下载 Markdown 或 JSON。
 - **周报演示样本**：A/B 历史区新增“载入周报演示样本”，可一键注入 3 条同实验的模拟历史并自动切到该实验，方便直接验收周报导出、摘要复制与分享包链路。
+- **本地预览 / 验证脚手架**：新增 `package.json` 与 `scripts/check-web.mjs`、`scripts/smoke-ab.mjs`，现在可用 `npm run dev` 本地预览，用 `npm run validate` 一次完成前端脚本语法校验与 A/B API 冒烟。
 - **信号灯卡片已补齐**：修复 `abDecisionBoard` 缺失导致的前端运行错误，确保页面默认自动运行时不会因为找不到 DOM 节点而中断。
+
+## 快速开始
+
+### 本地预览（手机 / 电脑均可）
+1. 进入仓库：`cd passive-income-lab`
+2. 启动静态预览：`npm run dev`
+3. 浏览器打开：`http://127.0.0.1:8765/web/`
+4. 若要在同一局域网手机访问，可改用：`python3 -m http.server 8765 --bind 0.0.0.0`
+
+### 一键验证
+- `npm run check:web`：提取 `web/index.html` 的内联脚本并执行 `node --check`
+- `npm run smoke:ab`：对 `api/ab-funnel.js` 做本地 POST 冒烟，确认返回 `decision / metrics / nextActions`
+- `npm run validate`：串联执行以上两步
+
+### Vercel 部署
+仓库已包含最小 `vercel.json`，部署后根路径会自动指向 `web/index.html`。
+
+1. 导入仓库到 Vercel
+2. Framework Preset 选 `Other`
+3. 保持默认构建设置（无需 build command）
+4. 部署完成后访问根路径 `/`
+5. 若需验证 API，再请求 `/api/ab-funnel`
+
+> 说明：当前 Web 工具以前端静态页 + Serverless API 形式运行，适合先做轻量验证与手机端安装；后续若接入真实支付/用户系统，再补环境变量与后端状态存储。
