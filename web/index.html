@@ -160,6 +160,7 @@
             <button id="exportSelectedAbWeeklyMd" style="max-width:220px;background:#1c4d62">导出当前实验周报</button>
             <button id="exportSelectedAbWeeklyJson" style="max-width:220px;background:#1c4d62">导出当前实验周报 JSON</button>
             <button id="copySelectedAbWeeklySummary" style="max-width:220px;background:#1c4d62">复制当前实验周报摘要</button>
+            <button id="shareSelectedAbWeeklySummary" style="max-width:220px;background:#24548f">手机原生分享周报摘要</button>
             <button id="loadAbDemoHistory" style="max-width:220px;background:#24548f">载入周报演示样本</button>
             <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
@@ -170,10 +171,7 @@
         </div>
         <div class="grid g2">
           <div class="card" id="abHistorySummary"><div class="muted">暂无历史汇总</div></div>
-          <div class="card">
-            <h3>使用提示</h3>
-            <div class="muted">先按实验名或建议动作筛选；可直接重命名当前实验、删除当前实验的本地历史，再导出 Markdown / CSV 做周报或按批次复盘。</div>
-          </div>
+          <div class="card" id="abRecommendationBoard"><div class="muted">暂无建议动作统计</div></div>
         </div>
         <div id="abHistory"><div class="muted">暂无历史记录</div></div>
       </div>
@@ -1402,6 +1400,19 @@ async function copySelectedAbWeeklySummary(){
   await copyText(built.text,`已复制实验「${built.built.bundle.selected}」周报摘要`);
 }
 
+async function shareSelectedAbWeeklySummary(){
+  const built=buildSelectedAbWeeklySummaryText();
+  if(!built) return;
+  const { text } = built;
+  const { selected } = built.built.bundle;
+  const url = built.built.report.shareLink;
+  await shareText({
+    title:`A/B 实验周报：${selected}`,
+    text,
+    url
+  },`已调起系统分享周报摘要：${selected}`,()=>copyText(`${text}\n分享链接：${url}`,'当前浏览器不支持原生分享，已复制周报摘要与链接'));
+}
+
 async function shareText(payload,successMessage,fallbackAction){
   if(navigator.share){
     try{
@@ -1678,6 +1689,7 @@ $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBu
 $("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown);
 $("exportSelectedAbWeeklyJson").addEventListener('click',exportSelectedAbWeeklyJson);
 $("copySelectedAbWeeklySummary").addEventListener('click',copySelectedAbWeeklySummary);
+$("shareSelectedAbWeeklySummary").addEventListener('click',shareSelectedAbWeeklySummary);
 $("loadAbDemoHistory").addEventListener('click',loadAbDemoHistory);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
