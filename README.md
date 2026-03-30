@@ -18,6 +18,7 @@
 - `api/ab-funnel.js`：数字产品 A/B 漏斗判定 API
 
 ## 当前可直接操作原型
+- **可售产品货架（最小变现入口）**：首页新增“卖什么 / 适合谁 / 交付样例 / 升级路径”货架层，先展示 Micro-SaaS 冷启动提示词包与 Orion Nexus Quant 研究包，减少访问者只看到工具、却不知道可买什么的理解断层。
 - **数字产品 A/B Funnel Analyzer**：输入曝光/点击/结账/支付，输出显著性、胜负判定、下一步动作。
 - **Orion Nexus Quant Monitor**：查看策略信号、组合收益、基准对比（研究/模拟）。
 - **PWA 安装 / 离线访问**：`web/index.html` 现已补齐 manifest + service worker，可安装到手机主屏或电脑桌面，并支持离线打开已缓存的工具壳。
