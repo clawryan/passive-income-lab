@@ -159,6 +159,7 @@
             <button id="exportSelectedAbShare" style="max-width:220px;background:#1b3b72">导出当前实验分享包</button>
             <button id="exportSelectedAbWeeklyMd" style="max-width:220px;background:#1c4d62">导出当前实验周报</button>
             <button id="exportSelectedAbWeeklyJson" style="max-width:220px;background:#1c4d62">导出当前实验周报 JSON</button>
+            <button id="exportSelectedAbTodoCsv" style="max-width:220px;background:#1c4d62">导出当前实验待办 CSV</button>
             <button id="copySelectedAbWeeklySummary" style="max-width:220px;background:#1c4d62">复制当前实验周报摘要</button>
             <button id="shareSelectedAbWeeklySummary" style="max-width:220px;background:#24548f">手机原生分享周报摘要</button>
             <button id="loadAbDemoHistory" style="max-width:220px;background:#24548f">载入周报演示样本</button>
@@ -1370,6 +1371,38 @@ function exportSelectedAbWeeklyJson(){
   $('abStatus').textContent=`已导出实验「${bundle.selected}」周报 JSON`;
 }
 
+function buildSelectedAbTodoCsv(){
+  const built=buildSelectedAbWeeklyReport();
+  if(!built) return null;
+  const {bundle,report}=built;
+  const todoExport=buildAbExecutionTodoExport(report.latest.result,report.latest.payload);
+  const header=['experiment','generated_at','recommendation_filter','latest_decision','latest_recommendation','share_link','step','time_bucket','title','detail'];
+  const rows=(todoExport.checklist || []).map(item=>[
+    report.experiment,
+    todoExport.generatedAt,
+    report.recommendationFilter,
+    todoExport.decision,
+    todoExport.recommendation,
+    report.shareLink,
+    item.step,
+    item.owner,
+    item.title,
+    item.detail
+  ]);
+  const csv=[header,...rows]
+    .map(row=>row.map(value=>`"${String(value ?? '').replace(/"/g,'""')}"`).join(','))
+    .join('\n');
+  return {bundle,report,csv,count:rows.length};
+}
+
+function exportSelectedAbTodoCsv(){
+  const built=buildSelectedAbTodoCsv();
+  if(!built) return;
+  const {bundle,csv,count}=built;
+  downloadFile(`ab-todo-${bundle.safeName}-${bundle.ts}.csv`,csv,'text/csv;charset=utf-8');
+  $('abStatus').textContent=`已导出实验「${bundle.selected}」待办 CSV（${count} 条）`;
+}
+
 function buildSelectedAbWeeklySummaryText(){
   const built=buildSelectedAbWeeklyReport();
   if(!built) return null;
@@ -1688,6 +1721,7 @@ $("exportAbHistoryJson").addEventListener('click',exportAbHistoryJson);
 $("exportSelectedAbShare").addEventListener('click',exportSelectedAbExperimentBundle);
 $("exportSelectedAbWeeklyMd").addEventListener('click',exportSelectedAbWeeklyMarkdown);
 $("exportSelectedAbWeeklyJson").addEventListener('click',exportSelectedAbWeeklyJson);
+$("exportSelectedAbTodoCsv").addEventListener('click',exportSelectedAbTodoCsv);
 $("copySelectedAbWeeklySummary").addEventListener('click',copySelectedAbWeeklySummary);
 $("shareSelectedAbWeeklySummary").addEventListener('click',shareSelectedAbWeeklySummary);
 $("loadAbDemoHistory").addEventListener('click',loadAbDemoHistory);
