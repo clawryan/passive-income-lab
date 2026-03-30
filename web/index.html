@@ -163,7 +163,7 @@
             <button id="copySelectedAbWeeklySummary" style="max-width:220px;background:#1c4d62">复制当前实验周报摘要</button>
             <button id="shareSelectedAbWeeklySummary" style="max-width:220px;background:#24548f">手机原生分享周报摘要</button>
             <button id="loadAbDemoHistory" style="max-width:220px;background:#24548f">载入周报演示样本</button>
-            <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 JSON</button>
+            <button id="importAbHistoryJson" style="max-width:220px;background:#16305f">导入历史 / 分享包 JSON</button>
             <button id="exportAbHistoryCsv" style="max-width:220px;background:#16305f">导出历史 CSV</button>
             <button id="exportAbHistoryMd" style="max-width:220px;background:#16305f">导出历史 Markdown</button>
             <button id="clearAbHistory" style="max-width:180px;background:#4a1f37">清空历史</button>
@@ -1105,6 +1105,11 @@ function importAbHistoryJson(){
   $('abHistoryImportFile').click();
 }
 
+function getLatestAbHistoryEntry(history){
+  if(!Array.isArray(history) || !history.length) return null;
+  return [...history].sort((a,b)=>new Date(b.generatedAt)-new Date(a.generatedAt))[0] || null;
+}
+
 async function handleAbHistoryImport(event){
   const file=event.target.files?.[0];
   if(!file) return;
@@ -1116,8 +1121,43 @@ async function handleAbHistoryImport(event){
     const merged=mergeAbHistoryEntries(readAbHistory(),incoming);
     if(!merged.length) throw new Error('未识别到可导入的有效记录');
     writeAbHistory(merged);
+
+    const importedLatest=getLatestAbHistoryEntry(incoming.map(normalizeAbHistoryEntry).filter(Boolean));
+    const importedExperiment=(parsed.scope || importedLatest?.experimentLabel || '').trim();
+    if(importedLatest?.payload){
+      applyAbFormState({
+        experimentLabel:importedExperiment || importedLatest.experimentLabel,
+        minClicks:importedLatest.payload.min_clicks_per_variant,
+        a_impressions:importedLatest.payload.variants?.A?.impressions,
+        a_clicks:importedLatest.payload.variants?.A?.clicks,
+        a_checkout:importedLatest.payload.variants?.A?.checkout_starts,
+        a_paid:importedLatest.payload.variants?.A?.paid_orders,
+        b_impressions:importedLatest.payload.variants?.B?.impressions,
+        b_clicks:importedLatest.payload.variants?.B?.clicks,
+        b_checkout:importedLatest.payload.variants?.B?.checkout_starts,
+        b_paid:importedLatest.payload.variants?.B?.paid_orders,
+        productPrice:importedLatest.payload.rollout?.product_price,
+        rolloutClicks:importedLatest.payload.rollout?.rollout_clicks,
+        costPerClick:importedLatest.payload.rollout?.cost_per_click,
+        targetLift:Number(importedLatest.payload.plan?.target_lift || 0) * 100,
+        targetConfidence:Number(importedLatest.payload.plan?.confidence || 0) * 100,
+        targetPower:Number(importedLatest.payload.plan?.power || 0) * 100
+      });
+    }
+
+    refreshAbHistoryFilterOptions();
+    if(importedExperiment){
+      $('abHistoryFilter').value=importedExperiment;
+      $('abRecommendationFilter').value='';
+    }
     renderAbHistory();
-    $('abStatus').textContent=`已导入 ${merged.length} 条历史记录（含去重后结果）`;
+
+    const importedCount=Array.isArray(incoming) ? incoming.length : 0;
+    if(parsed.shareLink && importedExperiment){
+      $('abStatus').textContent=`已导入实验分享包：${importedExperiment}（导入 ${importedCount} 条，已自动回填最新参数）`;
+    }else{
+      $('abStatus').textContent=`已导入 ${importedCount} 条历史记录；当前库共 ${merged.length} 条（含去重后结果）`;
+    }
   }catch(e){
     $('abStatus').textContent='导入失败: '+e.message;
   }finally{
