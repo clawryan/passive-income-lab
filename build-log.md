@@ -1,5 +1,12 @@
 # Build Log
 
+## 2026-03-30 20:0x (Asia/Shanghai)
+- 这轮没有继续堆新 UI，而是补齐最该先守住的链路验证：此前“当前实验分享包”已经支持导出与导入回填，但仓库里还没有自动化冒烟，后续改页面时容易把手机/电脑接力链路悄悄改坏。
+- 新增 `scripts/smoke-ab-history-import.mjs`：直接从 `web/index.html` 提取内联脚本，在 Node VM 中构造最小浏览器环境，先载入演示样本，再导出单实验分享包，最后模拟“导入历史 / 分享包 JSON”。
+- 冒烟会校验 3 个关键结果：历史条数成功写回本地存储、实验筛选自动切到 `demo-micro-saas-title-lift`、表单最新参数（如 `a_clicks=136 / b_clicks=146 / targetLift=15`）被自动回填。
+- `package.json` 的 `validate` 已升级为三段：`check:web + smoke:ab + smoke:ab-history`；`README.md` 也已同步写明新验证入口。
+- 结果：现在这条最接近真实协作接力的链路有了可重复、低成本的回归测试，比继续加一个新按钮更有收益。
+
 ## 2026-03-30 11:0x (Asia/Shanghai)
 - 这轮没有继续堆新的分析卡片，而是补齐已有“当前实验分享包”的回流链路：此前可以导出单实验 JSON，但导入后只会并入历史，不能自动恢复该实验最新参数，跨设备接力仍要手工回填。
 - `web/index.html` 现已增强 `handleAbHistoryImport()`：当导入的是单实验分享包时，会自动识别 `scope / shareLink / history`，写入历史后同步回填该实验最新一轮参数，并自动切换到对应实验筛选。

@@ -48,7 +48,8 @@
 ### 一键验证
 - `npm run check:web`：提取 `web/index.html` 的内联脚本并执行 `node --check`
 - `npm run smoke:ab`：对 `api/ab-funnel.js` 做本地 POST 冒烟，确认返回 `decision / metrics / nextActions`
-- `npm run validate`：串联执行以上两步
+- `npm run smoke:ab-history`：构造单实验分享包并验证“导入后自动切换实验筛选 + 回填最新表单参数”链路
+- `npm run validate`：串联执行以上三步
 
 ### Vercel 部署
 仓库已包含最小 `vercel.json`，部署后根路径会自动指向 `web/index.html`。
