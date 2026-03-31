@@ -101,7 +101,11 @@
           <button id="copyProductOfferBundle" style="background:#24548f">复制报价摘要</button>
           <button id="shareProductOfferBundle" style="background:#24548f">手机原生分享报价摘要</button>
         </div>
-        <div id="productOfferStatus" class="mini muted">可直接复制/分享咨询文案，再用“载入演示参数”把示例实验填到下方工具。</div>
+        <div class="grid g2">
+          <button id="copyProductFaqBundle" class="ghost">复制产品 FAQ / 交付说明</button>
+          <button id="shareProductFaqBundle" class="ghost">手机原生分享 FAQ / 交付说明</button>
+        </div>
+        <div id="productOfferStatus" class="mini muted">可直接复制/分享咨询文案或 FAQ/交付说明，再用“载入演示参数”把示例实验填到下方工具。</div>
       </div>
       <div class="card stack">
         <h3>建议转化路径</h3>
@@ -1724,6 +1728,33 @@ function buildProductOfferSummary(){
   ].join('\n');
 }
 
+function buildProductFaqSummary(){
+  return [
+    'Passive Income Lab 产品 FAQ / 交付说明',
+    '',
+    `Q1. 现在能买什么？`,
+    `A1. 可直接交付两类产品：${PRODUCT_OFFERS.microSaas.title}（${PRODUCT_OFFERS.microSaas.price}）与 ${PRODUCT_OFFERS.orion.title}（${PRODUCT_OFFERS.orion.price}）。`,
+    '',
+    'Q2. 分别适合谁？',
+    `A2. ${PRODUCT_OFFERS.microSaas.title} 适合 ${PRODUCT_OFFERS.microSaas.audience}；${PRODUCT_OFFERS.orion.title} 适合 ${PRODUCT_OFFERS.orion.audience}。`,
+    '',
+    'Q3. 会交付什么？',
+    `A3. Micro-SaaS 包偏“7 天内可直接开卖”的提示词、卖点、落地页与获客沟通模板；Orion 包偏研究演示、回测样例、组合概览与定制报告。`,
+    '',
+    'Q4. 我怎么先判断值不值得买？',
+    'A4. 先在本页下方的 A/B Funnel Analyzer 填你自己的标题/落地页数据；如果缺文案和验证素材，优先买 Micro-SaaS 包；如果想卖更高客单研究能力，再升级到 Orion 研究包。',
+    '',
+    'Q5. 有没有现成样例？',
+    `A5. Micro-SaaS 样例：${PRODUCT_OFFERS.microSaas.sample}；Orion 样例：${PRODUCT_OFFERS.orion.sample}。`,
+    '',
+    'Q6. 是否包含真实支付或实盘代操？',
+    'A6. 当前页面提供的是成交前说明与研究/模拟演示，不包含实盘代操；Orion 明确以研究/模拟用途为主。',
+    '',
+    'Q7. 下一步怎么沟通？',
+    'A7. 可先复制报价摘要或单产品咨询文案发给潜在用户，再把 FAQ / 交付说明一起发出，减少来回解释成本。'
+  ].join('\n');
+}
+
 async function copyProductOffer(key){
   const offer=PRODUCT_OFFERS[key];
   if(!offer) return;
@@ -1755,6 +1786,21 @@ async function shareProductOfferBundle(){
     text
   },'已调起系统分享报价摘要',()=>copyText(text,'当前浏览器不支持原生分享，已复制报价摘要'));
   $('productOfferStatus').textContent='已处理报价摘要分享动作。';
+}
+
+async function copyProductFaqBundle(){
+  const text=buildProductFaqSummary();
+  await copyText(text,'已复制 FAQ / 交付说明');
+  $('productOfferStatus').textContent='已复制产品 FAQ / 交付说明，可直接发给潜在用户减少重复解释。';
+}
+
+async function shareProductFaqBundle(){
+  const text=buildProductFaqSummary();
+  await shareText({
+    title:'Passive Income Lab FAQ / 交付说明',
+    text
+  },'已调起系统分享 FAQ / 交付说明',()=>copyText(text,'当前浏览器不支持原生分享，已复制 FAQ / 交付说明'));
+  $('productOfferStatus').textContent='已处理 FAQ / 交付说明分享动作。';
 }
 
 async function runAB(){
@@ -1956,6 +2002,8 @@ $("copyOrionOffer").addEventListener('click',()=>copyProductOffer('orion'));
 $("loadOrionDemo").addEventListener('click',()=>loadProductDemo('orion'));
 $("copyProductOfferBundle").addEventListener('click',copyProductOfferBundle);
 $("shareProductOfferBundle").addEventListener('click',shareProductOfferBundle);
+$("copyProductFaqBundle").addEventListener('click',copyProductFaqBundle);
+$("shareProductFaqBundle").addEventListener('click',shareProductFaqBundle);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
 $("deleteAbExperiment").addEventListener('click',deleteSelectedAbExperiment);
