@@ -119,6 +119,65 @@
       </div>
 
       <div class="card stack">
+        <div class="section-title">
+          <div>
+            <h3>线索收集 / 跟进卡</h3>
+            <div class="muted">打开单产品页后，可直接登记潜在客户、记录预算/场景，并一键复制跟进摘要或导出 JSON。</div>
+          </div>
+          <span class="pill">本地线索板</span>
+        </div>
+        <div class="grid g4">
+          <label>客户名 / 代号
+            <input id="leadName" type="text" placeholder="如：张三 / wx-demo-01" />
+          </label>
+          <label>来源渠道
+            <select id="leadChannel">
+              <option value="微信私聊">微信私聊</option>
+              <option value="飞书私聊">飞书私聊</option>
+              <option value="朋友圈/社群">朋友圈/社群</option>
+              <option value="独立站/落地页">独立站/落地页</option>
+              <option value="朋友转介绍">朋友转介绍</option>
+              <option value="其他">其他</option>
+            </select>
+          </label>
+          <label>预算判断
+            <select id="leadBudget">
+              <option value="待确认">待确认</option>
+              <option value="≤¥99">≤¥99</option>
+              <option value="¥100-499">¥100-499</option>
+              <option value="¥500-999">¥500-999</option>
+              <option value=">¥999">&gt;¥999</option>
+            </select>
+          </label>
+          <label>优先级
+            <select id="leadPriority">
+              <option value="高">高</option>
+              <option value="中" selected>中</option>
+              <option value="低">低</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid g2">
+          <label>需求场景 / 痛点
+            <input id="leadNeed" type="text" placeholder="如：7 天内做出首版卖点和销售页" />
+          </label>
+          <label>下一步承诺
+            <input id="leadNextStep" type="text" placeholder="如：今晚发 FAQ，明早确认是否下基础包" />
+          </label>
+        </div>
+        <div class="grid g2">
+          <button id="saveLeadEntry" style="background:#1c4d62">保存当前线索</button>
+          <button id="copyLeadFollowup" class="ghost">复制跟进摘要</button>
+        </div>
+        <div class="grid g2">
+          <button id="exportLeadJson" class="ghost">导出线索 JSON</button>
+          <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
+        </div>
+        <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
+        <div id="leadBoard" class="card"><div class="muted">暂无线索记录</div></div>
+      </div>
+
+      <div class="card stack">
         <h3>最小 CTA</h3>
         <div class="grid g2">
           <button id="copyProductOfferBundle" style="background:#24548f">复制报价摘要</button>
@@ -1701,6 +1760,106 @@ function exportAbHistory(format){
   $("abStatus").textContent='已导出历史 Markdown';
 }
 
+const PRODUCT_LEADS_KEY='passive-income-lab.productLeads.v1';
+
+function loadProductLeads(){
+  try{
+    return JSON.parse(localStorage.getItem(PRODUCT_LEADS_KEY) || '[]');
+  }catch(_error){
+    return [];
+  }
+}
+
+function saveProductLeads(leads){
+  localStorage.setItem(PRODUCT_LEADS_KEY,JSON.stringify(leads.slice(0,30)));
+}
+
+function getLeadFormState(){
+  return {
+    name:($('leadName')?.value || '').trim() || '未命名线索',
+    channel:($('leadChannel')?.value || '待确认').trim(),
+    budget:($('leadBudget')?.value || '待确认').trim(),
+    priority:($('leadPriority')?.value || '中').trim(),
+    need:($('leadNeed')?.value || '').trim() || '待补充需求场景',
+    nextStep:($('leadNextStep')?.value || '').trim() || '待确认下一步'
+  };
+}
+
+function buildLeadFollowupText(entry){
+  const offer=getProductOfferBySlug(entry.productSlug);
+  return [
+    `Passive Income Lab 线索跟进摘要｜${entry.name}`,
+    `产品：${offer.title}`,
+    `渠道：${entry.channel}`,
+    `预算：${entry.budget}`,
+    `优先级：${entry.priority}`,
+    `需求：${entry.need}`,
+    `建议下一步：${entry.nextStep}`,
+    `可发送材料：报价摘要 / FAQ / 购买说明 / 单产品链接`,
+    `单产品链接：${buildProductLandingLink(offer.key)}`
+  ].join('\n');
+}
+
+function renderLeadBoard(){
+  const board=$('leadBoard');
+  if(!board) return;
+  const leads=loadProductLeads();
+  if(!leads.length){
+    board.innerHTML='<div class="muted">暂无线索记录</div>';
+    return;
+  }
+  const rows=leads.map((entry)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    return `<tr><td>${entry.createdAt.replace('T',' ').slice(0,16)}</td><td>${entry.name}</td><td>${offer.title}</td><td>${entry.channel}</td><td>${entry.budget}</td><td>${entry.priority}</td><td>${entry.nextStep}</td></tr>`;
+  }).join('');
+  board.innerHTML=`<h3>最近线索</h3><table><thead><tr><th>时间</th><th>客户</th><th>产品</th><th>渠道</th><th>预算</th><th>优先级</th><th>下一步</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function saveLeadEntry(){
+  const offer=getSelectedProduct();
+  const entry={
+    ...getLeadFormState(),
+    productSlug:offer.slug,
+    createdAt:new Date().toISOString()
+  };
+  const leads=loadProductLeads();
+  leads.unshift(entry);
+  saveProductLeads(leads);
+  renderLeadBoard();
+  $('leadStatus').textContent=`已保存线索：${entry.name} → ${offer.title}`;
+  $('productOfferStatus').textContent=`已保存 ${entry.name} 的 ${offer.title} 跟进记录。`;
+}
+
+async function copyLeadFollowup(){
+  const offer=getSelectedProduct();
+  const entry={
+    ...getLeadFormState(),
+    productSlug:offer.slug,
+    createdAt:new Date().toISOString()
+  };
+  const text=buildLeadFollowupText(entry);
+  await copyText(text,`已复制 ${entry.name} 的跟进摘要`);
+  $('leadStatus').textContent=`已复制 ${entry.name} 的跟进摘要。`;
+}
+
+function exportLeadJson(){
+  const leads=loadProductLeads();
+  if(!leads.length){
+    $('leadStatus').textContent='当前暂无可导出的线索';
+    return;
+  }
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`product-leads-${ts}.json`,JSON.stringify({exportedAt:new Date().toISOString(),count:leads.length,leads},null,2),'application/json;charset=utf-8');
+  $('leadStatus').textContent='已导出线索 JSON';
+}
+
+function loadLeadForSelectedProduct(){
+  const offer=getSelectedProduct();
+  $('leadNeed').value=offer.key==='microSaas' ? '7 天内完成定位、卖点、落地页文案和首轮获客沟通' : '先看研究演示、确认标的/问题，再决定是否升级定制报告';
+  $('leadNextStep').value=offer.key==='microSaas' ? '先发单产品链接 + FAQ，确认后推荐基础包/季度更新' : '先发单产品链接 + 研究说明，确认研究范围后再报高客单方案';
+  $('leadStatus').textContent=`已按 ${offer.title} 生成跟进模板。`;
+}
+
 const PRODUCT_OFFERS={
   microSaas:{
     key:'microSaas',
@@ -1904,6 +2063,7 @@ function selectProductLanding(key,{scroll=false}={}){
     history.replaceState(null,'',url);
   }
   $('productOfferStatus').textContent=`已切换到 ${offer.title} 单产品分享视角。`;
+  loadLeadForSelectedProduct();
   if(scroll){
     $('productDetailPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
   }
@@ -2205,6 +2365,10 @@ $("copySelectedProductLink").addEventListener('click',copySelectedProductLink);
 $("shareSelectedProductLink").addEventListener('click',shareSelectedProductLink);
 $("copySelectedProductSummary").addEventListener('click',copySelectedProductSummary);
 $("loadSelectedProductDemo").addEventListener('click',loadSelectedProductDemo);
+$("saveLeadEntry").addEventListener('click',saveLeadEntry);
+$("copyLeadFollowup").addEventListener('click',copyLeadFollowup);
+$("exportLeadJson").addEventListener('click',exportLeadJson);
+$("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
 $("microSaasCard").addEventListener('click',()=>selectProductLanding('microSaas',{scroll:true}));
 $("orionCard").addEventListener('click',()=>selectProductLanding('orion',{scroll:true}));
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
@@ -2280,6 +2444,8 @@ $('installApp').addEventListener('click', async () => {
 $('refreshApp').addEventListener('click', () => { refreshOfflineCache().catch(e => { $('pwaStatus').textContent = '刷新缓存失败: ' + e.message; }); });
 
 selectProductLanding(getSelectedProduct().key);
+renderLeadBoard();
+loadLeadForSelectedProduct();
 renderAbHistory();
 runAB();
 </script>

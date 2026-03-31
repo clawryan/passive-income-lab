@@ -1,3 +1,11 @@
+## 2026-03-31 22:0x (Asia/Shanghai)
+- 这轮没有继续堆更多说明文本，而是补了一个更接近收入的执行层：单产品页之后，下一步通常不是再解释一遍，而是把潜在客户记下来、明确预算与下一步跟进。
+- `web/index.html` 新增“线索收集 / 跟进卡”，支持记录客户名/来源渠道/预算判断/优先级/需求场景/下一步承诺，并默认关联当前选中的产品单页。
+- 新增 `loadProductLeads()` / `saveProductLeads()` / `renderLeadBoard()`：线索默认保存在浏览器本地，最多保留最近 30 条，适合手机端快速登记，也可在电脑端继续查看。
+- 新增 `buildLeadFollowupText()` / `copyLeadFollowup()` / `exportLeadJson()` / `loadLeadForSelectedProduct()`：可按当前产品一键生成跟进模板、复制跟进摘要，或导出 JSON 做跨设备接力。
+- `README.md` 已同步补充“线索收集 / 跟进卡”能力说明。
+- 结果：首页现在不仅能“发产品说明”，还能顺手把潜在线索结构化沉淀下来，比继续加一段 FAQ 更接近真实成交推进。
+
 ## 2026-03-31 20:0x (Asia/Shanghai)
 - 这轮没有继续堆 FAQ 文本，而是把首页货架补成“可单独转发的产品页”形态：很多咨询场景并不需要先看完整货架，而是需要一个只讲某一个产品的单链接。
 - `web/index.html` 现已新增“单产品分享页”面板，会根据 URL 参数 `?product=micro-saas` 或 `?product=orion-nexus` 自动切换到对应产品说明视角，并高亮当前产品卡片。
