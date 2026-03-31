@@ -105,7 +105,11 @@
           <button id="copyProductFaqBundle" class="ghost">复制产品 FAQ / 交付说明</button>
           <button id="shareProductFaqBundle" class="ghost">手机原生分享 FAQ / 交付说明</button>
         </div>
-        <div id="productOfferStatus" class="mini muted">可直接复制/分享咨询文案或 FAQ/交付说明，再用“载入演示参数”把示例实验填到下方工具。</div>
+        <div class="grid g2">
+          <button id="copyProductPurchaseBundle" class="ghost">复制购买 / 联系说明</button>
+          <button id="shareProductPurchaseBundle" class="ghost">手机原生分享购买 / 联系说明</button>
+        </div>
+        <div id="productOfferStatus" class="mini muted">可直接复制/分享咨询文案、FAQ 或购买说明，再用“载入演示参数”把示例实验填到下方工具。</div>
       </div>
       <div class="card stack">
         <h3>建议转化路径</h3>
@@ -1781,6 +1785,29 @@ function buildProductFaqSummary(){
   ].join('\n');
 }
 
+function buildProductPurchaseSummary(){
+  return [
+    'Passive Income Lab 购买 / 联系说明',
+    '',
+    '建议成交顺序：',
+    `1) 先确认需求更接近 ${PRODUCT_OFFERS.microSaas.title} 还是 ${PRODUCT_OFFERS.orion.title}`,
+    '2) 先发报价摘要 + FAQ / 交付说明，减少重复解释',
+    '3) 确认后再进入付款 / 建群 / 交付流程',
+    '',
+    '当前价格口径：',
+    `- ${PRODUCT_OFFERS.microSaas.title}：${PRODUCT_OFFERS.microSaas.price}`,
+    `- ${PRODUCT_OFFERS.orion.title}：${PRODUCT_OFFERS.orion.price}`,
+    '',
+    '当前页面定位：',
+    '- 这是成交前说明页，不是已接入真实支付的订单页。',
+    '- 若要正式收款，可把这段说明发给潜在用户后，再人工补充支付方式、联系方式或独立支付链接。',
+    '- Orion 仅限研究 / 模拟演示，不承诺收益，不涉及实盘代操。',
+    '',
+    '建议发送模板：',
+    '你好，当前可选 Micro-SaaS 冷启动提示词包 / Orion 研究包两类方案。我先把报价、FAQ 和交付说明发你；如果你确认方向，我再补付款方式和交付排期。'
+  ].join('\n');
+}
+
 async function copyProductOffer(key){
   const offer=PRODUCT_OFFERS[key];
   if(!offer) return;
@@ -1827,6 +1854,21 @@ async function shareProductFaqBundle(){
     text
   },'已调起系统分享 FAQ / 交付说明',()=>copyText(text,'当前浏览器不支持原生分享，已复制 FAQ / 交付说明'));
   $('productOfferStatus').textContent='已处理 FAQ / 交付说明分享动作。';
+}
+
+async function copyProductPurchaseBundle(){
+  const text=buildProductPurchaseSummary();
+  await copyText(text,'已复制购买 / 联系说明');
+  $('productOfferStatus').textContent='已复制购买 / 联系说明，可在私聊中直接发出，再人工补支付方式。';
+}
+
+async function shareProductPurchaseBundle(){
+  const text=buildProductPurchaseSummary();
+  await shareText({
+    title:'Passive Income Lab 购买 / 联系说明',
+    text
+  },'已调起系统分享购买 / 联系说明',()=>copyText(text,'当前浏览器不支持原生分享，已复制购买 / 联系说明'));
+  $('productOfferStatus').textContent='已处理购买 / 联系说明分享动作。';
 }
 
 async function runAB(){
@@ -2030,6 +2072,8 @@ $("copyProductOfferBundle").addEventListener('click',copyProductOfferBundle);
 $("shareProductOfferBundle").addEventListener('click',shareProductOfferBundle);
 $("copyProductFaqBundle").addEventListener('click',copyProductFaqBundle);
 $("shareProductFaqBundle").addEventListener('click',shareProductFaqBundle);
+$("copyProductPurchaseBundle").addEventListener('click',copyProductPurchaseBundle);
+$("shareProductPurchaseBundle").addEventListener('click',shareProductPurchaseBundle);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
 $("deleteAbExperiment").addEventListener('click',deleteSelectedAbExperiment);
