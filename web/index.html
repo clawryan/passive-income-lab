@@ -382,6 +382,31 @@ function renderAbHistorySummary(history){
     <div class="mini muted" style="margin-top:8px">最近一次：${latest.generatedAt.replace('T',' ').replace('Z',' UTC')}</div>`;
 }
 
+function renderAbRecommendationBoard(history){
+  const board=$('abRecommendationBoard');
+  if(!board) return;
+  if(!history.length){
+    board.innerHTML='<div class="muted">暂无建议动作统计</div>';
+    return;
+  }
+  const counts=history.reduce((acc,item)=>{
+    const key=getAbRecommendation(item);
+    acc[key]=(acc[key] || 0) + 1;
+    return acc;
+  },{});
+  const total=history.length;
+  const summary=Object.entries(counts)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([recommendation,count])=>({recommendation,count,ratio:count/total}));
+  const top=summary[0];
+  const rows=summary.map(item=>`<li><b>${item.recommendation}</b>：${item.count} 次（${pct(item.ratio)}）</li>`).join('');
+  board.innerHTML=`<h3>建议动作统计</h3>
+    <div>主导动作：<b>${top.recommendation}</b></div>
+    <div style="margin-top:8px">覆盖记录：<b>${total}</b> 条</div>
+    <ul style="margin:10px 0 0 18px;padding:0">${rows}</ul>
+    <div class="mini muted" style="margin-top:8px">可配合上方筛选快速看出：当前更多是在补样、放量，还是应暂停预算。</div>`;
+}
+
 function clearAbHistory(){
   localStorage.removeItem(AB_HISTORY_KEY);
   refreshAbHistoryFilterOptions();
@@ -448,6 +473,7 @@ function renderAbHistory(){
   refreshAbHistoryFilterOptions();
   const history=getAbFilteredHistory();
   renderAbHistorySummary(history);
+  renderAbRecommendationBoard(history);
   if(!history.length){
     $("abHistory").innerHTML='<div class="muted">暂无历史记录</div>';
     return;

@@ -224,9 +224,15 @@ if (
   throw new Error(`导入后表单回填异常: ${JSON.stringify(formSnapshot)}`);
 }
 
+const recommendationBoardHtml = context.document.getElementById('abRecommendationBoard').innerHTML;
+if (!recommendationBoardHtml.includes('建议动作统计') || !recommendationBoardHtml.includes('主导动作')) {
+  throw new Error(`建议动作统计卡片未成功渲染: ${recommendationBoardHtml}`);
+}
+
 console.log('A/B 分享包导入冒烟通过:', {
   importedCount: importedHistory.length,
   selectedExperiment,
   formSnapshot,
+  recommendationBoard: recommendationBoardHtml,
   status: context.document.getElementById('abStatus').textContent
 });
