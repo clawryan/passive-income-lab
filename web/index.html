@@ -68,6 +68,10 @@
             <li>适合手机端快速生成首版销售文案</li>
           </ul>
           <div class="mini muted mono">交付样例：outputs/prompt-pack-micro-saas-launch-v2.json / outputs/gumroad-listing-micro-saas-v2.md</div>
+          <div class="grid g2">
+            <button id="copyMicroSaasOffer" style="background:#1c4d62">复制购买咨询文案</button>
+            <button id="loadMicroSaasDemo" class="ghost">载入 Micro-SaaS 演示参数</button>
+          </div>
         </div>
         <div class="card stack">
           <div>
@@ -85,7 +89,19 @@
             <li>适合先做 Demo 分发，再决定是否包装为订阅服务</li>
           </ul>
           <div class="mini muted mono">交付样例：products/orion-nexus/output/AAPL_backtest.md / AAPL_report.html</div>
+          <div class="grid g2">
+            <button id="copyOrionOffer" style="background:#1c4d62">复制研究包咨询文案</button>
+            <button id="loadOrionDemo" class="ghost">载入 Orion 演示参数</button>
+          </div>
         </div>
+      </div>
+      <div class="card stack">
+        <h3>最小 CTA</h3>
+        <div class="grid g2">
+          <button id="copyProductOfferBundle" style="background:#24548f">复制报价摘要</button>
+          <button id="shareProductOfferBundle" style="background:#24548f">手机原生分享报价摘要</button>
+        </div>
+        <div id="productOfferStatus" class="mini muted">可直接复制/分享咨询文案，再用“载入演示参数”把示例实验填到下方工具。</div>
       </div>
       <div class="card stack">
         <h3>建议转化路径</h3>
@@ -1628,6 +1644,119 @@ function exportAbHistory(format){
   $("abStatus").textContent='已导出历史 Markdown';
 }
 
+const PRODUCT_OFFERS={
+  microSaas:{
+    key:'microSaas',
+    title:'Micro-SaaS 冷启动提示词包',
+    price:'¥69 起（季度更新 ¥229 / 启动增长包 ¥799）',
+    audience:'独立开发者 / 小团队',
+    sample:'outputs/prompt-pack-micro-saas-launch-v2.json / outputs/gumroad-listing-micro-saas-v2.md',
+    text:[
+      '我想购买「Micro-SaaS 冷启动提示词包」。',
+      '适用对象：独立开发者 / 小团队。',
+      '我希望 7 天内拿到定位、卖点、落地页文案和首轮获客沟通模板。',
+      '当前参考价格：¥69 起（季度更新 ¥229 / 启动增长包 ¥799）。',
+      '交付样例：outputs/prompt-pack-micro-saas-launch-v2.json / outputs/gumroad-listing-micro-saas-v2.md'
+    ].join('\n'),
+    demo:{
+      experimentLabel:'micro-saas-offer-demo',
+      minClicks:100,
+      a_impressions:1200,
+      a_clicks:108,
+      a_checkout:22,
+      a_paid:6,
+      b_impressions:1180,
+      b_clicks:116,
+      b_checkout:29,
+      b_paid:10,
+      productPrice:69,
+      rolloutClicks:1000,
+      costPerClick:0.55,
+      targetLift:15,
+      targetConfidence:90,
+      targetPower:80
+    }
+  },
+  orion:{
+    key:'orion',
+    title:'Orion Nexus Quant 研究包',
+    price:'研究演示 / 定制报告（高客单）',
+    audience:'想要研究演示、模拟监控或定制报告的用户',
+    sample:'products/orion-nexus/output/AAPL_backtest.md / AAPL_report.html',
+    text:[
+      '我想了解「Orion Nexus Quant 研究包」的演示或定制报告。',
+      '我关心的是研究/模拟用途，不涉及实盘代操。',
+      '希望先看组合概览、基准比较、回测样例，再决定是否升级订阅/咨询。',
+      '当前定位：研究演示 / 定制报告（高客单）。',
+      '交付样例：products/orion-nexus/output/AAPL_backtest.md / AAPL_report.html'
+    ].join('\n'),
+    demo:{
+      experimentLabel:'orion-research-offer-demo',
+      minClicks:80,
+      a_impressions:900,
+      a_clicks:84,
+      a_checkout:10,
+      a_paid:2,
+      b_impressions:920,
+      b_clicks:97,
+      b_checkout:14,
+      b_paid:4,
+      productPrice:299,
+      rolloutClicks:300,
+      costPerClick:2.4,
+      targetLift:20,
+      targetConfidence:90,
+      targetPower:80
+    }
+  }
+};
+
+function buildProductOfferSummary(){
+  return [
+    'Passive Income Lab 报价摘要',
+    `1) ${PRODUCT_OFFERS.microSaas.title}｜${PRODUCT_OFFERS.microSaas.price}`,
+    `   适合：${PRODUCT_OFFERS.microSaas.audience}`,
+    `   样例：${PRODUCT_OFFERS.microSaas.sample}`,
+    `2) ${PRODUCT_OFFERS.orion.title}｜${PRODUCT_OFFERS.orion.price}`,
+    `   适合：${PRODUCT_OFFERS.orion.audience}`,
+    `   样例：${PRODUCT_OFFERS.orion.sample}`,
+    '可先在页面下方用 A/B Funnel Analyzer 验证卖点，再决定买基础包或升级研究包。'
+  ].join('\n');
+}
+
+async function copyProductOffer(key){
+  const offer=PRODUCT_OFFERS[key];
+  if(!offer) return;
+  await copyText(offer.text,`已复制：${offer.title}`);
+  $('productOfferStatus').textContent=`已复制 ${offer.title} 咨询文案，可直接发给潜在用户或贴到私聊。`;
+}
+
+function loadProductDemo(key){
+  const offer=PRODUCT_OFFERS[key];
+  if(!offer) return;
+  Object.entries(offer.demo).forEach(([field,value])=>{
+    const node=$(field);
+    if(node) node.value=value;
+  });
+  $('productOfferStatus').textContent=`已载入 ${offer.title} 演示参数，可直接运行下方 A/B 判定。`;
+  $('abStatus').textContent=`已填入 ${offer.title} 演示参数`;
+}
+
+async function copyProductOfferBundle(){
+  const text=buildProductOfferSummary();
+  await copyText(text,'已复制报价摘要');
+  $('productOfferStatus').textContent='已复制两款产品的报价摘要。';
+}
+
+async function shareProductOfferBundle(){
+  const text=buildProductOfferSummary();
+  await shareText({
+    title:'Passive Income Lab 报价摘要',
+    text
+  },'已调起系统分享报价摘要',()=>copyText(text,'当前浏览器不支持原生分享，已复制报价摘要'));
+  $('productOfferStatus').textContent='已处理报价摘要分享动作。';
+}
+
 async function runAB(){
   $("abStatus").textContent='计算中...';
   const payload={
@@ -1821,6 +1950,12 @@ $("copySelectedAbWeeklySummary").addEventListener('click',copySelectedAbWeeklySu
 $("shareSelectedAbWeeklySummary").addEventListener('click',shareSelectedAbWeeklySummary);
 $("loadAbDemoHistory").addEventListener('click',loadAbDemoHistory);
 $("importAbHistoryJson").addEventListener('click',importAbHistoryJson);
+$("copyMicroSaasOffer").addEventListener('click',()=>copyProductOffer('microSaas'));
+$("loadMicroSaasDemo").addEventListener('click',()=>loadProductDemo('microSaas'));
+$("copyOrionOffer").addEventListener('click',()=>copyProductOffer('orion'));
+$("loadOrionDemo").addEventListener('click',()=>loadProductDemo('orion'));
+$("copyProductOfferBundle").addEventListener('click',copyProductOfferBundle);
+$("shareProductOfferBundle").addEventListener('click',shareProductOfferBundle);
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
 $("renameAbExperiment").addEventListener('click',renameSelectedAbExperiment);
 $("deleteAbExperiment").addEventListener('click',deleteSelectedAbExperiment);

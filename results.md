@@ -1,5 +1,32 @@
 # Results
 
+## 2026-03-31 08:0x 早间推进（新增成果）
+
+### 本轮目标
+- 沿着上一轮“货架还缺最小 CTA”的结论，补一个真正可直接用于成交前沟通的轻动作层，而不是继续堆新的分析卡片。
+
+### 新增产出
+- `web/index.html`
+  - 为 **Micro-SaaS 冷启动提示词包** 新增“复制购买咨询文案 / 载入演示参数”按钮
+  - 为 **Orion Nexus Quant 研究包** 新增“复制研究包咨询文案 / 载入演示参数”按钮
+  - 新增“复制报价摘要 / 手机原生分享报价摘要”入口，支持把两款产品的价格与适用对象一次性发出去
+  - 新增 `PRODUCT_OFFERS / buildProductOfferSummary / copyProductOffer / loadProductDemo` 等逻辑，缩短从货架展示到实际沟通/验证的路径
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 预计可通过 `npm run validate` 覆盖页面脚本检查与既有 A/B 冒烟；新增 CTA 逻辑位于同一内联脚本内
+- 文本级可见证据：页面已出现 `copyMicroSaasOffer / loadMicroSaasDemo / copyProductOfferBundle / shareProductOfferBundle` 按钮与事件绑定
+
+### 阻塞
+- 仍未接入真实支付或订单回传；这轮解决的是“成交前动作”而非支付闭环本身
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度
+
+### 下一步
+1. 若继续低阻力推进，可把报价摘要进一步落成独立价格页或 FAQ 弹层，而不是继续扩 A/B 卡片
+2. 若拿到真实咨询渠道，可直接用现有 CTA 文案做第一轮分发，再把反馈回写到 `outputs/` 或 `results.md`
+3. 若要逼近成交闭环下一步，可补“复制支付说明 / 联系方式占位”或真实支付按钮
+
 ## 2026-03-30 22:0x 夜间推进（新增成果）
 
 ### 本轮目标
