@@ -157,6 +157,34 @@
             </select>
           </label>
         </div>
+        <div class="grid g3">
+          <label>跟进状态
+            <select id="leadStage">
+              <option value="待跟进" selected>待跟进</option>
+              <option value="已发送资料">已发送资料</option>
+              <option value="已报价">已报价</option>
+              <option value="已成交">已成交</option>
+              <option value="暂不推进">暂不推进</option>
+            </select>
+          </label>
+          <label>线索筛选
+            <select id="leadStageFilter">
+              <option value="all" selected>全部状态</option>
+              <option value="待跟进">待跟进</option>
+              <option value="已发送资料">已发送资料</option>
+              <option value="已报价">已报价</option>
+              <option value="已成交">已成交</option>
+              <option value="暂不推进">暂不推进</option>
+            </select>
+          </label>
+          <label>排序视角
+            <select id="leadSortMode">
+              <option value="latest" selected>最近更新优先</option>
+              <option value="priority">高优先级优先</option>
+              <option value="stage">按跟进状态</option>
+            </select>
+          </label>
+        </div>
         <div class="grid g2">
           <label>需求场景 / 痛点
             <input id="leadNeed" type="text" placeholder="如：7 天内做出首版卖点和销售页" />
@@ -169,8 +197,9 @@
           <button id="saveLeadEntry" style="background:#1c4d62">保存当前线索</button>
           <button id="copyLeadFollowup" class="ghost">复制跟进摘要</button>
         </div>
-        <div class="grid g2">
+        <div class="grid g3">
           <button id="exportLeadJson" class="ghost">导出线索 JSON</button>
+          <button id="exportLeadCsv" class="ghost">导出线索 CSV</button>
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
         </div>
         <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
@@ -1780,9 +1809,35 @@ function getLeadFormState(){
     channel:($('leadChannel')?.value || '待确认').trim(),
     budget:($('leadBudget')?.value || '待确认').trim(),
     priority:($('leadPriority')?.value || '中').trim(),
+    stage:($('leadStage')?.value || '待跟进').trim(),
     need:($('leadNeed')?.value || '').trim() || '待补充需求场景',
     nextStep:($('leadNextStep')?.value || '').trim() || '待确认下一步'
   };
+}
+
+function getLeadStageFilter(){
+  return $('leadStageFilter')?.value || 'all';
+}
+
+function getLeadSortMode(){
+  return $('leadSortMode')?.value || 'latest';
+}
+
+function sortProductLeads(leads){
+  const stageOrder=['待跟进','已发送资料','已报价','已成交','暂不推进'];
+  const priorityOrder={高:0,中:1,低:2};
+  const sortMode=getLeadSortMode();
+  return [...leads].sort((a,b)=>{
+    if(sortMode==='priority'){
+      const priorityDelta=(priorityOrder[a.priority] ?? 9)-(priorityOrder[b.priority] ?? 9);
+      if(priorityDelta!==0) return priorityDelta;
+    }
+    if(sortMode==='stage'){
+      const stageDelta=stageOrder.indexOf(a.stage || '待跟进')-stageOrder.indexOf(b.stage || '待跟进');
+      if(stageDelta!==0) return stageDelta;
+    }
+    return new Date(b.updatedAt || b.createdAt)-new Date(a.updatedAt || a.createdAt);
+  });
 }
 
 function buildLeadFollowupText(entry){
@@ -1793,6 +1848,7 @@ function buildLeadFollowupText(entry){
     `渠道：${entry.channel}`,
     `预算：${entry.budget}`,
     `优先级：${entry.priority}`,
+    `跟进状态：${entry.stage || '待跟进'}`,
     `需求：${entry.need}`,
     `建议下一步：${entry.nextStep}`,
     `可发送材料：报价摘要 / FAQ / 购买说明 / 单产品链接`,
@@ -1808,25 +1864,40 @@ function renderLeadBoard(){
     board.innerHTML='<div class="muted">暂无线索记录</div>';
     return;
   }
-  const rows=leads.map((entry)=>{
+  const stageFilter=getLeadStageFilter();
+  const filtered=leads.filter(entry=>stageFilter==='all' || (entry.stage || '待跟进')===stageFilter);
+  if(!filtered.length){
+    board.innerHTML='<div class="muted">当前筛选范围暂无线索</div>';
+    return;
+  }
+  const visibleLeads=sortProductLeads(filtered);
+  const summary=visibleLeads.reduce((acc,entry)=>{
+    const stage=entry.stage || '待跟进';
+    acc[stage]=(acc[stage] || 0)+1;
+    return acc;
+  },{});
+  const summaryText=Object.entries(summary).map(([stage,count])=>`${stage} ${count} 条`).join('｜');
+  const rows=visibleLeads.map((entry)=>{
     const offer=getProductOfferBySlug(entry.productSlug);
-    return `<tr><td>${entry.createdAt.replace('T',' ').slice(0,16)}</td><td>${entry.name}</td><td>${offer.title}</td><td>${entry.channel}</td><td>${entry.budget}</td><td>${entry.priority}</td><td>${entry.nextStep}</td></tr>`;
+    return `<tr><td>${(entry.updatedAt || entry.createdAt).replace('T',' ').slice(0,16)}</td><td>${entry.name}</td><td>${offer.title}</td><td>${entry.channel}</td><td>${entry.budget}</td><td>${entry.priority}</td><td>${entry.stage || '待跟进'}</td><td>${entry.nextStep}</td></tr>`;
   }).join('');
-  board.innerHTML=`<h3>最近线索</h3><table><thead><tr><th>时间</th><th>客户</th><th>产品</th><th>渠道</th><th>预算</th><th>优先级</th><th>下一步</th></tr></thead><tbody>${rows}</tbody></table>`;
+  board.innerHTML=`<h3>最近线索</h3><div class="mini muted">当前显示 ${visibleLeads.length} 条｜${summaryText}</div><table><thead><tr><th>更新时间</th><th>客户</th><th>产品</th><th>渠道</th><th>预算</th><th>优先级</th><th>状态</th><th>下一步</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 async function saveLeadEntry(){
   const offer=getSelectedProduct();
+  const now=new Date().toISOString();
   const entry={
     ...getLeadFormState(),
     productSlug:offer.slug,
-    createdAt:new Date().toISOString()
+    createdAt:now,
+    updatedAt:now
   };
   const leads=loadProductLeads();
   leads.unshift(entry);
   saveProductLeads(leads);
   renderLeadBoard();
-  $('leadStatus').textContent=`已保存线索：${entry.name} → ${offer.title}`;
+  $('leadStatus').textContent=`已保存线索：${entry.name} → ${offer.title}（${entry.stage}）`;
   $('productOfferStatus').textContent=`已保存 ${entry.name} 的 ${offer.title} 跟进记录。`;
 }
 
@@ -1842,6 +1913,26 @@ async function copyLeadFollowup(){
   $('leadStatus').textContent=`已复制 ${entry.name} 的跟进摘要。`;
 }
 
+function buildLeadCsv(leads){
+  const header=['updated_at','created_at','name','product','channel','budget','priority','stage','need','next_step'];
+  const rows=leads.map(entry=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    return [
+      entry.updatedAt || entry.createdAt,
+      entry.createdAt,
+      entry.name,
+      offer.title,
+      entry.channel,
+      entry.budget,
+      entry.priority,
+      entry.stage || '待跟进',
+      entry.need,
+      entry.nextStep
+    ];
+  });
+  return [header,...rows].map(row=>row.map(value=>`"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+}
+
 function exportLeadJson(){
   const leads=loadProductLeads();
   if(!leads.length){
@@ -1853,8 +1944,20 @@ function exportLeadJson(){
   $('leadStatus').textContent='已导出线索 JSON';
 }
 
+function exportLeadCsv(){
+  const leads=sortProductLeads(loadProductLeads());
+  if(!leads.length){
+    $('leadStatus').textContent='当前暂无可导出的线索';
+    return;
+  }
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`product-leads-${ts}.csv`,buildLeadCsv(leads),'text/csv;charset=utf-8');
+  $('leadStatus').textContent=`已导出线索 CSV（${leads.length} 条）`;
+}
+
 function loadLeadForSelectedProduct(){
   const offer=getSelectedProduct();
+  $('leadStage').value='待跟进';
   $('leadNeed').value=offer.key==='microSaas' ? '7 天内完成定位、卖点、落地页文案和首轮获客沟通' : '先看研究演示、确认标的/问题，再决定是否升级定制报告';
   $('leadNextStep').value=offer.key==='microSaas' ? '先发单产品链接 + FAQ，确认后推荐基础包/季度更新' : '先发单产品链接 + 研究说明，确认研究范围后再报高客单方案';
   $('leadStatus').textContent=`已按 ${offer.title} 生成跟进模板。`;
@@ -2368,7 +2471,10 @@ $("loadSelectedProductDemo").addEventListener('click',loadSelectedProductDemo);
 $("saveLeadEntry").addEventListener('click',saveLeadEntry);
 $("copyLeadFollowup").addEventListener('click',copyLeadFollowup);
 $("exportLeadJson").addEventListener('click',exportLeadJson);
+$("exportLeadCsv").addEventListener('click',exportLeadCsv);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
+$("leadStageFilter").addEventListener('change',renderLeadBoard);
+$("leadSortMode").addEventListener('change',renderLeadBoard);
 $("microSaasCard").addEventListener('click',()=>selectProductLanding('microSaas',{scroll:true}));
 $("orionCard").addEventListener('click',()=>selectProductLanding('orion',{scroll:true}));
 $("abHistoryImportFile").addEventListener('change',handleAbHistoryImport);
