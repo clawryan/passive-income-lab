@@ -1,3 +1,31 @@
+## 2026-04-02 22:0x 夜间推进（新增成果）
+
+### 本轮目标
+- 按今天下午写下的下一步，优先补“最小联系 / 支付入口占位”，把单产品页从可解释、可记录线索，推进到可挂真实外链 CTA。
+
+### 新增产出
+- `web/index.html`
+  - 新增“联系 / 支付入口占位”卡片，可按当前单产品分别填写并保存：联系按钮文案、联系链接、支付按钮文案、支付链接
+  - 新增 `PRODUCT_CHANNEL_CONFIG_KEY / loadProductChannelConfigs / renderSelectedChannelConfig / saveSelectedProductChannelConfig / buildSelectedChannelSummary / openProductChannelLink`
+  - 切换 `?product=micro-saas` / `?product=orion-nexus` 时会自动载入对应入口配置
+  - 单产品说明与“购买 / 联系说明”文本现在会同步带出已配置的联系 / 支付入口状态
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 页面脚本语法检查通过：`npm run check:web`
+- 全链路回归继续通过：`npm run validate`
+- 文本级可见证据：页面已出现 `saveProductChannelConfig / copySelectedChannelSummary / openSelectedContactLink / openSelectedPaymentLink / PRODUCT_CHANNEL_CONFIG_KEY` 逻辑与事件绑定
+
+### 阻塞
+- 当前只是浏览器本地保存的外链配置，不是订单系统；若要自动回传支付状态、统计真实成交，还需要后端或第三方支付 webhook。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“按产品统计线索到成交率 / 已配置入口点击占位统计”，让货架更像经营看板。
+2. 若拿到真实联系链接（微信卡片、飞书表单、Gumroad/Stripe 链接），可直接填入当前入口卡并开始真分发。
+3. 若要继续逼近自动化闭环，下一步应补最小远程表单 / webhook 接入，而不是继续堆说明性文本。
+
 # Results
 
 ## 2026-04-02 17:0x 午后推进（新增成果）

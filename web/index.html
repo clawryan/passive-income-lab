@@ -121,6 +121,39 @@
       <div class="card stack">
         <div class="section-title">
           <div>
+            <h3>联系 / 支付入口占位</h3>
+            <div class="muted">给当前产品补一个可配置的外链 CTA：先在本地填好联系链接 / 支付链接，之后就能在手机和电脑端直接打开或复制。</div>
+          </div>
+          <span class="pill">可配置外链</span>
+        </div>
+        <div class="grid g2">
+          <label>联系按钮文案
+            <input id="contactLinkLabel" type="text" placeholder="如：加我微信 / 提交需求表单" />
+          </label>
+          <label>联系链接
+            <input id="contactLinkUrl" type="url" placeholder="如：https://forms.gle/... / https://u.wechat.com/..." />
+          </label>
+        </div>
+        <div class="grid g2">
+          <label>支付按钮文案
+            <input id="paymentLinkLabel" type="text" placeholder="如：打开支付链接 / 下单页" />
+          </label>
+          <label>支付链接
+            <input id="paymentLinkUrl" type="url" placeholder="如：https://buy.stripe.com/... / https://gumroad.com/..." />
+          </label>
+        </div>
+        <div class="grid g4">
+          <button id="saveProductChannelConfig" style="background:#1c4d62">保存当前产品入口</button>
+          <button id="copySelectedChannelSummary" class="ghost">复制当前产品联系信息</button>
+          <button id="openSelectedContactLink" class="ghost">打开联系入口</button>
+          <button id="openSelectedPaymentLink" class="ghost">打开支付入口</button>
+        </div>
+        <div id="channelConfigStatus" class="mini muted">当前未接真实支付 / 联系入口；可先为单产品保存外链，占位到浏览器本地。</div>
+      </div>
+
+      <div class="card stack">
+        <div class="section-title">
+          <div>
             <h3>线索收集 / 跟进卡</h3>
             <div class="muted">打开单产品页后，可直接登记潜在客户、记录预算/场景，并一键复制跟进摘要或导出 JSON。</div>
           </div>
@@ -2193,6 +2226,96 @@ function loadLeadForSelectedProduct(options={}){
   $('leadStatus').textContent=`已按 ${offer.title} 生成跟进模板。`;
 }
 
+const PRODUCT_CHANNEL_CONFIG_KEY='passive-income-lab-product-channel-config-v1';
+
+function loadProductChannelConfigs(){
+  try{
+    const raw=localStorage.getItem(PRODUCT_CHANNEL_CONFIG_KEY);
+    const parsed=raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed==='object' ? parsed : {};
+  }catch(_){
+    return {};
+  }
+}
+
+function saveProductChannelConfigs(configs){
+  localStorage.setItem(PRODUCT_CHANNEL_CONFIG_KEY,JSON.stringify(configs || {}));
+}
+
+function getProductChannelConfig(key){
+  const configs=loadProductChannelConfigs();
+  return configs?.[key] || {};
+}
+
+function normalizeChannelConfig(config={}){
+  return {
+    contactLabel:String(config.contactLabel || '').trim(),
+    contactUrl:String(config.contactUrl || '').trim(),
+    paymentLabel:String(config.paymentLabel || '').trim(),
+    paymentUrl:String(config.paymentUrl || '').trim()
+  };
+}
+
+function renderSelectedChannelConfig(){
+  const offer=getSelectedProduct();
+  const config=normalizeChannelConfig(getProductChannelConfig(offer.key));
+  $('contactLinkLabel').value=config.contactLabel || '';
+  $('contactLinkUrl').value=config.contactUrl || '';
+  $('paymentLinkLabel').value=config.paymentLabel || '';
+  $('paymentLinkUrl').value=config.paymentUrl || '';
+  const hasConfig=config.contactUrl || config.paymentUrl;
+  $('channelConfigStatus').textContent=hasConfig
+    ? `已载入 ${offer.title} 的入口配置：${config.contactUrl ? '联系入口已设' : '联系入口未设'}，${config.paymentUrl ? '支付入口已设' : '支付入口未设'}。`
+    : `当前未给 ${offer.title} 配置真实联系 / 支付入口；可先保存外链占位到本地。`;
+}
+
+function saveSelectedProductChannelConfig(){
+  const offer=getSelectedProduct();
+  const configs=loadProductChannelConfigs();
+  configs[offer.key]=normalizeChannelConfig({
+    contactLabel:$('contactLinkLabel')?.value,
+    contactUrl:$('contactLinkUrl')?.value,
+    paymentLabel:$('paymentLinkLabel')?.value,
+    paymentUrl:$('paymentLinkUrl')?.value
+  });
+  saveProductChannelConfigs(configs);
+  $('channelConfigStatus').textContent=`已保存 ${offer.title} 的联系 / 支付入口配置。`;
+}
+
+function buildSelectedChannelSummary(key=getSelectedProduct().key){
+  const offer=PRODUCT_OFFERS[key];
+  if(!offer) return '';
+  const config=normalizeChannelConfig(getProductChannelConfig(key));
+  return [
+    `${offer.title}｜联系 / 支付入口`,
+    `产品价格：${offer.price}`,
+    config.contactUrl ? `联系入口：${config.contactLabel || '联系入口'}｜${config.contactUrl}` : '联系入口：暂未配置（可先保存微信 / 表单 / 飞书链接）',
+    config.paymentUrl ? `支付入口：${config.paymentLabel || '支付入口'}｜${config.paymentUrl}` : '支付入口：暂未配置（可先保存 Gumroad / Stripe / 收款页链接）',
+    '说明：这是当前产品的本地入口配置，可直接复制给潜在用户或自己跨设备接力。'
+  ].join('\n');
+}
+
+async function copySelectedChannelSummary(){
+  const offer=getSelectedProduct();
+  await copyText(buildSelectedChannelSummary(offer.key),`已复制 ${offer.title} 联系 / 支付入口`);
+  $('channelConfigStatus').textContent=`已复制 ${offer.title} 的联系 / 支付入口摘要。`;
+}
+
+function openProductChannelLink(type){
+  const offer=getSelectedProduct();
+  const config=normalizeChannelConfig(getProductChannelConfig(offer.key));
+  const url=type==='payment' ? config.paymentUrl : config.contactUrl;
+  const label=type==='payment' ? '支付' : '联系';
+  if(!url){
+    $('channelConfigStatus').textContent=`当前还没有为 ${offer.title} 配置${label}入口链接。`;
+    return;
+  }
+  if(typeof window!=='undefined' && typeof window.open==='function'){
+    window.open(url,'_blank','noopener,noreferrer');
+  }
+  $('channelConfigStatus').textContent=`已尝试打开 ${offer.title} 的${label}入口。`;
+}
+
 const PRODUCT_OFFERS={
   microSaas:{
     key:'microSaas',
@@ -2322,6 +2445,14 @@ function buildProductPurchaseSummary(){
     '当前页面定位：',
     '- 这是成交前说明页，不是已接入真实支付的订单页。',
     '- 若要正式收款，可把这段说明发给潜在用户后，再人工补充支付方式、联系方式或独立支付链接。',
+    ...(()=>{
+      const microConfig=normalizeChannelConfig(getProductChannelConfig('microSaas'));
+      const orionConfig=normalizeChannelConfig(getProductChannelConfig('orion'));
+      return [
+        `- Micro-SaaS 联系入口：${microConfig.contactUrl || '暂未配置'}｜支付入口：${microConfig.paymentUrl || '暂未配置'}`,
+        `- Orion 联系入口：${orionConfig.contactUrl || '暂未配置'}｜支付入口：${orionConfig.paymentUrl || '暂未配置'}`
+      ];
+    })(),
     '- Orion 仅限研究 / 模拟演示，不承诺收益，不涉及实盘代操。',
     '',
     '建议发送模板：',
@@ -2355,6 +2486,15 @@ function buildProductLandingSummary(key){
     '推荐成交路径：',
     ...offer.steps.map((step,index)=>`${index+1}. ${step}`),
     `样例：${offer.sample}`,
+    '',
+    ...(()=>{
+      const config=normalizeChannelConfig(getProductChannelConfig(key));
+      return [
+        '联系 / 支付入口：',
+        config.contactUrl ? `- ${config.contactLabel || '联系入口'}：${config.contactUrl}` : '- 联系入口：暂未配置（可先保存微信 / 飞书 / 表单链接）',
+        config.paymentUrl ? `- ${config.paymentLabel || '支付入口'}：${config.paymentUrl}` : '- 支付入口：暂未配置（可先保存 Gumroad / Stripe / 收款页链接）'
+      ];
+    })(),
     '',
     '补充说明：',
     '- 当前是成交前说明页，可直接分享给潜在用户。',
@@ -2397,6 +2537,7 @@ function selectProductLanding(key,{scroll=false}={}){
   }
   $('productOfferStatus').textContent=`已切换到 ${offer.title} 单产品分享视角。`;
   loadLeadForSelectedProduct();
+  renderSelectedChannelConfig();
   if(scroll){
     $('productDetailPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
   }
@@ -2698,6 +2839,10 @@ $("copySelectedProductLink").addEventListener('click',copySelectedProductLink);
 $("shareSelectedProductLink").addEventListener('click',shareSelectedProductLink);
 $("copySelectedProductSummary").addEventListener('click',copySelectedProductSummary);
 $("loadSelectedProductDemo").addEventListener('click',loadSelectedProductDemo);
+$("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
+$("copySelectedChannelSummary").addEventListener('click',copySelectedChannelSummary);
+$("openSelectedContactLink").addEventListener('click',()=>openProductChannelLink('contact'));
+$("openSelectedPaymentLink").addEventListener('click',()=>openProductChannelLink('payment'));
 $("saveLeadEntry").addEventListener('click',saveLeadEntry);
 $("copyLeadFollowup").addEventListener('click',copyLeadFollowup);
 $("resetLeadForm").addEventListener('click',()=>resetLeadForm());

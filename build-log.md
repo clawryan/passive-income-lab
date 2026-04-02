@@ -1,3 +1,11 @@
+## 2026-04-02 22:0x (Asia/Shanghai)
+- 这轮不再继续堆 FAQ 或线索导入细节，而是补一个更接近真实成交的低阻力缺口：虽然首页已有产品说明与购买文案，但仍缺“确认后往哪联系 / 去哪付款”的最小外链 CTA。
+- `web/index.html` 新增“联系 / 支付入口占位”卡片；可按当前选中的单产品分别保存联系按钮文案、联系链接、支付按钮文案、支付链接，并写入浏览器本地。
+- 新增 `PRODUCT_CHANNEL_CONFIG_KEY`、`loadProductChannelConfigs()`、`renderSelectedChannelConfig()`、`saveSelectedProductChannelConfig()`、`buildSelectedChannelSummary()`、`openProductChannelLink()`，支持切换产品时自动加载对应入口配置、一键复制入口摘要、直接打开联系 / 支付外链。
+- `buildProductLandingSummary()` 与 `buildProductPurchaseSummary()` 已同步带出当前配置的入口状态；单产品说明页与购买说明不再只会说“之后再补链接”，而是能在已配置时直接给出真实入口。
+- `README.md` 已同步补充“联系 / 支付入口可配置占位”能力说明。
+- 结果：页面从“能解释产品、记录线索”进一步推进到“可为每个产品挂上真实联系 / 支付落点”，更接近可直接转发并成交的最小闭环。
+
 ## 2026-04-02 08:0x (Asia/Shanghai)
 - 这轮优先补一个比“再加说明文案”更接近真实成交接力的缺口：线索虽然已支持导出 JSON，但手机/电脑切换后还不能把历史包重新导回浏览器，导致本地 CRM 只能单向带走、不能恢复。
 - `web/index.html` 新增“导入线索 JSON”入口与隐藏文件选择器，支持读取此前导出的 `leads` 包，并通过 `normalizeImportedLead()` / `mergeImportedLeads()` 按 `id + updatedAt` 自动合并去重。
