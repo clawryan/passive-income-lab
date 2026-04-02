@@ -198,9 +198,13 @@
           <button id="copyLeadFollowup" class="ghost">复制跟进摘要</button>
         </div>
         <div class="grid g3">
+          <button id="resetLeadForm" class="ghost">清空表单 / 新建线索</button>
           <button id="exportLeadJson" class="ghost">导出线索 JSON</button>
           <button id="exportLeadCsv" class="ghost">导出线索 CSV</button>
+        </div>
+        <div class="grid g2">
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
+          <div id="leadEditingHint" class="mini muted" style="display:flex;align-items:center">当前为新建模式；在线索表中点“编辑”可回填修改。</div>
         </div>
         <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
         <div id="leadBoard" class="card"><div class="muted">暂无线索记录</div></div>
@@ -1790,6 +1794,7 @@ function exportAbHistory(format){
 }
 
 const PRODUCT_LEADS_KEY='passive-income-lab.productLeads.v1';
+let currentLeadEditId='';
 
 function loadProductLeads(){
   try{
@@ -1819,6 +1824,36 @@ function getLeadStageFilter(){
   return $('leadStageFilter')?.value || 'all';
 }
 
+function setLeadEditingState(entry){
+  currentLeadEditId=entry?.id || '';
+  const saveButton=$('saveLeadEntry');
+  const hint=$('leadEditingHint');
+  if(saveButton){
+    saveButton.textContent=currentLeadEditId ? '保存当前修改' : '保存当前线索';
+  }
+  if(hint){
+    hint.textContent=currentLeadEditId
+      ? `当前正在编辑：${entry.name}（${entry.stage || '待跟进'}）`
+      : '当前为新建模式；在线索表中点“编辑”可回填修改。';
+  }
+}
+
+function resetLeadForm(options={}){
+  const offer=options.keepProduct ? getSelectedProduct() : getSelectedProduct();
+  $('leadName').value='';
+  $('leadChannel').value='微信私聊';
+  $('leadBudget').value='待确认';
+  $('leadPriority').value='中';
+  $('leadStage').value='待跟进';
+  $('leadNeed').value='';
+  $('leadNextStep').value='';
+  setLeadEditingState(null);
+  if(!options.skipTemplate){
+    loadLeadForSelectedProduct({preserveStatus:true,skipReset:true});
+  }
+  $('leadStatus').textContent=options.message || `已切回新建模式，可继续登记 ${offer.title} 线索。`;
+}
+
 function getLeadSortMode(){
   return $('leadSortMode')?.value || 'latest';
 }
@@ -1838,6 +1873,10 @@ function sortProductLeads(leads){
     }
     return new Date(b.updatedAt || b.createdAt)-new Date(a.updatedAt || a.createdAt);
   });
+}
+
+function getLeadEntryId(entry){
+  return entry.id || entry.createdAt || '';
 }
 
 function buildLeadFollowupText(entry){
@@ -1879,25 +1918,87 @@ function renderLeadBoard(){
   const summaryText=Object.entries(summary).map(([stage,count])=>`${stage} ${count} 条`).join('｜');
   const rows=visibleLeads.map((entry)=>{
     const offer=getProductOfferBySlug(entry.productSlug);
-    return `<tr><td>${(entry.updatedAt || entry.createdAt).replace('T',' ').slice(0,16)}</td><td>${entry.name}</td><td>${offer.title}</td><td>${entry.channel}</td><td>${entry.budget}</td><td>${entry.priority}</td><td>${entry.stage || '待跟进'}</td><td>${entry.nextStep}</td></tr>`;
+    const leadId=getLeadEntryId(entry);
+    const quickActions=['待跟进','已发送资料','已报价','已成交'].map(stage=>`<button onclick="quickUpdateLeadStage('${leadId}','${stage}')" class="ghost" style="width:auto;padding:6px 8px;font-size:12px;${stage===(entry.stage || '待跟进') ? 'border-color:#3a7bff;' : ''}">${stage}</button>`).join(' ');
+    return `<tr><td>${(entry.updatedAt || entry.createdAt).replace('T',' ').slice(0,16)}</td><td><b>${entry.name}</b><div class="mini muted" style="margin-top:4px">${entry.need}</div></td><td>${offer.title}</td><td>${entry.channel}</td><td>${entry.budget}</td><td>${entry.priority}</td><td>${entry.stage || '待跟进'}</td><td>${entry.nextStep}<div class="toolbar" style="margin-top:8px"><button onclick="editLeadEntry('${leadId}')" style="width:auto;padding:6px 8px;font-size:12px;background:#2a4b8d">编辑</button>${quickActions}</div></td></tr>`;
   }).join('');
-  board.innerHTML=`<h3>最近线索</h3><div class="mini muted">当前显示 ${visibleLeads.length} 条｜${summaryText}</div><table><thead><tr><th>更新时间</th><th>客户</th><th>产品</th><th>渠道</th><th>预算</th><th>优先级</th><th>状态</th><th>下一步</th></tr></thead><tbody>${rows}</tbody></table>`;
+  board.innerHTML=`<h3>最近线索</h3><div class="mini muted">当前显示 ${visibleLeads.length} 条｜${summaryText}</div><table><thead><tr><th>更新时间</th><th>客户</th><th>产品</th><th>渠道</th><th>预算</th><th>优先级</th><th>状态</th><th>下一步 / 快捷动作</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function editLeadEntry(leadId){
+  const leads=loadProductLeads();
+  const entry=leads.find(item=>getLeadEntryId(item)===leadId);
+  if(!entry){
+    $('leadStatus').textContent='未找到要编辑的线索';
+    return;
+  }
+  const offer=getProductOfferBySlug(entry.productSlug);
+  selectProductLanding(offer.key);
+  $('leadName').value=entry.name || '';
+  $('leadChannel').value=entry.channel || '微信私聊';
+  $('leadBudget').value=entry.budget || '待确认';
+  $('leadPriority').value=entry.priority || '中';
+  $('leadStage').value=entry.stage || '待跟进';
+  $('leadNeed').value=entry.need || '';
+  $('leadNextStep').value=entry.nextStep || '';
+  setLeadEditingState({...entry,id:leadId});
+  $('leadStatus').textContent=`已回填 ${entry.name}，可直接修改后保存。`;
+}
+
+function quickUpdateLeadStage(leadId,stage){
+  const leads=loadProductLeads();
+  const index=leads.findIndex(item=>getLeadEntryId(item)===leadId);
+  if(index===-1){
+    $('leadStatus').textContent='未找到要更新的线索';
+    return;
+  }
+  const entry=leads[index];
+  const updated={...entry,stage,updatedAt:new Date().toISOString()};
+  if(stage==='已发送资料' && (!updated.nextStep || updated.nextStep==='待确认下一步')){
+    updated.nextStep='等待对方确认是否需要报价或演示';
+  }else if(stage==='已报价'){
+    updated.nextStep='24 小时内跟进是否确认下单 / 是否还有异议';
+  }else if(stage==='已成交'){
+    updated.nextStep='记录交付范围与复购 / 转介绍机会';
+  }
+  leads[index]=updated;
+  saveProductLeads(leads);
+  renderLeadBoard();
+  if(currentLeadEditId===leadId){
+    editLeadEntry(leadId);
+  }
+  $('leadStatus').textContent=`已将 ${updated.name} 更新为「${stage}」`;
 }
 
 async function saveLeadEntry(){
   const offer=getSelectedProduct();
   const now=new Date().toISOString();
+  const leads=loadProductLeads();
+  const wasEditing=!!currentLeadEditId;
   const entry={
     ...getLeadFormState(),
+    id:currentLeadEditId || `lead-${now}`,
     productSlug:offer.slug,
     createdAt:now,
     updatedAt:now
   };
-  const leads=loadProductLeads();
-  leads.unshift(entry);
+  if(wasEditing){
+    const index=leads.findIndex(item=>getLeadEntryId(item)===currentLeadEditId);
+    if(index!==-1){
+      entry.createdAt=leads[index].createdAt || now;
+      leads[index]=entry;
+    }else{
+      leads.unshift(entry);
+    }
+  }else{
+    leads.unshift(entry);
+  }
   saveProductLeads(leads);
   renderLeadBoard();
-  $('leadStatus').textContent=`已保存线索：${entry.name} → ${offer.title}（${entry.stage}）`;
+  setLeadEditingState(entry);
+  $('leadStatus').textContent=wasEditing
+    ? `已更新线索：${entry.name} → ${offer.title}（${entry.stage}）`
+    : `已保存线索：${entry.name} → ${offer.title}（${entry.stage}）`;
   $('productOfferStatus').textContent=`已保存 ${entry.name} 的 ${offer.title} 跟进记录。`;
 }
 
@@ -1955,9 +2056,14 @@ function exportLeadCsv(){
   $('leadStatus').textContent=`已导出线索 CSV（${leads.length} 条）`;
 }
 
-function loadLeadForSelectedProduct(){
+function loadLeadForSelectedProduct(options={}){
   const offer=getSelectedProduct();
-  $('leadStage').value='待跟进';
+  if(!options.skipReset){
+    setLeadEditingState(null);
+  }
+  if(!options.preserveStatus){
+    $('leadStage').value='待跟进';
+  }
   $('leadNeed').value=offer.key==='microSaas' ? '7 天内完成定位、卖点、落地页文案和首轮获客沟通' : '先看研究演示、确认标的/问题，再决定是否升级定制报告';
   $('leadNextStep').value=offer.key==='microSaas' ? '先发单产品链接 + FAQ，确认后推荐基础包/季度更新' : '先发单产品链接 + 研究说明，确认研究范围后再报高客单方案';
   $('leadStatus').textContent=`已按 ${offer.title} 生成跟进模板。`;
@@ -2470,6 +2576,7 @@ $("copySelectedProductSummary").addEventListener('click',copySelectedProductSumm
 $("loadSelectedProductDemo").addEventListener('click',loadSelectedProductDemo);
 $("saveLeadEntry").addEventListener('click',saveLeadEntry);
 $("copyLeadFollowup").addEventListener('click',copyLeadFollowup);
+$("resetLeadForm").addEventListener('click',()=>resetLeadForm());
 $("exportLeadJson").addEventListener('click',exportLeadJson);
 $("exportLeadCsv").addEventListener('click',exportLeadCsv);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
