@@ -1,5 +1,32 @@
 # Results
 
+## 2026-04-02 17:0x 午后推进（新增成果）
+
+### 本轮目标
+- 沿着上午写下的下一步，优先补“线索 JSON 导入恢复 + 成交漏斗真正渲染”，让本地 CRM 不只是能导出，还能在手机和电脑之间恢复继续推进。
+
+### 新增产出
+- `web/index.html`
+  - 线索区新增“导入线索 JSON”入口与隐藏文件选择器，可把此前导出的历史线索包重新导回浏览器
+  - 新增 `normalizeImportedLead()` / `mergeImportedLeads()` / `importLeadJsonFile()` / `triggerLeadJsonImport()`，按 `id + updatedAt` 自动合并去重
+  - `renderLeadBoard()` 现已真实调用 `renderLeadFunnelBoard()`；无论查看全部线索还是状态筛选，都会同步渲染成交漏斗总览与下一步建议
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 页面脚本语法检查通过：`npm run check:web`
+- 全链路回归继续通过：`npm run validate`
+- 关键文本证据：页面已出现 `importLeadJson / importLeadJsonFile / mergeImportedLeads / normalizeImportedLead / renderLeadFunnelBoard(filtered)` 逻辑与事件绑定
+
+### 阻塞
+- 线索导入/恢复已补齐，但仍是浏览器本地存储，不是远程多端实时同步；若要多人协作或自动回传，还需接后端或表单服务。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度；本轮按低阻力增量开发控制范围。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“导入后立即生成跟进摘要 / 待办”或“按产品维度统计成交率”，让恢复后的线索更快进入执行。
+2. 若要继续逼近真实成交闭环，下一步应补最小联系表单 / 支付链接占位，而不是再堆解释型文案。
+3. 若拿到真实咨询流量，可直接用“单产品页 + 导入恢复 + 漏斗看板”记录从首触达到成交的真实转化。
+
 ## 2026-04-02 08:0x 早间推进（新增成果）
 
 ### 本轮目标

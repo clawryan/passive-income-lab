@@ -1,4 +1,8 @@
 ## 2026-04-02 08:0x (Asia/Shanghai)
+- 这轮优先补一个比“再加说明文案”更接近真实成交接力的缺口：线索虽然已支持导出 JSON，但手机/电脑切换后还不能把历史包重新导回浏览器，导致本地 CRM 只能单向带走、不能恢复。
+- `web/index.html` 新增“导入线索 JSON”入口与隐藏文件选择器，支持读取此前导出的 `leads` 包，并通过 `normalizeImportedLead()` / `mergeImportedLeads()` 按 `id + updatedAt` 自动合并去重。
+- `renderLeadBoard()` 已补上对 `renderLeadFunnelBoard()` 的真实调用；现在无论查看全部线索还是某个状态筛选，都会同步看到“待跟进 / 已发送资料 / 已报价 / 已成交 / 暂不推进”的漏斗总览与下一步建议。
+- 结果：线索板不再只是“本机记录 + 单向导出”，而是已经能在手机和电脑之间恢复历史，并用漏斗视角快速判断该先清空首触达、催报价，还是复盘成交。
 - 这轮直接沿着昨早 results 里写下的下一步推进，没有再加新的说明文案，而是把线索板补到更接近真实成交推进：咨询进来后，最烦的不是缺文案，而是每次状态变化都要重填一遍。
 - `web/index.html` 的“线索收集 / 跟进卡”现已新增 **回填编辑** 与 **一键状态推进**：表格内可直接点“编辑”把某条线索回填到表单，也可一键切到“待跟进 / 已发送资料 / 已报价 / 已成交”。
 - 新增 `currentLeadEditId`、`setLeadEditingState()`、`resetLeadForm()`、`editLeadEntry()`、`quickUpdateLeadStage()`，并让 `saveLeadEntry()` 支持“新建 / 更新”双模式，避免修改线索时再生成重复记录。

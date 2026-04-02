@@ -197,16 +197,19 @@
           <button id="saveLeadEntry" style="background:#1c4d62">保存当前线索</button>
           <button id="copyLeadFollowup" class="ghost">复制跟进摘要</button>
         </div>
-        <div class="grid g3">
+        <div class="grid g4">
           <button id="resetLeadForm" class="ghost">清空表单 / 新建线索</button>
           <button id="exportLeadJson" class="ghost">导出线索 JSON</button>
+          <button id="importLeadJson" class="ghost">导入线索 JSON</button>
           <button id="exportLeadCsv" class="ghost">导出线索 CSV</button>
         </div>
+        <input id="importLeadJsonFile" type="file" accept="application/json,.json" style="display:none" />
         <div class="grid g2">
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
           <div id="leadEditingHint" class="mini muted" style="display:flex;align-items:center">当前为新建模式；在线索表中点“编辑”可回填修改。</div>
         </div>
         <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
+        <div id="leadFunnelBoard" class="card"><div class="muted">暂无线索漏斗</div></div>
         <div id="leadBoard" class="card"><div class="muted">暂无线索记录</div></div>
       </div>
 
@@ -1895,16 +1898,71 @@ function buildLeadFollowupText(entry){
   ].join('\n');
 }
 
+function getLeadStageMeta(){
+  return [
+    {key:'待跟进',label:'待跟进',color:'#9ca3af'},
+    {key:'已发送资料',label:'已发送资料',color:'#3b82f6'},
+    {key:'已报价',label:'已报价',color:'#f59e0b'},
+    {key:'已成交',label:'已成交',color:'#22c55e'},
+    {key:'暂不推进',label:'暂不推进',color:'#ef4444'}
+  ];
+}
+
+function renderLeadFunnelBoard(leads){
+  const board=$('leadFunnelBoard');
+  if(!board) return;
+  if(!leads.length){
+    board.innerHTML='<div class="muted">暂无线索漏斗</div>';
+    return;
+  }
+  const visibleLeads=sortProductLeads(leads);
+  const counts=visibleLeads.reduce((acc,entry)=>{
+    const stage=entry.stage || '待跟进';
+    acc[stage]=(acc[stage] || 0)+1;
+    return acc;
+  },{});
+  const total=visibleLeads.length;
+  const sentCount=total-(counts['待跟进'] || 0);
+  const quotedCount=counts['已报价'] || 0;
+  const wonCount=counts['已成交'] || 0;
+  const cards=getLeadStageMeta().map((meta)=>{
+    const count=counts[meta.key] || 0;
+    const ratio=total ? `${Math.round(count/total*100)}%` : '0%';
+    return `<div style="border:1px solid #243244;border-radius:14px;padding:12px;background:#111827"><div class="mini muted">${meta.label}</div><div style="font-size:24px;font-weight:700;margin-top:6px;color:${meta.color}">${count}</div><div class="mini muted">占比 ${ratio}</div></div>`;
+  }).join('');
+  const blockers=[];
+  if((counts['待跟进'] || 0) > 0){
+    blockers.push(`还有 ${counts['待跟进']} 条线索未发资料，优先清空首触达。`);
+  }
+  if((counts['已发送资料'] || 0) > Math.max(1, quotedCount)){
+    blockers.push(`“已发送资料”堆积 ${counts['已发送资料']} 条，说明报价/演示推进偏慢。`);
+  }
+  if(quotedCount > 0 && wonCount===0){
+    blockers.push(`已有 ${quotedCount} 条已报价但还没成交，建议 24 小时内逐条跟。`);
+  }
+  const nextAction=blockers[0] || (wonCount>0
+    ? `已出现 ${wonCount} 条成交，可开始复盘交付与复购/转介绍机会。`
+    : '当前线索分布较均衡，优先继续补充真实咨询来源。');
+  const conversionText=[
+    `发资料率 ${Math.round(sentCount/total*100)}%`,
+    `报价率 ${Math.round(quotedCount/total*100)}%`,
+    `成交率 ${Math.round(wonCount/total*100)}%`
+  ].join('｜');
+  board.innerHTML=`<h3>成交漏斗总览</h3><div class="mini muted">当前统计 ${total} 条线索｜${conversionText}</div><div class="grid g4" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px"><b>下一步建议：</b>${nextAction}</div>`;
+}
+
 function renderLeadBoard(){
   const board=$('leadBoard');
   if(!board) return;
   const leads=loadProductLeads();
   if(!leads.length){
+    renderLeadFunnelBoard([]);
     board.innerHTML='<div class="muted">暂无线索记录</div>';
     return;
   }
   const stageFilter=getLeadStageFilter();
   const filtered=leads.filter(entry=>stageFilter==='all' || (entry.stage || '待跟进')===stageFilter);
+  renderLeadFunnelBoard(filtered);
   if(!filtered.length){
     board.innerHTML='<div class="muted">当前筛选范围暂无线索</div>';
     return;
@@ -2054,6 +2112,72 @@ function exportLeadCsv(){
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
   downloadFile(`product-leads-${ts}.csv`,buildLeadCsv(leads),'text/csv;charset=utf-8');
   $('leadStatus').textContent=`已导出线索 CSV（${leads.length} 条）`;
+}
+
+function normalizeImportedLead(entry,index){
+  if(!entry || typeof entry!=='object') return null;
+  const now=new Date().toISOString();
+  return {
+    id:String(entry.id || `imported-lead-${index}-${Date.now()}`),
+    name:String(entry.name || `未命名线索-${index+1}`),
+    productSlug:String(entry.productSlug || entry.product || 'micro-saas'),
+    channel:String(entry.channel || '其他'),
+    budget:String(entry.budget || '待确认'),
+    priority:String(entry.priority || '中'),
+    stage:String(entry.stage || '待跟进'),
+    need:String(entry.need || ''),
+    nextStep:String(entry.nextStep || '待确认下一步'),
+    createdAt:String(entry.createdAt || now),
+    updatedAt:String(entry.updatedAt || entry.createdAt || now)
+  };
+}
+
+function mergeImportedLeads(existingLeads,incomingLeads){
+  const map=new Map();
+  [...existingLeads,...incomingLeads].forEach((entry,index)=>{
+    const normalized=normalizeImportedLead(entry,index);
+    if(!normalized) return;
+    const key=getLeadEntryId(normalized);
+    const prev=map.get(key);
+    const prevTime=new Date(prev?.updatedAt || prev?.createdAt || 0).getTime();
+    const nextTime=new Date(normalized.updatedAt || normalized.createdAt || 0).getTime();
+    if(!prev || nextTime>=prevTime){
+      map.set(key,normalized);
+    }
+  });
+  return Array.from(map.values()).sort((a,b)=>new Date(b.updatedAt || b.createdAt)-new Date(a.updatedAt || a.createdAt));
+}
+
+async function importLeadJsonFile(file){
+  if(!file){
+    $('leadStatus').textContent='未选择线索 JSON 文件';
+    return;
+  }
+  let parsed;
+  try{
+    const text=await file.text();
+    parsed=JSON.parse(text);
+  }catch(err){
+    $('leadStatus').textContent=`线索 JSON 解析失败：${err.message}`;
+    return;
+  }
+  const incomingRaw=Array.isArray(parsed) ? parsed : Array.isArray(parsed?.leads) ? parsed.leads : null;
+  if(!incomingRaw?.length){
+    $('leadStatus').textContent='导入失败：JSON 内未找到 leads 数组';
+    return;
+  }
+  const existing=loadProductLeads();
+  const merged=mergeImportedLeads(existing,incomingRaw);
+  saveProductLeads(merged);
+  renderLeadBoard();
+  $('leadStatus').textContent=`已导入线索 JSON：新增/合并后共 ${merged.length} 条`; 
+}
+
+function triggerLeadJsonImport(){
+  const input=$('importLeadJsonFile');
+  if(!input) return;
+  input.value='';
+  input.click();
 }
 
 function loadLeadForSelectedProduct(options={}){
@@ -2578,6 +2702,11 @@ $("saveLeadEntry").addEventListener('click',saveLeadEntry);
 $("copyLeadFollowup").addEventListener('click',copyLeadFollowup);
 $("resetLeadForm").addEventListener('click',()=>resetLeadForm());
 $("exportLeadJson").addEventListener('click',exportLeadJson);
+$("importLeadJson").addEventListener('click',triggerLeadJsonImport);
+$("importLeadJsonFile").addEventListener('change',(event)=>{
+  const file=event.target?.files?.[0];
+  importLeadJsonFile(file);
+});
 $("exportLeadCsv").addEventListener('click',exportLeadCsv);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
 $("leadStageFilter").addEventListener('change',renderLeadBoard);
