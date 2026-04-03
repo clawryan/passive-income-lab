@@ -1,3 +1,31 @@
+## 2026-04-03 08:0x 早间推进（新增成果）
+
+### 本轮目标
+- 沿着昨晚写下的下一步，优先补“按产品统计线索到成交率 / CTA 点击占位统计”，让产品页从可记录线索，推进到更像最小经营看板。
+
+### 新增产出
+- `web/index.html`
+  - 在“联系 / 支付入口占位”区新增 `productOpsBoard`，按产品展示线索数、成交率、联系点击、支付点击
+  - 新增 `PRODUCT_CHANNEL_METRICS_KEY / loadProductChannelMetrics / saveProductChannelMetrics / recordProductChannelClick / buildProductOpsSummary / renderProductOpsBoard`
+  - 点击“打开联系入口 / 打开支付入口”时会自动累计 CTA 点击，并在切换产品、保存入口配置、更新线索后实时刷新经营看板
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 全链路回归继续通过：`npm run validate`
+- 关键命令结果：`check:web`、`smoke:ab`、`smoke:ab-history` 均通过
+- 文本级可见证据：页面已出现 `productOpsBoard / PRODUCT_CHANNEL_METRICS_KEY / recordProductChannelClick / buildProductOpsSummary / renderProductOpsBoard`
+
+### 阻塞
+- CTA 点击统计仍是浏览器本地计数，不是远程真实埋点；换浏览器或清缓存会丢失。
+- 线索与点击还没有真正串成订单回传，暂时更适合做“经营方向判断”，还不是正式 BI。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“按产品导出经营摘要 / 周报文本”，把看板直接变成可发给自己或协作者的经营更新。
+2. 若拿到真实分发渠道，可先分别为两个产品挂真实联系 / 支付入口，验证 CTA 点击与线索阶段是否开始分化。
+3. 若要继续逼近成交闭环，下一步应补最小 webhook / 表单回传，而不是继续堆本地说明文本。
+
 ## 2026-04-02 22:0x 夜间推进（新增成果）
 
 ### 本轮目标

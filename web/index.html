@@ -149,6 +149,7 @@
           <button id="openSelectedPaymentLink" class="ghost">打开支付入口</button>
         </div>
         <div id="channelConfigStatus" class="mini muted">当前未接真实支付 / 联系入口；可先为单产品保存外链，占位到浏览器本地。</div>
+        <div id="productOpsBoard" class="card"><div class="muted">当前暂无产品经营统计</div></div>
       </div>
 
       <div class="card stack">
@@ -1985,6 +1986,7 @@ function renderLeadFunnelBoard(leads){
 }
 
 function renderLeadBoard(){
+  renderProductOpsBoard();
   const board=$('leadBoard');
   if(!board) return;
   const leads=loadProductLeads();
@@ -2267,6 +2269,7 @@ function renderSelectedChannelConfig(){
   $('channelConfigStatus').textContent=hasConfig
     ? `已载入 ${offer.title} 的入口配置：${config.contactUrl ? '联系入口已设' : '联系入口未设'}，${config.paymentUrl ? '支付入口已设' : '支付入口未设'}。`
     : `当前未给 ${offer.title} 配置真实联系 / 支付入口；可先保存外链占位到本地。`;
+  renderProductOpsBoard();
 }
 
 function saveSelectedProductChannelConfig(){
@@ -2280,6 +2283,7 @@ function saveSelectedProductChannelConfig(){
   });
   saveProductChannelConfigs(configs);
   $('channelConfigStatus').textContent=`已保存 ${offer.title} 的联系 / 支付入口配置。`;
+  renderProductOpsBoard();
 }
 
 function buildSelectedChannelSummary(key=getSelectedProduct().key){
@@ -2301,6 +2305,90 @@ async function copySelectedChannelSummary(){
   $('channelConfigStatus').textContent=`已复制 ${offer.title} 的联系 / 支付入口摘要。`;
 }
 
+const PRODUCT_CHANNEL_METRICS_KEY='passive-income-lab-product-channel-metrics-v1';
+
+function loadProductChannelMetrics(){
+  try{
+    const raw=localStorage.getItem(PRODUCT_CHANNEL_METRICS_KEY);
+    const parsed=raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed==='object' ? parsed : {};
+  }catch(_){
+    return {};
+  }
+}
+
+function saveProductChannelMetrics(metrics){
+  localStorage.setItem(PRODUCT_CHANNEL_METRICS_KEY,JSON.stringify(metrics || {}));
+}
+
+function recordProductChannelClick(productKey,type){
+  const metrics=loadProductChannelMetrics();
+  const prev=metrics[productKey] || {};
+  const field=type==='payment' ? 'paymentClicks' : 'contactClicks';
+  metrics[productKey]={
+    ...prev,
+    [field]:(prev[field] || 0)+1,
+    lastClickedAt:new Date().toISOString()
+  };
+  saveProductChannelMetrics(metrics);
+}
+
+function buildProductOpsSummary(productKey){
+  const offer=PRODUCT_OFFERS[productKey];
+  if(!offer) return null;
+  const leads=loadProductLeads().filter(entry=>entry.productSlug===offer.slug);
+  const total=leads.length;
+  const counts=leads.reduce((acc,entry)=>{
+    const stage=entry.stage || '待跟进';
+    acc[stage]=(acc[stage] || 0)+1;
+    return acc;
+  },{});
+  const metrics=loadProductChannelMetrics()[productKey] || {};
+  const contactClicks=metrics.contactClicks || 0;
+  const paymentClicks=metrics.paymentClicks || 0;
+  const sent=total-(counts['待跟进'] || 0);
+  const quoted=counts['已报价'] || 0;
+  const won=counts['已成交'] || 0;
+  const sentRate=total ? Math.round(sent/total*100) : 0;
+  const quoteRate=total ? Math.round(quoted/total*100) : 0;
+  const winRate=total ? Math.round(won/total*100) : 0;
+  const contactToLeadRate=contactClicks ? Math.round(total/contactClicks*100) : null;
+  const paymentToWinRate=paymentClicks ? Math.round(won/paymentClicks*100) : null;
+  const nextAction=total===0
+    ? '先发当前单产品链接，拿到第一批真实咨询。'
+    : won===0 && quoted>0
+      ? `已有 ${quoted} 条已报价，优先逐条催决策。`
+      : (counts['待跟进'] || 0) > 0
+        ? `还有 ${counts['待跟进']} 条待跟进，优先清空首触达。`
+        : paymentClicks===0
+          ? '已有线索但支付入口还没被点过，优先检查 CTA 文案和摆放。'
+          : '继续积累真实点击与成交，判断哪个产品更值得主推。';
+  return {offer,total,counts,contactClicks,paymentClicks,sentRate,quoteRate,winRate,contactToLeadRate,paymentToWinRate,nextAction,lastClickedAt:metrics.lastClickedAt || ''};
+}
+
+function renderProductOpsBoard(){
+  const board=$('productOpsBoard');
+  if(!board) return;
+  const selected=getSelectedProduct();
+  const all=Object.keys(PRODUCT_OFFERS).map(buildProductOpsSummary).filter(Boolean);
+  const current=all.find(item=>item.offer.key===selected.key) || all[0];
+  if(!current){
+    board.innerHTML='<div class="muted">当前暂无产品经营统计</div>';
+    return;
+  }
+  const cards=all.map(item=>`<div style="border:1px solid ${item.offer.key===selected.key ? '#3a7bff' : '#243244'};border-radius:14px;padding:12px;background:${item.offer.key===selected.key ? '#0f1f3a' : '#111827'}"><div class="mini muted">${item.offer.title}</div><div style="font-size:22px;font-weight:700;margin-top:6px">${item.total}</div><div class="mini muted">线索｜成交率 ${item.winRate}%｜支付点击 ${item.paymentClicks}</div></div>`).join('');
+  const ratios=[
+    `发资料率 ${current.sentRate}%`,
+    `报价率 ${current.quoteRate}%`,
+    `成交率 ${current.winRate}%`,
+    `联系点击 ${current.contactClicks}`,
+    `支付点击 ${current.paymentClicks}`,
+    current.contactToLeadRate===null ? '联系→线索率 暂无数据' : `联系→线索率 ${current.contactToLeadRate}%`,
+    current.paymentToWinRate===null ? '支付→成交率 暂无数据' : `支付→成交率 ${current.paymentToWinRate}%`
+  ];
+  board.innerHTML=`<h3>产品经营看板</h3><div class="mini muted">当前聚焦：${current.offer.title}</div><div class="grid g2" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px">${ratios.join('｜')}</div><div class="mini muted" style="margin-top:8px">下一步建议：${current.nextAction}${current.lastClickedAt ? `｜最近 CTA 点击：${current.lastClickedAt.replace('T',' ').slice(0,16)}` : ''}</div>`;
+}
+
 function openProductChannelLink(type){
   const offer=getSelectedProduct();
   const config=normalizeChannelConfig(getProductChannelConfig(offer.key));
@@ -2310,6 +2398,8 @@ function openProductChannelLink(type){
     $('channelConfigStatus').textContent=`当前还没有为 ${offer.title} 配置${label}入口链接。`;
     return;
   }
+  recordProductChannelClick(offer.key,type);
+  renderProductOpsBoard();
   if(typeof window!=='undefined' && typeof window.open==='function'){
     window.open(url,'_blank','noopener,noreferrer');
   }
@@ -2538,6 +2628,7 @@ function selectProductLanding(key,{scroll=false}={}){
   $('productOfferStatus').textContent=`已切换到 ${offer.title} 单产品分享视角。`;
   loadLeadForSelectedProduct();
   renderSelectedChannelConfig();
+  renderProductOpsBoard();
   if(scroll){
     $('productDetailPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
   }

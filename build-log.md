@@ -1,3 +1,10 @@
+## 2026-04-03 08:0x (Asia/Shanghai)
+- 这轮沿着昨晚写下的下一步，优先补“按产品统计线索到成交率 / CTA 是否真的被点过”的经营可见性，而不是继续堆新的说明文本。
+- `web/index.html` 在“联系 / 支付入口占位”卡片下新增 `productOpsBoard`，会按产品汇总当前线索数、成交率、联系点击、支付点击，以及 `联系→线索率 / 支付→成交率` 两个占位转化指标。
+- 新增 `PRODUCT_CHANNEL_METRICS_KEY`、`loadProductChannelMetrics()`、`recordProductChannelClick()`、`buildProductOpsSummary()`、`renderProductOpsBoard()`；点击“打开联系入口 / 打开支付入口”时会自动在浏览器本地累积 CTA 点击计数。
+- `renderLeadBoard()`、`renderSelectedChannelConfig()`、`saveSelectedProductChannelConfig()`、`selectProductLanding()` 已同步刷新经营看板，确保切换产品、保存入口配置、更新线索阶段后都能立即看到最新经营状态。
+- 结果：现在首页不只知道“有没有线索”，还知道“哪个产品更值得主推 / CTA 有没有被点击 / 当前更该催报价还是优化支付入口”，更接近最小经营看板。
+
 ## 2026-04-02 22:0x (Asia/Shanghai)
 - 这轮不再继续堆 FAQ 或线索导入细节，而是补一个更接近真实成交的低阻力缺口：虽然首页已有产品说明与购买文案，但仍缺“确认后往哪联系 / 去哪付款”的最小外链 CTA。
 - `web/index.html` 新增“联系 / 支付入口占位”卡片；可按当前选中的单产品分别保存联系按钮文案、联系链接、支付按钮文案、支付链接，并写入浏览器本地。
