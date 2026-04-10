@@ -237,6 +237,10 @@
           <button id="importLeadJson" class="ghost">导入线索 JSON</button>
           <button id="exportLeadCsv" class="ghost">导出线索 CSV</button>
         </div>
+        <div class="grid g2">
+          <button id="copyWonLeadCaseSummary" class="ghost">复制成交案例摘要</button>
+          <button id="exportWonLeadCasesMd" class="ghost">导出成交案例 Markdown</button>
+        </div>
         <input id="importLeadJsonFile" type="file" accept="application/json,.json" style="display:none" />
         <div class="grid g2">
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
@@ -2127,6 +2131,83 @@ function buildLeadCsv(leads){
   return [header,...rows].map(row=>row.map(value=>`"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
 }
 
+function getWonLeads(leads=loadProductLeads()){
+  return sortProductLeads(leads.filter(entry=>(entry.stage || '待跟进')==='已成交'));
+}
+
+function buildWonLeadCaseSummary(leads=getWonLeads()){
+  if(!leads.length){
+    return '';
+  }
+  const lines=[
+    `Passive Income Lab 成交案例摘要｜共 ${leads.length} 条`,
+    '可复用场景：朋友圈案例、私聊背书、落地页社会证明、周报复盘'
+  ];
+  leads.forEach((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    lines.push('');
+    lines.push(`${index+1}. ${entry.name}｜${offer.title}`);
+    lines.push(`- 成交时间：${String(entry.updatedAt || entry.createdAt).replace('T',' ').slice(0,16)}`);
+    lines.push(`- 来源渠道：${entry.channel}`);
+    lines.push(`- 预算判断：${entry.budget}`);
+    lines.push(`- 需求 / 痛点：${entry.need}`);
+    lines.push(`- 成交后下一步：${entry.nextStep}`);
+    lines.push(`- 可复用卖点：${offer.deliverables}`);
+  });
+  return lines.join('\n');
+}
+
+function buildWonLeadCasesMarkdown(leads=getWonLeads()){
+  const generatedAt=new Date().toISOString();
+  const lines=[
+    '# Passive Income Lab 成交案例',
+    '',
+    `- 生成时间：${generatedAt}`,
+    `- 成交案例数：${leads.length}`,
+    '- 用途：把本地成交记录沉淀成可复用案例，便于继续转化后续线索。',
+    ''
+  ];
+  if(!leads.length){
+    lines.push('> 当前还没有「已成交」线索，可先把已成交客户标记为“已成交”后再导出。');
+    return lines.join('\n');
+  }
+  leads.forEach((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    lines.push(`## 案例 ${index+1}｜${entry.name}`);
+    lines.push(`- 产品：${offer.title}`);
+    lines.push(`- 时间：${String(entry.updatedAt || entry.createdAt).replace('T',' ').slice(0,16)}`);
+    lines.push(`- 渠道：${entry.channel}`);
+    lines.push(`- 预算判断：${entry.budget}`);
+    lines.push(`- 优先级：${entry.priority}`);
+    lines.push(`- 需求 / 痛点：${entry.need}`);
+    lines.push(`- 成交后下一步：${entry.nextStep}`);
+    lines.push(`- 可复用卖点：${offer.deliverables}`);
+    lines.push(`- 单产品链接：${buildProductLandingLink(offer.key)}`);
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+async function copyWonLeadCaseSummary(){
+  const wonLeads=getWonLeads();
+  if(!wonLeads.length){
+    $('leadStatus').textContent='当前还没有已成交线索，暂时无法生成案例摘要';
+    return;
+  }
+  const text=buildWonLeadCaseSummary(wonLeads);
+  await copyText(text,`已复制 ${wonLeads.length} 条成交案例摘要`);
+  $('leadStatus').textContent=`已复制成交案例摘要（${wonLeads.length} 条）`;
+}
+
+function exportWonLeadCasesMd(){
+  const wonLeads=getWonLeads();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`won-lead-cases-${ts}.md`,buildWonLeadCasesMarkdown(wonLeads),'text/markdown;charset=utf-8');
+  $('leadStatus').textContent=wonLeads.length
+    ? `已导出成交案例 Markdown（${wonLeads.length} 条）`
+    : '已导出空白成交案例模板 Markdown';
+}
+
 function exportLeadJson(){
   const leads=loadProductLeads();
   if(!leads.length){
@@ -2944,6 +3025,8 @@ $("importLeadJsonFile").addEventListener('change',(event)=>{
   importLeadJsonFile(file);
 });
 $("exportLeadCsv").addEventListener('click',exportLeadCsv);
+$("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
+$("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
 $("leadStageFilter").addEventListener('change',renderLeadBoard);
 $("leadSortMode").addEventListener('change',renderLeadBoard);
