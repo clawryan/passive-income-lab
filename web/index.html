@@ -150,6 +150,11 @@
         </div>
         <div id="channelConfigStatus" class="mini muted">当前未接真实支付 / 联系入口；可先为单产品保存外链，占位到浏览器本地。</div>
         <div id="productOpsBoard" class="card"><div class="muted">当前暂无产品经营统计</div></div>
+        <div class="grid g3">
+          <button id="copySelectedProductOpsSummary" class="ghost">复制当前产品经营摘要</button>
+          <button id="shareSelectedProductOpsSummary" class="ghost">手机原生分享经营摘要</button>
+          <button id="exportSelectedProductOpsMd" class="ghost">导出当前产品经营周报</button>
+        </div>
       </div>
 
       <div class="card stack">
@@ -2447,6 +2452,83 @@ function buildProductOpsSummary(productKey){
   return {offer,total,counts,contactClicks,paymentClicks,sentRate,quoteRate,winRate,contactToLeadRate,paymentToWinRate,nextAction,lastClickedAt:metrics.lastClickedAt || ''};
 }
 
+function formatProductOpsTimestamp(value){
+  if(!value) return '暂无';
+  return String(value).replace('T',' ').slice(0,16);
+}
+
+function buildProductOpsWeeklyMarkdown(productKey){
+  const summary=buildProductOpsSummary(productKey);
+  if(!summary){
+    return '# 产品经营周报\n\n暂无可导出的产品经营数据。';
+  }
+  const stageLines=['待跟进','已发送资料','已报价','已成交','暂不推进'].map(stage=>`- ${stage}：${summary.counts[stage] || 0}`).join('\n');
+  const ratioLines=[
+    `- 发资料率：${summary.sentRate}%`,
+    `- 报价率：${summary.quoteRate}%`,
+    `- 成交率：${summary.winRate}%`,
+    `- 联系点击：${summary.contactClicks}`,
+    `- 支付点击：${summary.paymentClicks}`,
+    `- 联系→线索率：${summary.contactToLeadRate===null ? '暂无数据' : `${summary.contactToLeadRate}%`}`,
+    `- 支付→成交率：${summary.paymentToWinRate===null ? '暂无数据' : `${summary.paymentToWinRate}%`}`,
+    `- 最近 CTA 点击：${formatProductOpsTimestamp(summary.lastClickedAt)}`
+  ].join('\n');
+  return [
+    `# ${summary.offer.title} 经营周报`,
+    '',
+    `- 导出时间：${new Date().toISOString().replace('T',' ').slice(0,16)} UTC`,
+    `- 当前产品：${summary.offer.title}`,
+    `- 当前线索数：${summary.total}`,
+    '',
+    '## 阶段分布',
+    stageLines,
+    '',
+    '## 转化指标',
+    ratioLines,
+    '',
+    `## 下一步建议\n- ${summary.nextAction}`
+  ].join('\n');
+}
+
+function buildSelectedProductOpsSummaryText(productKey){
+  const summary=buildProductOpsSummary(productKey);
+  if(!summary){
+    return '当前暂无产品经营数据。';
+  }
+  return [
+    `产品经营摘要｜${summary.offer.title}`,
+    `线索 ${summary.total}｜待跟进 ${summary.counts['待跟进'] || 0}｜已报价 ${summary.counts['已报价'] || 0}｜已成交 ${summary.counts['已成交'] || 0}`,
+    `发资料率 ${summary.sentRate}%｜报价率 ${summary.quoteRate}%｜成交率 ${summary.winRate}%`,
+    `联系点击 ${summary.contactClicks}｜支付点击 ${summary.paymentClicks}`,
+    summary.contactToLeadRate===null ? '联系→线索率 暂无数据' : `联系→线索率 ${summary.contactToLeadRate}%`,
+    summary.paymentToWinRate===null ? '支付→成交率 暂无数据' : `支付→成交率 ${summary.paymentToWinRate}%`,
+    `最近 CTA 点击：${formatProductOpsTimestamp(summary.lastClickedAt)}`,
+    `下一步：${summary.nextAction}`
+  ].join('\n');
+}
+
+async function copySelectedProductOpsSummary(){
+  const offer=getSelectedProduct();
+  await copyText(buildSelectedProductOpsSummaryText(offer.key),`已复制 ${offer.title} 经营摘要`);
+}
+
+async function shareSelectedProductOpsSummary(){
+  const offer=getSelectedProduct();
+  const text=buildSelectedProductOpsSummaryText(offer.key);
+  await shareText({
+    title:`${offer.title} 经营摘要`,
+    text,
+    fallbackSuccessMessage:`已复制 ${offer.title} 经营摘要`
+  });
+}
+
+function exportSelectedProductOpsMarkdown(){
+  const offer=getSelectedProduct();
+  const markdown=buildProductOpsWeeklyMarkdown(offer.key);
+  downloadFile(`product-ops-${offer.slug}-weekly-summary.md`,markdown,'text/markdown;charset=utf-8');
+  $('channelConfigStatus').textContent=`已导出 ${offer.title} 经营周报 Markdown。`;
+}
+
 function renderProductOpsBoard(){
   const board=$('productOpsBoard');
   if(!board) return;
@@ -2467,7 +2549,7 @@ function renderProductOpsBoard(){
     current.contactToLeadRate===null ? '联系→线索率 暂无数据' : `联系→线索率 ${current.contactToLeadRate}%`,
     current.paymentToWinRate===null ? '支付→成交率 暂无数据' : `支付→成交率 ${current.paymentToWinRate}%`
   ];
-  board.innerHTML=`<h3>产品经营看板</h3><div class="mini muted">当前聚焦：${current.offer.title}</div><div class="grid g2" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px">${ratios.join('｜')}</div><div class="mini muted" style="margin-top:8px">下一步建议：${current.nextAction}${current.lastClickedAt ? `｜最近 CTA 点击：${current.lastClickedAt.replace('T',' ').slice(0,16)}` : ''}</div>`;
+  board.innerHTML=`<h3>产品经营看板</h3><div class="mini muted">当前聚焦：${current.offer.title}</div><div class="grid g2" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px">${ratios.join('｜')}</div><div class="mini muted" style="margin-top:8px">下一步建议：${current.nextAction}${current.lastClickedAt ? `｜最近 CTA 点击：${formatProductOpsTimestamp(current.lastClickedAt)}` : ''}</div>`;
 }
 
 function openProductChannelLink(type){
@@ -3013,6 +3095,9 @@ $("copySelectedProductSummary").addEventListener('click',copySelectedProductSumm
 $("loadSelectedProductDemo").addEventListener('click',loadSelectedProductDemo);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
 $("copySelectedChannelSummary").addEventListener('click',copySelectedChannelSummary);
+$("copySelectedProductOpsSummary").addEventListener('click',copySelectedProductOpsSummary);
+$("shareSelectedProductOpsSummary").addEventListener('click',shareSelectedProductOpsSummary);
+$("exportSelectedProductOpsMd").addEventListener('click',exportSelectedProductOpsMarkdown);
 $("openSelectedContactLink").addEventListener('click',()=>openProductChannelLink('contact'));
 $("openSelectedPaymentLink").addEventListener('click',()=>openProductChannelLink('payment'));
 $("saveLeadEntry").addEventListener('click',saveLeadEntry);

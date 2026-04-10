@@ -1,3 +1,29 @@
+## 2026-04-10 22:0x 夜间推进（新增成果）
+
+### 本轮目标
+- 沿着上次写下的下一步，优先补“按产品导出经营摘要 / 周报文本”，把经营看板从浏览器内查看推进到可直接汇报/分享。
+
+### 新增产出
+- `web/index.html`
+  - 在“联系 / 支付入口占位”卡片新增 3 个动作：复制当前产品经营摘要、手机原生分享经营摘要、导出当前产品经营周报
+  - 新增 `formatProductOpsTimestamp()` / `buildSelectedProductOpsSummaryText()` / `copySelectedProductOpsSummary()` / `shareSelectedProductOpsSummary()` / `buildProductOpsWeeklyMarkdown()` / `exportSelectedProductOpsMarkdown()`
+  - 现可把当前产品的线索阶段、CTA 点击、转化率、最近 CTA 点击时间与下一步建议收口为纯文本摘要或 Markdown 周报
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 待执行 `npm run validate`
+- 文本级可见证据：页面已出现 `copySelectedProductOpsSummary / shareSelectedProductOpsSummary / exportSelectedProductOpsMarkdown / buildProductOpsWeeklyMarkdown`
+
+### 阻塞
+- 经营数据仍默认保存在浏览器本地，换浏览器/清缓存会丢失；摘要和周报只是把本地数据更易分享，不是远程 BI。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“经营摘要 JSON / 多产品总览周报导出”，让手机端和自动化脚本更容易接力。
+2. 若拿到真实渠道或支付 webhook，可把当前摘要从本地估算推进到真实埋点经营报表。
+3. 若要继续逼近成交闭环，下一步应补最小远程表单 / webhook 回传，而不是继续堆本地说明文本。
+
 ## 2026-04-03 08:0x 早间推进（新增成果）
 
 ### 本轮目标

@@ -1,3 +1,10 @@
+## 2026-04-10 22:0x (Asia/Shanghai)
+- 这轮沿着上次 results 里写下的下一步，优先把“产品经营看板”补成可直接拿去汇报/转发的输出层，而不是继续停留在浏览器内查看：经营数据如果不能一键发给自己或协作者，手机端复盘还是会断在最后一步。
+- `web/index.html` 在“联系 / 支付入口占位”卡片下新增 3 个动作：**复制当前产品经营摘要**、**手机原生分享经营摘要**、**导出当前产品经营周报**。
+- 新增 `formatProductOpsTimestamp()`、`buildSelectedProductOpsSummaryText()`、`copySelectedProductOpsSummary()`、`shareSelectedProductOpsSummary()`、`buildProductOpsWeeklyMarkdown()`、`exportSelectedProductOpsMarkdown()`，把现有产品经营看板中的线索阶段、CTA 点击、转化率与下一步建议收口成可复制文本和 Markdown 周报。
+- `renderProductOpsBoard()` 现同步复用统一时间格式；README 也已补充“经营摘要可直接复制 / 分享 / 导出”说明。
+- 结果：当前产品页不再只是“本地看一眼经营看板”，而是已经能把经营摘要直接丢进飞书/微信，或导出为 Markdown 留档，更接近真实经营周报场景。
+
 ## 2026-04-03 08:0x (Asia/Shanghai)
 - 这轮沿着昨晚写下的下一步，优先补“按产品统计线索到成交率 / CTA 是否真的被点过”的经营可见性，而不是继续堆新的说明文本。
 - `web/index.html` 在“联系 / 支付入口占位”卡片下新增 `productOpsBoard`，会按产品汇总当前线索数、成交率、联系点击、支付点击，以及 `联系→线索率 / 支付→成交率` 两个占位转化指标。
