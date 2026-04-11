@@ -150,10 +150,14 @@
         </div>
         <div id="channelConfigStatus" class="mini muted">当前未接真实支付 / 联系入口；可先为单产品保存外链，占位到浏览器本地。</div>
         <div id="productOpsBoard" class="card"><div class="muted">当前暂无产品经营统计</div></div>
-        <div class="grid g3">
+        <div class="grid g4">
           <button id="copySelectedProductOpsSummary" class="ghost">复制当前产品经营摘要</button>
           <button id="shareSelectedProductOpsSummary" class="ghost">手机原生分享经营摘要</button>
           <button id="exportSelectedProductOpsMd" class="ghost">导出当前产品经营周报</button>
+          <button id="exportSelectedProductOpsJson" class="ghost">导出当前产品经营 JSON</button>
+        </div>
+        <div class="grid g2" style="margin-top:10px">
+          <button id="loadProductOpsDemo" class="ghost">载入产品经营演示样本</button>
         </div>
       </div>
 
@@ -2457,28 +2461,66 @@ function formatProductOpsTimestamp(value){
   return String(value).replace('T',' ').slice(0,16);
 }
 
-function buildProductOpsWeeklyMarkdown(productKey){
+function buildProductOpsReport(productKey){
   const summary=buildProductOpsSummary(productKey);
-  if(!summary){
+  if(!summary) return null;
+  return {
+    exportedAt:new Date().toISOString(),
+    productKey,
+    productSlug:summary.offer.slug,
+    productTitle:summary.offer.title,
+    totalLeads:summary.total,
+    stageCounts:{
+      pending:summary.counts['待跟进'] || 0,
+      sent:summary.counts['已发送资料'] || 0,
+      quoted:summary.counts['已报价'] || 0,
+      won:summary.counts['已成交'] || 0,
+      paused:summary.counts['暂不推进'] || 0
+    },
+    rates:{
+      sentRate:summary.sentRate,
+      quoteRate:summary.quoteRate,
+      winRate:summary.winRate,
+      contactToLeadRate:summary.contactToLeadRate,
+      paymentToWinRate:summary.paymentToWinRate
+    },
+    channelMetrics:{
+      contactClicks:summary.contactClicks,
+      paymentClicks:summary.paymentClicks,
+      lastClickedAt:summary.lastClickedAt || null
+    },
+    nextAction:summary.nextAction
+  };
+}
+
+function buildProductOpsWeeklyMarkdown(productKey){
+  const report=buildProductOpsReport(productKey);
+  if(!report){
     return '# 产品经营周报\n\n暂无可导出的产品经营数据。';
   }
-  const stageLines=['待跟进','已发送资料','已报价','已成交','暂不推进'].map(stage=>`- ${stage}：${summary.counts[stage] || 0}`).join('\n');
+  const stageLines=[
+    `- 待跟进：${report.stageCounts.pending}`,
+    `- 已发送资料：${report.stageCounts.sent}`,
+    `- 已报价：${report.stageCounts.quoted}`,
+    `- 已成交：${report.stageCounts.won}`,
+    `- 暂不推进：${report.stageCounts.paused}`
+  ].join('\n');
   const ratioLines=[
-    `- 发资料率：${summary.sentRate}%`,
-    `- 报价率：${summary.quoteRate}%`,
-    `- 成交率：${summary.winRate}%`,
-    `- 联系点击：${summary.contactClicks}`,
-    `- 支付点击：${summary.paymentClicks}`,
-    `- 联系→线索率：${summary.contactToLeadRate===null ? '暂无数据' : `${summary.contactToLeadRate}%`}`,
-    `- 支付→成交率：${summary.paymentToWinRate===null ? '暂无数据' : `${summary.paymentToWinRate}%`}`,
-    `- 最近 CTA 点击：${formatProductOpsTimestamp(summary.lastClickedAt)}`
+    `- 发资料率：${report.rates.sentRate}%`,
+    `- 报价率：${report.rates.quoteRate}%`,
+    `- 成交率：${report.rates.winRate}%`,
+    `- 联系点击：${report.channelMetrics.contactClicks}`,
+    `- 支付点击：${report.channelMetrics.paymentClicks}`,
+    `- 联系→线索率：${report.rates.contactToLeadRate===null ? '暂无数据' : `${report.rates.contactToLeadRate}%`}`,
+    `- 支付→成交率：${report.rates.paymentToWinRate===null ? '暂无数据' : `${report.rates.paymentToWinRate}%`}`,
+    `- 最近 CTA 点击：${formatProductOpsTimestamp(report.channelMetrics.lastClickedAt)}`
   ].join('\n');
   return [
-    `# ${summary.offer.title} 经营周报`,
+    `# ${report.productTitle} 经营周报`,
     '',
-    `- 导出时间：${new Date().toISOString().replace('T',' ').slice(0,16)} UTC`,
-    `- 当前产品：${summary.offer.title}`,
-    `- 当前线索数：${summary.total}`,
+    `- 导出时间：${report.exportedAt.replace('T',' ').slice(0,16)} UTC`,
+    `- 当前产品：${report.productTitle}`,
+    `- 当前线索数：${report.totalLeads}`,
     '',
     '## 阶段分布',
     stageLines,
@@ -2486,7 +2528,7 @@ function buildProductOpsWeeklyMarkdown(productKey){
     '## 转化指标',
     ratioLines,
     '',
-    `## 下一步建议\n- ${summary.nextAction}`
+    `## 下一步建议\n- ${report.nextAction}`
   ].join('\n');
 }
 
@@ -2527,6 +2569,31 @@ function exportSelectedProductOpsMarkdown(){
   const markdown=buildProductOpsWeeklyMarkdown(offer.key);
   downloadFile(`product-ops-${offer.slug}-weekly-summary.md`,markdown,'text/markdown;charset=utf-8');
   $('channelConfigStatus').textContent=`已导出 ${offer.title} 经营周报 Markdown。`;
+}
+
+function exportSelectedProductOpsJson(){
+  const offer=getSelectedProduct();
+  const report=buildProductOpsReport(offer.key);
+  downloadFile(`product-ops-${offer.slug}-weekly-summary.json`,JSON.stringify(report || {error:'no-data'},null,2),'application/json;charset=utf-8');
+  $('channelConfigStatus').textContent=`已导出 ${offer.title} 经营周报 JSON。`;
+}
+
+function loadProductOpsDemo(){
+  const demoLeads=[
+    {id:'demo-ms-1',productSlug:'micro-saas',name:'杭州独立开发者A',channel:'微信私聊',budget:'¥229',priority:'高',stage:'已报价',updatedAt:'2026-04-11T07:20:00.000Z',demand:'要首周冷启动文案',nextStep:'今晚确认是否下单'},
+    {id:'demo-ms-2',productSlug:'micro-saas',name:'上海工作室B',channel:'朋友圈',budget:'¥69',priority:'中',stage:'待跟进',updatedAt:'2026-04-11T06:45:00.000Z',demand:'先看样例再决定',nextStep:'上午补发 FAQ 和样例'},
+    {id:'demo-on-1',productSlug:'orion-nexus',name:'量化研究员C',channel:'飞书',budget:'¥1999',priority:'高',stage:'已成交',updatedAt:'2026-04-11T05:50:00.000Z',demand:'需要研究包演示',nextStep:'整理交付材料'},
+    {id:'demo-on-2',productSlug:'orion-nexus',name:'策略爱好者D',channel:'微信群',budget:'¥999',priority:'中',stage:'已发送资料',updatedAt:'2026-04-11T04:30:00.000Z',demand:'对回测框架感兴趣',nextStep:'等待看完资料后跟进'}
+  ];
+  const demoMetrics={
+    microSaas:{contactClicks:9,paymentClicks:3,lastClickedAt:'2026-04-11T07:35:00.000Z'},
+    orionNexus:{contactClicks:5,paymentClicks:2,lastClickedAt:'2026-04-11T06:10:00.000Z'}
+  };
+  saveProductLeads(demoLeads);
+  saveProductChannelMetrics(demoMetrics);
+  renderLeadBoard();
+  renderProductOpsBoard();
+  $('channelConfigStatus').textContent='已载入产品经营演示样本，可直接验收经营摘要 / Markdown / JSON 导出链路。';
 }
 
 function renderProductOpsBoard(){
@@ -3098,6 +3165,8 @@ $("copySelectedChannelSummary").addEventListener('click',copySelectedChannelSumm
 $("copySelectedProductOpsSummary").addEventListener('click',copySelectedProductOpsSummary);
 $("shareSelectedProductOpsSummary").addEventListener('click',shareSelectedProductOpsSummary);
 $("exportSelectedProductOpsMd").addEventListener('click',exportSelectedProductOpsMarkdown);
+$("exportSelectedProductOpsJson").addEventListener('click',exportSelectedProductOpsJson);
+$("loadProductOpsDemo").addEventListener('click',loadProductOpsDemo);
 $("openSelectedContactLink").addEventListener('click',()=>openProductChannelLink('contact'));
 $("openSelectedPaymentLink").addEventListener('click',()=>openProductChannelLink('payment'));
 $("saveLeadEntry").addEventListener('click',saveLeadEntry);

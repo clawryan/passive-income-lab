@@ -31,6 +31,7 @@
 - **联系 / 支付入口可配置占位**：当前单产品视角下现可分别为 Micro-SaaS / Orion 保存“联系按钮文案 + 联系链接 + 支付按钮文案 + 支付链接”到浏览器本地，并支持一键复制入口摘要或直接打开外链，适合先补最小成交 CTA，而无需先接后端。
 - **产品经营看板（线索→成交 / CTA 点击）**：联系 / 支付入口区现会汇总每个产品的线索数、成交率、联系点击、支付点击，以及“联系→线索率 / 支付→成交率”占位指标，方便先判断该主推哪个产品、CTA 是否真的被点过。
 - **经营摘要可直接复制 / 分享 / 导出**：当前单产品的经营看板现支持一键复制摘要、手机原生分享摘要，以及导出 Markdown 周报，方便把“哪个产品该继续推、还有多少待跟进、支付入口有没有人点”直接发到飞书/微信或留档。
+- **经营 JSON / 演示样本已补齐**：产品经营看板现支持导出结构化 JSON 周报，并可一键载入演示线索 + CTA 点击样本，方便手机/电脑端验收自动化接力链路，而不必手工先造数据。
 - **数字产品 A/B Funnel Analyzer**：输入曝光/点击/结账/支付，输出显著性、胜负判定、下一步动作。
 - **Orion Nexus Quant Monitor**：查看策略信号、组合收益、基准对比（研究/模拟）。
 - **PWA 安装 / 离线访问**：`web/index.html` 现已补齐 manifest + service worker，可安装到手机主屏或电脑桌面，并支持离线打开已缓存的工具壳。
@@ -63,7 +64,8 @@
 - `npm run check:web`：提取 `web/index.html` 的内联脚本并执行 `node --check`
 - `npm run smoke:ab`：对 `api/ab-funnel.js` 做本地 POST 冒烟，确认返回 `decision / metrics / nextActions`
 - `npm run smoke:ab-history`：构造单实验分享包并验证“导入后自动切换实验筛选 + 回填最新表单参数”链路
-- `npm run validate`：串联执行以上三步
+- `npm run smoke:product-ops`：载入产品经营演示样本并验证看板渲染、摘要构建与 JSON 导出链路
+- `npm run validate`：串联执行以上四步
 
 ### Vercel 部署
 仓库已包含最小 `vercel.json`，部署后根路径会自动指向 `web/index.html`。

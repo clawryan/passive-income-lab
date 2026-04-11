@@ -8,6 +8,7 @@
     "check:web": "node scripts/check-web.mjs",
     "smoke:ab": "node scripts/smoke-ab.mjs",
     "smoke:ab-history": "node scripts/smoke-ab-history-import.mjs",
-    "validate": "npm run check:web && npm run smoke:ab && npm run smoke:ab-history"
+    "smoke:product-ops": "node scripts/smoke-product-ops.mjs",
+    "validate": "npm run check:web && npm run smoke:ab && npm run smoke:ab-history && npm run smoke:product-ops"
   }
 }
