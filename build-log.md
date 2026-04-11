@@ -342,3 +342,11 @@
 - `README.md` 已同步更新，明确当前原型支持 24h 运营清单。
 - 目的：把“看懂结论”再往前推一步，变成“拿到结果后今天具体做什么”，更贴近被动收益产品的日常经营闭环。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node VM 冒烟已确认 `abExecutionPlan` 卡片成功渲染，且 Markdown/纯文本摘要包含 `24h 运营清单` / `24h 清单：`。
+
+## 2026-04-11 11:0x (Asia/Shanghai)
+- 继续沿着“导入后马上能执行”推进线索闭环：`web/index.html` 在线索区新增“复制当前筛选跟进待办”与“导出当前筛选跟进待办 JSON”。
+- 新增 `buildLeadTodoItems()` / `buildLeadTodoSummaryText()`：按当前筛选范围把待跟进、已发送资料、已报价、已成交线索自动整理成 `现在 / 24h / 72h` 三档待办，并附带建议动作、原始下一步与单产品链接。
+- `importLeadJsonFile()` 导入完成后会直接提示“当前可推进待办数”，减少手机/电脑接力后还要手工再数一遍的摩擦。
+- 新增 `scripts/smoke-lead-todos.mjs`，并把 `npm run validate` 扩展为覆盖线索待办摘要 / JSON 导出链路。
+- `README.md` / `package.json` 已同步更新。
+- 目的：把“线索导入恢复”进一步推进到“导入后立即知道先跟谁、做什么”，更接近轻量 CRM → 待办执行的闭环。

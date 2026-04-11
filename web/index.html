@@ -247,6 +247,10 @@
           <button id="exportLeadCsv" class="ghost">导出线索 CSV</button>
         </div>
         <div class="grid g2">
+          <button id="copyLeadTodoSummary" class="ghost">复制当前筛选跟进待办</button>
+          <button id="exportLeadTodoJson" class="ghost">导出当前筛选跟进待办 JSON</button>
+        </div>
+        <div class="grid g2">
           <button id="copyWonLeadCaseSummary" class="ghost">复制成交案例摘要</button>
           <button id="exportWonLeadCasesMd" class="ghost">导出成交案例 Markdown</button>
         </div>
@@ -2140,6 +2144,110 @@ function buildLeadCsv(leads){
   return [header,...rows].map(row=>row.map(value=>`"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
 }
 
+function getActionableLeadEntries(){
+  const leads=sortProductLeads(loadProductLeads());
+  const stageFilter=getLeadStageFilter();
+  return leads.filter(entry=>{
+    const stage=entry.stage || '待跟进';
+    if(stage==='暂不推进') return false;
+    return stageFilter==='all' || stage===stageFilter;
+  });
+}
+
+function getLeadTodoBucket(entry){
+  const stage=entry.stage || '待跟进';
+  if(stage==='待跟进') return '现在';
+  if(stage==='已发送资料' || stage==='已报价') return '24h';
+  if(stage==='已成交') return '72h';
+  return '本周';
+}
+
+function getLeadTodoAction(entry){
+  const stage=entry.stage || '待跟进';
+  if(stage==='待跟进') return `发送 ${getProductOfferBySlug(entry.productSlug).title} 的单产品链接 + FAQ，并确认预算/决策时点`;
+  if(stage==='已发送资料') return '追问是否看完资料、是否需要报价/演示，并锁定明确回复时间';
+  if(stage==='已报价') return '跟进是否确认下单、还有哪些异议，并给出成交截止或下一次触达时间';
+  if(stage==='已成交') return '记录交付边界、催收反馈，并争取复购/转介绍素材';
+  return entry.nextStep || '待确认下一步';
+}
+
+function buildLeadTodoItems(leads=getActionableLeadEntries()){
+  return leads.map((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    return {
+      order:index+1,
+      leadId:getLeadEntryId(entry),
+      leadName:entry.name,
+      product:offer.title,
+      productSlug:offer.slug,
+      stage:entry.stage || '待跟进',
+      priority:entry.priority || '中',
+      channel:entry.channel || '其他',
+      budget:entry.budget || '待确认',
+      updatedAt:entry.updatedAt || entry.createdAt || '',
+      timeBucket:getLeadTodoBucket(entry),
+      nextAction:getLeadTodoAction(entry),
+      suggestedMessage:buildLeadFollowupText(entry),
+      nextStep:entry.nextStep || '待确认下一步',
+      need:entry.need || '',
+      landingLink:buildProductLandingLink(offer.key)
+    };
+  });
+}
+
+function buildLeadTodoSummaryText(items=buildLeadTodoItems()){
+  if(!items.length){
+    return '当前筛选范围内暂无需要推进的线索待办。';
+  }
+  const bucketCounts=items.reduce((acc,item)=>{
+    acc[item.timeBucket]=(acc[item.timeBucket] || 0)+1;
+    return acc;
+  },{});
+  const lines=[
+    `Passive Income Lab 跟进待办｜${items.length} 条`,
+    `当前筛选：${getLeadStageFilter()==='all' ? '全部可推进状态' : getLeadStageFilter()}`,
+    `时间桶：现在 ${bucketCounts['现在'] || 0}｜24h ${bucketCounts['24h'] || 0}｜72h ${bucketCounts['72h'] || 0}`
+  ];
+  items.slice(0,5).forEach((item,index)=>{
+    lines.push('');
+    lines.push(`${index+1}. [${item.timeBucket}] ${item.leadName}｜${item.product}`);
+    lines.push(`- 状态：${item.stage}｜优先级：${item.priority}｜渠道：${item.channel}｜预算：${item.budget}`);
+    lines.push(`- 动作：${item.nextAction}`);
+    lines.push(`- 记录中的下一步：${item.nextStep}`);
+  });
+  if(items.length>5){
+    lines.push('');
+    lines.push(`…其余 ${items.length-5} 条请直接看导出的 JSON 待办包。`);
+  }
+  return lines.join('\\n');
+}
+
+async function copyLeadTodoSummary(){
+  const items=buildLeadTodoItems();
+  const text=buildLeadTodoSummaryText(items);
+  await copyText(text, items.length ? `已复制 ${items.length} 条跟进待办` : '当前无可复制待办');
+  $('leadStatus').textContent=items.length
+    ? `已复制当前筛选跟进待办（${items.length} 条）`
+    : '当前筛选范围内暂无需要推进的线索待办';
+}
+
+function exportLeadTodoJson(){
+  const items=buildLeadTodoItems();
+  if(!items.length){
+    $('leadStatus').textContent='当前筛选范围内暂无需要导出的线索待办';
+    return;
+  }
+  const exportedAt=new Date().toISOString();
+  const payload={
+    exportedAt,
+    filter:getLeadStageFilter(),
+    count:items.length,
+    items
+  };
+  downloadFile(`lead-followup-todos-${exportedAt.replace(/[:.]/g,'-')}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+  $('leadStatus').textContent=`已导出当前筛选跟进待办 JSON（${items.length} 条）`;
+}
+
 function getWonLeads(leads=loadProductLeads()){
   return sortProductLeads(leads.filter(entry=>(entry.stage || '待跟进')==='已成交'));
 }
@@ -2295,7 +2403,8 @@ async function importLeadJsonFile(file){
   const merged=mergeImportedLeads(existing,incomingRaw);
   saveProductLeads(merged);
   renderLeadBoard();
-  $('leadStatus').textContent=`已导入线索 JSON：新增/合并后共 ${merged.length} 条`; 
+  const actionableCount=buildLeadTodoItems().length;
+  $('leadStatus').textContent=`已导入线索 JSON：新增/合并后共 ${merged.length} 条｜当前可推进待办 ${actionableCount} 条`; 
 }
 
 function triggerLeadJsonImport(){
@@ -3179,6 +3288,8 @@ $("importLeadJsonFile").addEventListener('change',(event)=>{
   importLeadJsonFile(file);
 });
 $("exportLeadCsv").addEventListener('click',exportLeadCsv);
+$("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
+$("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);
 $("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
 $("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
