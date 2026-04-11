@@ -365,3 +365,6 @@
 - 新增 `scripts/smoke-lead-todos.mjs`，并把 `npm run validate` 扩展为覆盖线索待办摘要 / JSON 导出链路。
 - `README.md` / `package.json` 已同步更新。
 - 目的：把“线索导入恢复”进一步推进到“导入后立即知道先跟谁、做什么”，更接近轻量 CRM → 待办执行的闭环。
+- 继续补齐“整理完待办就发出去”的最后一公里：线索区新增“手机原生分享跟进待办”和“导出当前筛选跟进待办 Markdown”，使导入后的待办可直接转发到飞书/微信或沉淀为周报附件。
+- 把待办摘要构建拆成 `buildLeadTodoSummaryLines()`，统一驱动纯文本与 Markdown 输出，避免手机分享与文件导出各写一套逻辑。
+- `scripts/smoke-lead-todos.mjs` 现同时覆盖跟进待办分享入口、JSON 导出与 Markdown 导出，减少后续 UI 调整时把交接链路悄悄改坏。

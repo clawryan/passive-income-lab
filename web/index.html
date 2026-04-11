@@ -253,7 +253,11 @@
         </div>
         <div class="grid g2">
           <button id="copyLeadTodoSummary" class="ghost">复制当前筛选跟进待办</button>
+          <button id="shareLeadTodoSummary" class="ghost">手机原生分享跟进待办</button>
+        </div>
+        <div class="grid g2">
           <button id="exportLeadTodoJson" class="ghost">导出当前筛选跟进待办 JSON</button>
+          <button id="exportLeadTodoMd" class="ghost">导出当前筛选跟进待办 Markdown</button>
         </div>
         <div class="grid g2">
           <button id="copyWonLeadCaseSummary" class="ghost">复制成交案例摘要</button>
@@ -1765,15 +1769,15 @@ async function shareSelectedAbWeeklySummary(){
   },`已调起系统分享周报摘要：${selected}`,()=>copyText(`${text}\n分享链接：${url}`,'当前浏览器不支持原生分享，已复制周报摘要与链接'));
 }
 
-async function shareText(payload,successMessage,fallbackAction){
+async function shareText(payload,successMessage,fallbackAction,statusId='abStatus'){
   if(navigator.share){
     try{
       await navigator.share(payload);
-      $('abStatus').textContent=successMessage;
+      $(statusId).textContent=successMessage;
       return;
     }catch(e){
       if(e && e.name === 'AbortError'){
-        $('abStatus').textContent='已取消分享';
+        $(statusId).textContent='已取消分享';
         return;
       }
     }
@@ -2200,17 +2204,45 @@ function buildLeadTodoItems(leads=getActionableLeadEntries()){
   });
 }
 
-function buildLeadTodoSummaryText(items=buildLeadTodoItems()){
+function buildLeadTodoSummaryLines(items=buildLeadTodoItems(),format='plain'){
   if(!items.length){
-    return '当前筛选范围内暂无需要推进的线索待办。';
+    return format==='markdown'
+      ? ['# Passive Income Lab 跟进待办','','> 当前筛选范围内暂无需要推进的线索待办。']
+      : ['当前筛选范围内暂无需要推进的线索待办。'];
   }
   const bucketCounts=items.reduce((acc,item)=>{
     acc[item.timeBucket]=(acc[item.timeBucket] || 0)+1;
     return acc;
   },{});
+  const filterText=getLeadStageFilter()==='all' ? '全部可推进状态' : getLeadStageFilter();
+  if(format==='markdown'){
+    const lines=[
+      '# Passive Income Lab 跟进待办',
+      '',
+      `- 当前筛选：${filterText}`,
+      `- 待办总数：${items.length}`,
+      `- 时间桶：现在 ${bucketCounts['现在'] || 0}｜24h ${bucketCounts['24h'] || 0}｜72h ${bucketCounts['72h'] || 0}`,
+      ''
+    ];
+    items.forEach((item,index)=>{
+      lines.push(`## ${index+1}. [${item.timeBucket}] ${item.leadName}｜${item.product}`);
+      lines.push(`- 状态：${item.stage}`);
+      lines.push(`- 优先级：${item.priority}`);
+      lines.push(`- 渠道：${item.channel}`);
+      lines.push(`- 预算：${item.budget}`);
+      lines.push(`- 建议动作：${item.nextAction}`);
+      lines.push(`- 记录中的下一步：${item.nextStep}`);
+      if(item.need){
+        lines.push(`- 需求 / 痛点：${item.need}`);
+      }
+      lines.push(`- 单产品链接：${item.landingLink}`);
+      lines.push('');
+    });
+    return lines;
+  }
   const lines=[
     `Passive Income Lab 跟进待办｜${items.length} 条`,
-    `当前筛选：${getLeadStageFilter()==='all' ? '全部可推进状态' : getLeadStageFilter()}`,
+    `当前筛选：${filterText}`,
     `时间桶：现在 ${bucketCounts['现在'] || 0}｜24h ${bucketCounts['24h'] || 0}｜72h ${bucketCounts['72h'] || 0}`
   ];
   items.slice(0,5).forEach((item,index)=>{
@@ -2224,7 +2256,15 @@ function buildLeadTodoSummaryText(items=buildLeadTodoItems()){
     lines.push('');
     lines.push(`…其余 ${items.length-5} 条请直接看导出的 JSON 待办包。`);
   }
-  return lines.join('\\n');
+  return lines;
+}
+
+function buildLeadTodoSummaryText(items=buildLeadTodoItems()){
+  return buildLeadTodoSummaryLines(items,'plain').join('\\n');
+}
+
+function buildLeadTodoMarkdown(items=buildLeadTodoItems()){
+  return buildLeadTodoSummaryLines(items,'markdown').join('\\n');
 }
 
 async function copyLeadTodoSummary(){
@@ -2234,6 +2274,19 @@ async function copyLeadTodoSummary(){
   $('leadStatus').textContent=items.length
     ? `已复制当前筛选跟进待办（${items.length} 条）`
     : '当前筛选范围内暂无需要推进的线索待办';
+}
+
+async function shareLeadTodoSummary(){
+  const items=buildLeadTodoItems();
+  if(!items.length){
+    $('leadStatus').textContent='当前筛选范围内暂无需要分享的线索待办';
+    return;
+  }
+  const text=buildLeadTodoSummaryText(items);
+  await shareText({
+    title:`Passive Income Lab 跟进待办（${items.length} 条）`,
+    text
+  },`已调起系统分享跟进待办（${items.length} 条）`,()=>copyText(text,'当前浏览器不支持原生分享，已复制跟进待办摘要'),'leadStatus');
 }
 
 function exportLeadTodoJson(){
@@ -2251,6 +2304,16 @@ function exportLeadTodoJson(){
   };
   downloadFile(`lead-followup-todos-${exportedAt.replace(/[:.]/g,'-')}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
   $('leadStatus').textContent=`已导出当前筛选跟进待办 JSON（${items.length} 条）`;
+}
+
+function exportLeadTodoMarkdown(){
+  const items=buildLeadTodoItems();
+  const markdown=buildLeadTodoMarkdown(items);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`lead-followup-todos-${ts}.md`,markdown,'text/markdown;charset=utf-8');
+  $('leadStatus').textContent=items.length
+    ? `已导出当前筛选跟进待办 Markdown（${items.length} 条）`
+    : '已导出空白跟进待办 Markdown 模板';
 }
 
 function getWonLeads(leads=loadProductLeads()){
@@ -3446,7 +3509,9 @@ $("importLeadJsonFile").addEventListener('change',(event)=>{
 });
 $("exportLeadCsv").addEventListener('click',exportLeadCsv);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
+$("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);
+$("exportLeadTodoMd").addEventListener('click',exportLeadTodoMarkdown);
 $("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
 $("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);

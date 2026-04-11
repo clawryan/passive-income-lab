@@ -109,7 +109,10 @@ vm.runInContext(scripts.join('\n\n'), context, { filename: 'web/index.html::<scr
 context.loadProductOpsDemo();
 const items = context.buildLeadTodoItems();
 const summary = context.buildLeadTodoSummaryText(items);
+const markdown = context.buildLeadTodoMarkdown(items);
+await context.shareLeadTodoSummary();
 context.exportLeadTodoJson();
+context.exportLeadTodoMarkdown();
 
 if (!items.length) {
   throw new Error('未生成线索待办');
@@ -123,14 +126,22 @@ if (!summary.includes('Passive Income Lab 跟进待办') || !summary.includes('[
   throw new Error(`线索待办摘要异常: ${summary}`);
 }
 
-const lastDownload = downloads.at(-1);
-if (!lastDownload || !lastDownload.download.startsWith('lead-followup-todos-') || !lastDownload.download.endsWith('.json')) {
+if (!markdown.includes('# Passive Income Lab 跟进待办') || !markdown.includes('## 1. [')) {
+  throw new Error(`线索待办 Markdown 异常: ${markdown}`);
+}
+
+const downloadNames = downloads.map((item) => item.download);
+if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {
   throw new Error(`未触发线索待办 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.md'))) {
+  throw new Error(`未触发线索待办 Markdown 导出: ${JSON.stringify(downloads)}`);
 }
 
 console.log('线索待办冒烟通过:', {
   count: items.length,
   buckets: items.map((item) => item.timeBucket),
   status: context.document.getElementById('leadStatus').textContent,
-  lastDownload
+  downloads: downloadNames
 });
