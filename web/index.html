@@ -156,7 +156,12 @@
           <button id="exportSelectedProductOpsMd" class="ghost">导出当前产品经营周报</button>
           <button id="exportSelectedProductOpsJson" class="ghost">导出当前产品经营 JSON</button>
         </div>
-        <div class="grid g2" style="margin-top:10px">
+        <div id="productOpsPortfolioBoard" class="card"><div class="muted">当前暂无多产品经营汇总</div></div>
+        <div class="grid g4">
+          <button id="copyProductOpsPortfolioSummary" class="ghost">复制多产品经营摘要</button>
+          <button id="shareProductOpsPortfolioSummary" class="ghost">手机原生分享多产品经营摘要</button>
+          <button id="exportProductOpsPortfolioMd" class="ghost">导出多产品经营周报</button>
+          <button id="exportProductOpsPortfolioJson" class="ghost">导出多产品经营 JSON</button>
           <button id="loadProductOpsDemo" class="ghost">载入产品经营演示样本</button>
         </div>
       </div>
@@ -2602,6 +2607,118 @@ function buildProductOpsReport(productKey){
   };
 }
 
+function buildProductOpsPortfolioReport(){
+  const reports=Object.keys(PRODUCT_OFFERS)
+    .map(buildProductOpsReport)
+    .filter(Boolean);
+  const totals=reports.reduce((acc,report)=>{
+    acc.totalLeads+=report.totalLeads;
+    acc.stageCounts.pending+=report.stageCounts.pending;
+    acc.stageCounts.sent+=report.stageCounts.sent;
+    acc.stageCounts.quoted+=report.stageCounts.quoted;
+    acc.stageCounts.won+=report.stageCounts.won;
+    acc.stageCounts.paused+=report.stageCounts.paused;
+    acc.contactClicks+=report.channelMetrics.contactClicks;
+    acc.paymentClicks+=report.channelMetrics.paymentClicks;
+    if(report.channelMetrics.lastClickedAt && (!acc.lastClickedAt || report.channelMetrics.lastClickedAt>acc.lastClickedAt)){
+      acc.lastClickedAt=report.channelMetrics.lastClickedAt;
+    }
+    return acc;
+  },{
+    totalLeads:0,
+    stageCounts:{pending:0,sent:0,quoted:0,won:0,paused:0},
+    contactClicks:0,
+    paymentClicks:0,
+    lastClickedAt:''
+  });
+  const sentRate=totals.totalLeads ? Math.round((totals.totalLeads-totals.stageCounts.pending)/totals.totalLeads*100) : 0;
+  const quoteRate=totals.totalLeads ? Math.round(totals.stageCounts.quoted/totals.totalLeads*100) : 0;
+  const winRate=totals.totalLeads ? Math.round(totals.stageCounts.won/totals.totalLeads*100) : 0;
+  const contactToLeadRate=totals.contactClicks ? Math.round(totals.totalLeads/totals.contactClicks*100) : null;
+  const paymentToWinRate=totals.paymentClicks ? Math.round(totals.stageCounts.won/totals.paymentClicks*100) : null;
+  const topProduct=reports.slice().sort((a,b)=>{
+    const winDiff=(b.stageCounts.won || 0)-(a.stageCounts.won || 0);
+    if(winDiff!==0) return winDiff;
+    return b.totalLeads-a.totalLeads;
+  })[0] || null;
+  const nextAction=totals.totalLeads===0
+    ? '先挑一个产品挂真实联系入口，拿到第一批线索。'
+    : totals.stageCounts.quoted>0 && totals.stageCounts.won===0
+      ? `全局还有 ${totals.stageCounts.quoted} 条已报价未成交，优先催单。`
+      : totals.stageCounts.pending>0
+        ? `全局还有 ${totals.stageCounts.pending} 条待跟进，优先清空首触达。`
+        : topProduct
+          ? `当前优先主推 ${topProduct.productTitle}，继续累积成交案例。`
+          : '继续积累真实点击与成交，判断主推产品。';
+  return {
+    exportedAt:new Date().toISOString(),
+    productCount:reports.length,
+    totalLeads:totals.totalLeads,
+    stageCounts:totals.stageCounts,
+    rates:{sentRate,quoteRate,winRate,contactToLeadRate,paymentToWinRate},
+    channelMetrics:{contactClicks:totals.contactClicks,paymentClicks:totals.paymentClicks,lastClickedAt:totals.lastClickedAt || null},
+    topProduct:topProduct ? {productKey:topProduct.productKey,productSlug:topProduct.productSlug,productTitle:topProduct.productTitle,totalLeads:topProduct.totalLeads,won:topProduct.stageCounts.won,winRate:topProduct.rates.winRate} : null,
+    nextAction,
+    products:reports
+  };
+}
+
+function buildProductOpsPortfolioMarkdown(){
+  const report=buildProductOpsPortfolioReport();
+  const stageLines=[
+    `- 待跟进：${report.stageCounts.pending}`,
+    `- 已发送资料：${report.stageCounts.sent}`,
+    `- 已报价：${report.stageCounts.quoted}`,
+    `- 已成交：${report.stageCounts.won}`,
+    `- 暂不推进：${report.stageCounts.paused}`
+  ].join('\n');
+  const ratioLines=[
+    `- 发资料率：${report.rates.sentRate}%`,
+    `- 报价率：${report.rates.quoteRate}%`,
+    `- 成交率：${report.rates.winRate}%`,
+    `- 联系点击：${report.channelMetrics.contactClicks}`,
+    `- 支付点击：${report.channelMetrics.paymentClicks}`,
+    `- 联系→线索率：${report.rates.contactToLeadRate===null ? '暂无数据' : `${report.rates.contactToLeadRate}%`}`,
+    `- 支付→成交率：${report.rates.paymentToWinRate===null ? '暂无数据' : `${report.rates.paymentToWinRate}%`}`,
+    `- 最近 CTA 点击：${formatProductOpsTimestamp(report.channelMetrics.lastClickedAt)}`
+  ].join('\n');
+  const productLines=report.products.map(item=>`- ${item.productTitle}｜线索 ${item.totalLeads}｜成交 ${item.stageCounts.won}｜成交率 ${item.rates.winRate}%`).join('\n') || '- 暂无产品数据';
+  return [
+    '# Passive Income Lab 多产品经营周报',
+    '',
+    `- 导出时间：${report.exportedAt.replace('T',' ').slice(0,16)} UTC`,
+    `- 产品数：${report.productCount}`,
+    `- 总线索数：${report.totalLeads}`,
+    report.topProduct ? `- 当前主推：${report.topProduct.productTitle}` : '- 当前主推：暂无',
+    '',
+    '## 全局阶段分布',
+    stageLines,
+    '',
+    '## 全局转化指标',
+    ratioLines,
+    '',
+    '## 产品分布',
+    productLines,
+    '',
+    `## 下一步建议\n- ${report.nextAction}`
+  ].join('\n');
+}
+
+function buildProductOpsPortfolioSummaryText(){
+  const report=buildProductOpsPortfolioReport();
+  return [
+    `多产品经营摘要｜共 ${report.productCount} 个产品`,
+    `总线索 ${report.totalLeads}｜待跟进 ${report.stageCounts.pending}｜已报价 ${report.stageCounts.quoted}｜已成交 ${report.stageCounts.won}`,
+    `发资料率 ${report.rates.sentRate}%｜报价率 ${report.rates.quoteRate}%｜成交率 ${report.rates.winRate}%`,
+    `联系点击 ${report.channelMetrics.contactClicks}｜支付点击 ${report.channelMetrics.paymentClicks}`,
+    report.rates.contactToLeadRate===null ? '联系→线索率 暂无数据' : `联系→线索率 ${report.rates.contactToLeadRate}%`,
+    report.rates.paymentToWinRate===null ? '支付→成交率 暂无数据' : `支付→成交率 ${report.rates.paymentToWinRate}%`,
+    report.topProduct ? `当前主推：${report.topProduct.productTitle}（成交 ${report.topProduct.won}｜成交率 ${report.topProduct.winRate}%）` : '当前主推：暂无',
+    `最近 CTA 点击：${formatProductOpsTimestamp(report.channelMetrics.lastClickedAt)}`,
+    `下一步：${report.nextAction}`
+  ].join('\n');
+}
+
 function buildProductOpsWeeklyMarkdown(productKey){
   const report=buildProductOpsReport(productKey);
   if(!report){
@@ -2687,6 +2804,31 @@ function exportSelectedProductOpsJson(){
   $('channelConfigStatus').textContent=`已导出 ${offer.title} 经营周报 JSON。`;
 }
 
+async function copyProductOpsPortfolioSummary(){
+  await copyText(buildProductOpsPortfolioSummaryText(),'已复制多产品经营摘要');
+  $('channelConfigStatus').textContent='已复制多产品经营摘要。';
+}
+
+async function shareProductOpsPortfolioSummary(){
+  await shareText({
+    title:'Passive Income Lab 多产品经营摘要',
+    text:buildProductOpsPortfolioSummaryText(),
+    fallbackSuccessMessage:'已复制多产品经营摘要'
+  });
+  $('channelConfigStatus').textContent='已触发多产品经营摘要分享；若浏览器不支持则已回退为复制。';
+}
+
+function exportProductOpsPortfolioMarkdown(){
+  downloadFile('product-ops-portfolio-weekly-summary.md',buildProductOpsPortfolioMarkdown(),'text/markdown;charset=utf-8');
+  $('channelConfigStatus').textContent='已导出多产品经营周报 Markdown。';
+}
+
+function exportProductOpsPortfolioJson(){
+
+  downloadFile('product-ops-portfolio-weekly-summary.json',JSON.stringify(buildProductOpsPortfolioReport(),null,2),'application/json;charset=utf-8');
+  $('channelConfigStatus').textContent='已导出多产品经营周报 JSON。';
+}
+
 function loadProductOpsDemo(){
   const demoLeads=[
     {id:'demo-ms-1',productSlug:'micro-saas',name:'杭州独立开发者A',channel:'微信私聊',budget:'¥229',priority:'高',stage:'已报价',updatedAt:'2026-04-11T07:20:00.000Z',demand:'要首周冷启动文案',nextStep:'今晚确认是否下单'},
@@ -2696,7 +2838,7 @@ function loadProductOpsDemo(){
   ];
   const demoMetrics={
     microSaas:{contactClicks:9,paymentClicks:3,lastClickedAt:'2026-04-11T07:35:00.000Z'},
-    orionNexus:{contactClicks:5,paymentClicks:2,lastClickedAt:'2026-04-11T06:10:00.000Z'}
+    orion:{contactClicks:5,paymentClicks:2,lastClickedAt:'2026-04-11T06:10:00.000Z'}
   };
   saveProductLeads(demoLeads);
   saveProductChannelMetrics(demoMetrics);
@@ -2707,12 +2849,16 @@ function loadProductOpsDemo(){
 
 function renderProductOpsBoard(){
   const board=$('productOpsBoard');
+  const portfolioBoard=$('productOpsPortfolioBoard');
   if(!board) return;
   const selected=getSelectedProduct();
   const all=Object.keys(PRODUCT_OFFERS).map(buildProductOpsSummary).filter(Boolean);
   const current=all.find(item=>item.offer.key===selected.key) || all[0];
   if(!current){
     board.innerHTML='<div class="muted">当前暂无产品经营统计</div>';
+    if(portfolioBoard){
+      portfolioBoard.innerHTML='<div class="muted">当前暂无多产品经营汇总</div>';
+    }
     return;
   }
   const cards=all.map(item=>`<div style="border:1px solid ${item.offer.key===selected.key ? '#3a7bff' : '#243244'};border-radius:14px;padding:12px;background:${item.offer.key===selected.key ? '#0f1f3a' : '#111827'}"><div class="mini muted">${item.offer.title}</div><div style="font-size:22px;font-weight:700;margin-top:6px">${item.total}</div><div class="mini muted">线索｜成交率 ${item.winRate}%｜支付点击 ${item.paymentClicks}</div></div>`).join('');
@@ -2726,6 +2872,13 @@ function renderProductOpsBoard(){
     current.paymentToWinRate===null ? '支付→成交率 暂无数据' : `支付→成交率 ${current.paymentToWinRate}%`
   ];
   board.innerHTML=`<h3>产品经营看板</h3><div class="mini muted">当前聚焦：${current.offer.title}</div><div class="grid g2" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px">${ratios.join('｜')}</div><div class="mini muted" style="margin-top:8px">下一步建议：${current.nextAction}${current.lastClickedAt ? `｜最近 CTA 点击：${formatProductOpsTimestamp(current.lastClickedAt)}` : ''}</div>`;
+  if(portfolioBoard){
+    const portfolio=buildProductOpsPortfolioReport();
+    const topLine=portfolio.topProduct
+      ? `当前主推：${portfolio.topProduct.productTitle}｜成交 ${portfolio.topProduct.won}｜成交率 ${portfolio.topProduct.winRate}%`
+      : '当前主推：暂无';
+    portfolioBoard.innerHTML=`<h3>多产品经营总览</h3><div class="mini muted">覆盖 ${portfolio.productCount} 个产品｜总线索 ${portfolio.totalLeads}</div><div class="mini" style="margin-top:12px">待跟进 ${portfolio.stageCounts.pending}｜已报价 ${portfolio.stageCounts.quoted}｜已成交 ${portfolio.stageCounts.won}</div><div class="mini" style="margin-top:8px">发资料率 ${portfolio.rates.sentRate}%｜报价率 ${portfolio.rates.quoteRate}%｜成交率 ${portfolio.rates.winRate}%</div><div class="mini" style="margin-top:8px">联系点击 ${portfolio.channelMetrics.contactClicks}｜支付点击 ${portfolio.channelMetrics.paymentClicks}</div><div class="mini muted" style="margin-top:8px">${topLine}</div><div class="mini muted" style="margin-top:8px">下一步建议：${portfolio.nextAction}${portfolio.channelMetrics.lastClickedAt ? `｜最近 CTA 点击：${formatProductOpsTimestamp(portfolio.channelMetrics.lastClickedAt)}` : ''}</div>`;
+  }
 }
 
 function openProductChannelLink(type){
@@ -3275,6 +3428,10 @@ $("copySelectedProductOpsSummary").addEventListener('click',copySelectedProductO
 $("shareSelectedProductOpsSummary").addEventListener('click',shareSelectedProductOpsSummary);
 $("exportSelectedProductOpsMd").addEventListener('click',exportSelectedProductOpsMarkdown);
 $("exportSelectedProductOpsJson").addEventListener('click',exportSelectedProductOpsJson);
+$("copyProductOpsPortfolioSummary").addEventListener('click',copyProductOpsPortfolioSummary);
+$("shareProductOpsPortfolioSummary").addEventListener('click',shareProductOpsPortfolioSummary);
+$("exportProductOpsPortfolioMd").addEventListener('click',exportProductOpsPortfolioMarkdown);
+$("exportProductOpsPortfolioJson").addEventListener('click',exportProductOpsPortfolioJson);
 $("loadProductOpsDemo").addEventListener('click',loadProductOpsDemo);
 $("openSelectedContactLink").addEventListener('click',()=>openProductChannelLink('contact'));
 $("openSelectedPaymentLink").addEventListener('click',()=>openProductChannelLink('payment'));

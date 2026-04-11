@@ -43,6 +43,7 @@ const ensureElement = (id) => {
 };
 const storage = new Map();
 const downloads = [];
+const shares = [];
 
 const context = {
   console,
@@ -84,7 +85,7 @@ const context = {
   navigator: {
     onLine: true,
     clipboard: { async writeText() {} },
-    share: async () => {},
+    share: async (payload) => { shares.push(payload); },
     canShare: () => true,
     serviceWorker: {
       async register() { return { active: { postMessage() {} } }; },
@@ -109,7 +110,11 @@ vm.runInContext(scripts.join('\n\n'), context, { filename: 'web/index.html::<scr
 context.loadProductOpsDemo();
 const report = context.buildProductOpsReport('microSaas');
 const summary = context.buildSelectedProductOpsSummaryText('microSaas');
+const portfolioReport = context.buildProductOpsPortfolioReport();
+const portfolioSummary = context.buildProductOpsPortfolioSummaryText();
 context.exportSelectedProductOpsJson();
+await context.shareProductOpsPortfolioSummary();
+context.exportProductOpsPortfolioJson();
 
 if (!report) {
   throw new Error('未生成产品经营报告');
@@ -123,20 +128,43 @@ if (!summary.includes('产品经营摘要｜Micro-SaaS 冷启动提示词包') |
   throw new Error(`产品经营摘要文本异常: ${summary}`);
 }
 
+if (portfolioReport.totalLeads !== 4 || portfolioReport.stageCounts.won !== 1 || portfolioReport.channelMetrics.paymentClicks !== 5) {
+  throw new Error(`多产品经营报告字段异常: ${JSON.stringify(portfolioReport)}`);
+}
+
+if (!portfolioSummary.includes('多产品经营摘要｜共 2 个产品') || !portfolioSummary.includes('当前主推：Orion Nexus Quant 研究包')) {
+  throw new Error(`多产品经营摘要文本异常: ${portfolioSummary}`);
+}
+
+if (shares[0]?.title !== 'Passive Income Lab 多产品经营摘要' || !shares[0]?.text?.includes('多产品经营摘要｜共 2 个产品')) {
+  throw new Error(`未触发预期多产品经营摘要分享: ${JSON.stringify(shares)}`);
+}
+
 const boardHtml = context.document.getElementById('productOpsBoard').innerHTML;
 if (!boardHtml.includes('产品经营看板') || !boardHtml.includes('Micro-SaaS 冷启动提示词包')) {
   throw new Error(`产品经营看板未成功渲染: ${boardHtml}`);
 }
 
-const lastDownload = downloads.at(-1);
-if (!lastDownload || lastDownload.download !== 'product-ops-micro-saas-weekly-summary.json') {
-  throw new Error(`未触发产品经营 JSON 导出: ${JSON.stringify(downloads)}`);
+const portfolioBoardHtml = context.document.getElementById('productOpsPortfolioBoard').innerHTML;
+if (!portfolioBoardHtml.includes('多产品经营总览') || !portfolioBoardHtml.includes('Orion Nexus Quant 研究包')) {
+  throw new Error(`多产品经营总览未成功渲染: ${portfolioBoardHtml}`);
+}
+
+const lastDownloads = downloads.slice(-2);
+if (lastDownloads[0]?.download !== 'product-ops-micro-saas-weekly-summary.json' || lastDownloads[1]?.download !== 'product-ops-portfolio-weekly-summary.json') {
+  throw new Error(`未触发预期 JSON 导出: ${JSON.stringify(downloads)}`);
 }
 
 console.log('产品经营看板冒烟通过:', {
   totalLeads: report.totalLeads,
   stageCounts: report.stageCounts,
   paymentClicks: report.channelMetrics.paymentClicks,
+  portfolio: {
+    totalLeads: portfolioReport.totalLeads,
+    won: portfolioReport.stageCounts.won,
+    topProduct: portfolioReport.topProduct?.productTitle
+  },
   status: context.document.getElementById('channelConfigStatus').textContent,
-  lastDownload
+  lastDownloads,
+  lastShare: shares[0]
 });
