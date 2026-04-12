@@ -111,6 +111,35 @@
 2. 若拿到真实 webhook 地址，可直接从当前页面复制 payload 示例与接线说明，完成一次真联调。
 3. 若要继续逼近成交闭环，下一步应补最小远程 lead capture / serverless 存储，而不是继续堆本地看板字段。
 
+## 2026-04-12 20:0x 夜间推进（新增成果）
+
+### 本轮目标
+- 沿着刚写下的下一步，优先补“n8n 节点 JSON / 平台专用模板”，把 Webhook 区从“会复制 payload 和说明”推进到“能直接导入一份最小自动化流程”。
+
+### 新增产出
+- `web/index.html`
+  - 在线索 Webhook 区新增 2 个动作：复制待办 n8n Workflow JSON、复制总览 n8n Workflow JSON
+  - 新增 `buildLeadN8nWorkflow()` / `copyLeadTodoN8nWorkflow()` / `copyLeadPortfolioN8nWorkflow()`
+  - 生成的 workflow 已内置 `Webhook -> Normalize Message -> Send to Feishu Bot -> Respond 200` 最小流程，并带 `pinData` 示例 payload，导入后只需替换 Feishu Bot 地址
+- `outputs/lead-webhook-n8n-workflows.md`
+  - 留档两类模板用途、导入方式、唯一需要替换的配置项
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 待执行 `npm run validate`
+- 文本级可见证据：页面已出现 `copyLeadTodoN8nWorkflow / copyLeadPortfolioN8nWorkflow / buildLeadN8nWorkflow`
+
+### 阻塞
+- 当前模板默认输出飞书文本消息，不含卡片消息、签名校验或多分支路由；若要针对单平台深度优化，后续仍需补专用节点配置。
+- 浏览器端仍只是复制 workflow JSON，不会代替你导入 n8n 或保存目标端凭证。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“飞书卡片消息模板 / Markdown 富文本模板”，让 webhook 输出更像正式销售跟进提醒。
+2. 若拿到真实 n8n / 飞书机器人地址，可直接完成一次真联调，并把最终 workflow 固化到 `outputs/`。
+3. 若要继续逼近成交闭环，下一步应补最小远程 lead capture / serverless 存储，而不是继续堆本地看板字段。
+
 ## 2026-04-12 14:0x 午后推进（新增成果）
 
 ### 本轮目标

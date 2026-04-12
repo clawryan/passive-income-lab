@@ -292,6 +292,10 @@
             <button id="copyLeadPortfolioWebhookPayload" class="ghost">复制总览 Webhook Payload 示例</button>
             <button id="copyLeadWebhookIntegrationGuide" class="ghost">复制飞书 / n8n 接线说明</button>
           </div>
+          <div class="grid g2">
+            <button id="copyLeadTodoN8nWorkflow" class="ghost">复制待办 n8n Workflow JSON</button>
+            <button id="copyLeadPortfolioN8nWorkflow" class="ghost">复制总览 n8n Workflow JSON</button>
+          </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
@@ -2062,6 +2066,91 @@ function buildLeadPortfolioWebhookPayload(){
   };
 }
 
+function buildLeadN8nWorkflow(kind='lead-followup-todos'){
+  const isPortfolio=kind==='lead-portfolio-summary';
+  const pathSegment=isPortfolio ? 'lead-portfolio-summary' : 'lead-followup-todos';
+  const title=isPortfolio ? 'Passive Income Lab｜跨产品总览 -> 飞书' : 'Passive Income Lab｜跟进待办 -> 飞书';
+  const examplePayload=isPortfolio ? buildLeadPortfolioWebhookPayload() : buildLeadTodoWebhookPayload();
+  const exampleText=isPortfolio ? '跨产品线索总览' : '跟进待办';
+  return {
+    name:title,
+    nodes:[
+      {
+        id:'Webhook_Lead',
+        name:'Webhook',
+        type:'n8n-nodes-base.webhook',
+        typeVersion:2,
+        position:[240,280],
+        parameters:{
+          httpMethod:'POST',
+          path:`passive-income-lab/${pathSegment}`,
+          responseMode:'lastNode',
+          options:{}
+        }
+      },
+      {
+        id:'Code_Normalize',
+        name:'Normalize Message',
+        type:'n8n-nodes-base.code',
+        typeVersion:2,
+        position:[520,280],
+        parameters:{
+          language:'javaScript',
+          jsCode:[
+            'const body = $json.body ?? $json;',
+            'const payload = body.payload ?? {};',
+            'const lines = [',
+            "  `来源：${body.source || 'passive-income-lab'}` ,",
+            "  `类型：${body.kind || 'unknown'}` ,",
+            "  `时间：${body.generatedAt || new Date().toISOString()}` ,",
+            "  '' ,",
+            `  payload.summary || payload.markdown || '${exampleText} 暂无摘要'`,
+            '];',
+            'return [{ json: { ...body, feishuText: lines.join("\\n") } }];'
+          ].join('\n')
+        }
+      },
+      {
+        id:'HTTP_Feishu',
+        name:'Send to Feishu Bot',
+        type:'n8n-nodes-base.httpRequest',
+        typeVersion:4,
+        position:[800,280],
+        parameters:{
+          method:'POST',
+          url:'https://open.feishu.cn/open-apis/bot/v2/hook/replace-me',
+          sendBody:true,
+          specifyBody:'json',
+          jsonBody:'={{ { msg_type: "text", content: { text: $json.feishuText } } }}',
+          options:{ response:{ response:{ fullResponse:false } } }
+        }
+      },
+      {
+        id:'Respond_OK',
+        name:'Respond 200',
+        type:'n8n-nodes-base.respondToWebhook',
+        typeVersion:1.1,
+        position:[1080,280],
+        parameters:{
+          respondWith:'json',
+          responseBody:'={{ { ok: true, receivedKind: $json.kind, receivedAt: $now.toISO() } }}',
+          options:{ responseCode:200 }
+        }
+      }
+    ],
+    connections:{
+      Webhook:{ main:[[ { node:'Normalize Message', type:'main', index:0 } ]] },
+      'Normalize Message':{ main:[[ { node:'Send to Feishu Bot', type:'main', index:0 } ]] },
+      'Send to Feishu Bot':{ main:[[ { node:'Respond 200', type:'main', index:0 } ]] }
+    },
+    settings:{ executionOrder:'v1' },
+    pinData:{ Webhook:[{ json:examplePayload }] },
+    meta:{ templateCredsSetupCompleted:false },
+    versionId:'passive-income-lab-template',
+    tags:[]
+  };
+}
+
 function buildLeadWebhookIntegrationGuide(){
   const todoExample=buildLeadTodoWebhookPayload();
   const portfolioExample=buildLeadPortfolioWebhookPayload();
@@ -2077,6 +2166,7 @@ function buildLeadWebhookIntegrationGuide(){
     '- Webhook 节点 Method 设为 POST，Response 可先返回 200 JSON。',
     '- 后续 IF/Switch 节点按 body.kind 路由：lead-followup-todos / lead-portfolio-summary。',
     '- 发飞书消息时，可直接使用 body.payload.summary；若要发长文，可改用 body.payload.markdown。',
+    '- 页面已支持直接复制两份 n8n workflow JSON：待办流 / 总览流；导入后只需替换 Feishu 机器人地址。',
     '',
     '3) 字段结构',
     '- 顶层固定包含 source / kind / generatedAt / payload。',
@@ -2087,7 +2177,11 @@ function buildLeadWebhookIntegrationGuide(){
     JSON.stringify(todoExample,null,2),
     '',
     '5) 总览 payload 示例',
-    JSON.stringify(portfolioExample,null,2)
+    JSON.stringify(portfolioExample,null,2),
+    '',
+    '6) n8n workflow JSON（页面内可直接复制）',
+    '- copyLeadTodoN8nWorkflow：把线索待办推到 Feishu Bot。',
+    '- copyLeadPortfolioN8nWorkflow：把跨产品总览推到 Feishu Bot。'
   ].join('\n');
 }
 
@@ -2106,6 +2200,18 @@ async function copyLeadPortfolioWebhookPayload(){
 async function copyLeadWebhookIntegrationGuide(){
   await copyText(buildLeadWebhookIntegrationGuide(),'已复制飞书 / n8n 接线说明');
   $('leadWebhookStatus').textContent='已复制飞书 / n8n 接线说明';
+}
+
+async function copyLeadTodoN8nWorkflow(){
+  const payload=JSON.stringify(buildLeadN8nWorkflow('lead-followup-todos'),null,2);
+  await copyText(payload,'已复制待办 n8n Workflow JSON');
+  $('leadWebhookStatus').textContent='已复制待办 n8n Workflow JSON';
+}
+
+async function copyLeadPortfolioN8nWorkflow(){
+  const payload=JSON.stringify(buildLeadN8nWorkflow('lead-portfolio-summary'),null,2);
+  await copyText(payload,'已复制总览 n8n Workflow JSON');
+  $('leadWebhookStatus').textContent='已复制总览 n8n Workflow JSON';
 }
 
 function loadProductLeads(){
@@ -4010,6 +4116,8 @@ $("sendLeadPortfolioWebhook").addEventListener('click',sendLeadPortfolioWebhook)
 $("copyLeadTodoWebhookPayload").addEventListener('click',copyLeadTodoWebhookPayload);
 $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioWebhookPayload);
 $("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
+$("copyLeadTodoN8nWorkflow").addEventListener('click',copyLeadTodoN8nWorkflow);
+$("copyLeadPortfolioN8nWorkflow").addEventListener('click',copyLeadPortfolioN8nWorkflow);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);

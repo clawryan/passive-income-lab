@@ -130,6 +130,14 @@
 - 新增留档文件 `outputs/lead-webhook-integration-guide.md`，把推荐接法、字段含义、飞书/n8n 最小映射和 CORS 注意事项收口到仓库里，方便后续直接转给自己或协作者。
 - 结果：现在不只“能推 webhook”，还可以在页面里直接复制 payload 与接线说明，显著降低第一次把线索待办接到外部自动化的摩擦。
 
+## 2026-04-12 20:0x (Asia/Shanghai)
+- 这轮继续沿着“第一次接起来”往前走，但不再只给说明文档：直接补一层 **可导入 n8n 的 workflow JSON 模板**，把“看说明自己搭”推进到“复制 JSON -> 导入 -> 改飞书地址”。
+- `web/index.html` 在线索 Webhook 区新增 2 个动作：**复制待办 n8n Workflow JSON**、**复制总览 n8n Workflow JSON**。
+- 新增 `buildLeadN8nWorkflow()`、`copyLeadTodoN8nWorkflow()`、`copyLeadPortfolioN8nWorkflow()`，生成带 `Webhook -> Normalize Message -> Send to Feishu Bot -> Respond 200` 的最小 n8n 流程，并附带 `pinData` 示例 payload。
+- 更新 `buildLeadWebhookIntegrationGuide()`，把“页面已可直接复制 n8n workflow JSON”写进接线说明，减少说明和页面能力漂移。
+- 新增留档 `outputs/lead-webhook-n8n-workflows.md`，说明两类模板用途、导入方式与导入后唯一需要替换的 Feishu Bot 地址。
+- 结果：线索自动化不再停留在“知道字段结构”，而是已经能把最小 n8n 中转流直接复制出来，更接近真实联调闭环。
+
 ## 2026-04-12 14:0x (Asia/Shanghai)
 - 这轮没有继续堆新的本地报表，而是优先补一个更接近真实成交接力的缺口：线索板虽然已经能导出 JSON / Markdown / 分享摘要，但仍默认困在浏览器本地，想接飞书机器人、n8n、Make 或自建自动化时还得手工再搬一次。
 - `web/index.html` 在线索区新增“线索 Webhook 出口”，支持保存 `Webhook URL + Authorization`，并提供 4 个动作：保存配置、复制测试 cURL、推送当前筛选待办、推送跨产品总览。

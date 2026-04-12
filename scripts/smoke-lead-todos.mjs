@@ -121,6 +121,8 @@ const portfolioSummary = context.buildLeadPortfolioSummaryText();
 const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
 const todoWebhookPayload = context.buildLeadTodoWebhookPayload();
 const portfolioWebhookPayload = context.buildLeadPortfolioWebhookPayload();
+const todoN8nWorkflow = context.buildLeadN8nWorkflow('lead-followup-todos');
+const portfolioN8nWorkflow = context.buildLeadN8nWorkflow('lead-portfolio-summary');
 const webhookGuide = context.buildLeadWebhookIntegrationGuide();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
@@ -128,6 +130,8 @@ await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
 await context.copyLeadWebhookIntegrationGuide();
+await context.copyLeadTodoN8nWorkflow();
+await context.copyLeadPortfolioN8nWorkflow();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
 context.exportLeadTodoJson();
@@ -169,6 +173,14 @@ if (portfolioWebhookPayload.kind !== 'lead-portfolio-summary' || !portfolioWebho
 
 if (!webhookGuide.includes('Passive Income Lab 线索 Webhook 接线说明') || !webhookGuide.includes('lead-followup-todos') || !webhookGuide.includes('n8n')) {
   throw new Error(`Webhook 接线说明异常: ${webhookGuide}`);
+}
+
+if (todoN8nWorkflow.name !== 'Passive Income Lab｜跟进待办 -> 飞书' || !todoN8nWorkflow.nodes?.some((node) => node.name === 'Send to Feishu Bot')) {
+  throw new Error(`待办 n8n workflow 异常: ${JSON.stringify(todoN8nWorkflow)}`);
+}
+
+if (portfolioN8nWorkflow.name !== 'Passive Income Lab｜跨产品总览 -> 飞书' || !portfolioN8nWorkflow.pinData?.Webhook?.[0]?.json?.payload?.summary?.includes('跨产品线索摘要')) {
+  throw new Error(`总览 n8n workflow 异常: ${JSON.stringify(portfolioN8nWorkflow)}`);
 }
 
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;
