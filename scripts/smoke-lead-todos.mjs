@@ -119,9 +119,15 @@ const summary = context.buildLeadTodoSummaryText(items);
 const markdown = context.buildLeadTodoMarkdown(items);
 const portfolioSummary = context.buildLeadPortfolioSummaryText();
 const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
+const todoWebhookPayload = context.buildLeadTodoWebhookPayload();
+const portfolioWebhookPayload = context.buildLeadPortfolioWebhookPayload();
+const webhookGuide = context.buildLeadWebhookIntegrationGuide();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
 await context.copyLeadWebhookCurl();
+await context.copyLeadTodoWebhookPayload();
+await context.copyLeadPortfolioWebhookPayload();
+await context.copyLeadWebhookIntegrationGuide();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
 context.exportLeadTodoJson();
@@ -151,6 +157,18 @@ if (!portfolioSummary.includes('跨产品线索摘要｜共 4 条') || !portfoli
 
 if (!portfolioMarkdown.includes('# Passive Income Lab 跨产品线索总览') || !portfolioMarkdown.includes('## 产品分布')) {
   throw new Error(`跨产品线索 Markdown 异常: ${portfolioMarkdown}`);
+}
+
+if (todoWebhookPayload.kind !== 'lead-followup-todos' || !todoWebhookPayload.payload?.summary?.includes('Passive Income Lab 跟进待办')) {
+  throw new Error(`待办 Webhook Payload 异常: ${JSON.stringify(todoWebhookPayload)}`);
+}
+
+if (portfolioWebhookPayload.kind !== 'lead-portfolio-summary' || !portfolioWebhookPayload.payload?.summary?.includes('跨产品线索摘要')) {
+  throw new Error(`总览 Webhook Payload 异常: ${JSON.stringify(portfolioWebhookPayload)}`);
+}
+
+if (!webhookGuide.includes('Passive Income Lab 线索 Webhook 接线说明') || !webhookGuide.includes('lead-followup-todos') || !webhookGuide.includes('n8n')) {
+  throw new Error(`Webhook 接线说明异常: ${webhookGuide}`);
 }
 
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;

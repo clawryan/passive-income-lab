@@ -287,6 +287,11 @@
             <button id="sendLeadTodoWebhook" class="ghost">推送当前筛选待办到 Webhook</button>
             <button id="sendLeadPortfolioWebhook" class="ghost">推送跨产品总览到 Webhook</button>
           </div>
+          <div class="grid g3">
+            <button id="copyLeadTodoWebhookPayload" class="ghost">复制待办 Webhook Payload 示例</button>
+            <button id="copyLeadPortfolioWebhookPayload" class="ghost">复制总览 Webhook Payload 示例</button>
+            <button id="copyLeadWebhookIntegrationGuide" class="ghost">复制飞书 / n8n 接线说明</button>
+          </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
@@ -2026,6 +2031,81 @@ async function sendLeadPortfolioWebhook(){
   },report.totalLeads
     ? `已推送跨产品线索总览到 Webhook（${report.totalLeads} 条）`
     : '已推送空白跨产品线索总览模板到 Webhook');
+}
+
+function buildLeadTodoWebhookPayload(){
+  const items=buildLeadTodoItems();
+  return {
+    source:'passive-income-lab',
+    kind:'lead-followup-todos',
+    generatedAt:new Date().toISOString(),
+    payload:{
+      filter:getLeadStageFilter(),
+      count:items.length,
+      items,
+      summary:buildLeadTodoSummaryText(items)
+    }
+  };
+}
+
+function buildLeadPortfolioWebhookPayload(){
+  const report=getLeadPortfolioReport();
+  return {
+    source:'passive-income-lab',
+    kind:'lead-portfolio-summary',
+    generatedAt:new Date().toISOString(),
+    payload:{
+      report,
+      summary:buildLeadPortfolioSummaryText(),
+      markdown:buildLeadPortfolioMarkdown()
+    }
+  };
+}
+
+function buildLeadWebhookIntegrationGuide(){
+  const todoExample=buildLeadTodoWebhookPayload();
+  const portfolioExample=buildLeadPortfolioWebhookPayload();
+  return [
+    'Passive Income Lab 线索 Webhook 接线说明',
+    '',
+    '1) 飞书机器人 / 自建中转',
+    '- 浏览器直连机器人若遇到 CORS，先用 n8n / Cloudflare Worker / 自建接口中转。',
+    '- 建议把 Authorization 放在页面配置里，由中转校验后再转发。',
+    '- 中转收到 JSON 后，可优先取 payload.summary 或 payload.markdown 直接发消息。',
+    '',
+    '2) n8n Webhook 节点建议',
+    '- Webhook 节点 Method 设为 POST，Response 可先返回 200 JSON。',
+    '- 后续 IF/Switch 节点按 body.kind 路由：lead-followup-todos / lead-portfolio-summary。',
+    '- 发飞书消息时，可直接使用 body.payload.summary；若要发长文，可改用 body.payload.markdown。',
+    '',
+    '3) 字段结构',
+    '- 顶层固定包含 source / kind / generatedAt / payload。',
+    '- 待办 payload 含 filter / count / items / summary。',
+    '- 总览 payload 含 report / summary / markdown。',
+    '',
+    '4) 待办 payload 示例',
+    JSON.stringify(todoExample,null,2),
+    '',
+    '5) 总览 payload 示例',
+    JSON.stringify(portfolioExample,null,2)
+  ].join('\n');
+}
+
+async function copyLeadTodoWebhookPayload(){
+  const payload=JSON.stringify(buildLeadTodoWebhookPayload(),null,2);
+  await copyText(payload,'已复制待办 Webhook Payload 示例');
+  $('leadWebhookStatus').textContent='已复制待办 Webhook Payload 示例';
+}
+
+async function copyLeadPortfolioWebhookPayload(){
+  const payload=JSON.stringify(buildLeadPortfolioWebhookPayload(),null,2);
+  await copyText(payload,'已复制总览 Webhook Payload 示例');
+  $('leadWebhookStatus').textContent='已复制总览 Webhook Payload 示例';
+}
+
+async function copyLeadWebhookIntegrationGuide(){
+  await copyText(buildLeadWebhookIntegrationGuide(),'已复制飞书 / n8n 接线说明');
+  $('leadWebhookStatus').textContent='已复制飞书 / n8n 接线说明';
 }
 
 function loadProductLeads(){
@@ -3927,6 +4007,9 @@ $("saveLeadWebhookConfig").addEventListener('click',persistLeadWebhookConfig);
 $("copyLeadWebhookCurl").addEventListener('click',copyLeadWebhookCurl);
 $("sendLeadTodoWebhook").addEventListener('click',sendLeadTodoWebhook);
 $("sendLeadPortfolioWebhook").addEventListener('click',sendLeadPortfolioWebhook);
+$("copyLeadTodoWebhookPayload").addEventListener('click',copyLeadTodoWebhookPayload);
+$("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioWebhookPayload);
+$("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);

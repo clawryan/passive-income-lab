@@ -123,6 +123,13 @@
 
 # Build Log
 
+## 2026-04-12 17:0x (Asia/Shanghai)
+- 这轮没有继续扩 webhook 能力边界，而是优先补掉“会发了，但第一次怎么接”这个最低阻力却最影响落地的缺口：上轮已经能把待办/总览推到 webhook，但缺少可直接拿去喂给飞书机器人中转、n8n、Make 的 payload 示例和接线说明。
+- `web/index.html` 在线索 Webhook 区新增 3 个动作：**复制待办 Webhook Payload 示例**、**复制总览 Webhook Payload 示例**、**复制飞书 / n8n 接线说明**。
+- 新增 `buildLeadTodoWebhookPayload()` / `buildLeadPortfolioWebhookPayload()` / `buildLeadWebhookIntegrationGuide()`，把现有真实结构直接整理成可复制的 JSON 示例与接线说明，而不是再手写一份容易漂移的文档。
+- 新增留档文件 `outputs/lead-webhook-integration-guide.md`，把推荐接法、字段含义、飞书/n8n 最小映射和 CORS 注意事项收口到仓库里，方便后续直接转给自己或协作者。
+- 结果：现在不只“能推 webhook”，还可以在页面里直接复制 payload 与接线说明，显著降低第一次把线索待办接到外部自动化的摩擦。
+
 ## 2026-04-12 14:0x (Asia/Shanghai)
 - 这轮没有继续堆新的本地报表，而是优先补一个更接近真实成交接力的缺口：线索板虽然已经能导出 JSON / Markdown / 分享摘要，但仍默认困在浏览器本地，想接飞书机器人、n8n、Make 或自建自动化时还得手工再搬一次。
 - `web/index.html` 在线索区新增“线索 Webhook 出口”，支持保存 `Webhook URL + Authorization`，并提供 4 个动作：保存配置、复制测试 cURL、推送当前筛选待办、推送跨产品总览。

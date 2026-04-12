@@ -82,6 +82,35 @@
 
 # Results
 
+## 2026-04-12 17:0x 傍晚推进（新增成果）
+
+### 本轮目标
+- 沿着上轮 results 里写下的下一步，优先补“线索 webhook payload 示例 / 飞书机器人文案模板 / n8n 节点示例”，把已存在的 Webhook 出口从“能发”推进到“更容易第一次接起来”。
+
+### 新增产出
+- `web/index.html`
+  - 在线索 Webhook 区新增 3 个动作：复制待办 Webhook Payload 示例、复制总览 Webhook Payload 示例、复制飞书 / n8n 接线说明
+  - 新增 `buildLeadTodoWebhookPayload()` / `buildLeadPortfolioWebhookPayload()` / `buildLeadWebhookIntegrationGuide()`
+  - 现在可直接从当前页面复制真实 JSON 结构和接线说明，而不必手工猜字段
+- `outputs/lead-webhook-integration-guide.md`
+  - 新增仓库留档，沉淀推荐接法、字段结构、飞书文案最小映射与 CORS 注意事项
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 待执行 `npm run validate`
+- 文本级可见证据：页面已出现 `copyLeadTodoWebhookPayload / copyLeadPortfolioWebhookPayload / copyLeadWebhookIntegrationGuide / buildLeadTodoWebhookPayload / buildLeadPortfolioWebhookPayload`
+
+### 阻塞
+- 当前仍是“示例与接线说明”层，不包含真实飞书机器人签名算法或某个平台私有字段；若要零配置直连某单一平台，后续还需按目标平台再补专用模板。
+- 浏览器直连 webhook 依赖目标端支持 CORS；若目标不支持，仍建议先用 n8n / Cloudflare Worker / 自建中转收口。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“线索 webhook 的平台专用模板（如飞书机器人卡片 / n8n 节点 JSON）”或最小 serverless 中转示例。
+2. 若拿到真实 webhook 地址，可直接从当前页面复制 payload 示例与接线说明，完成一次真联调。
+3. 若要继续逼近成交闭环，下一步应补最小远程 lead capture / serverless 存储，而不是继续堆本地看板字段。
+
 ## 2026-04-12 14:0x 午后推进（新增成果）
 
 ### 本轮目标
