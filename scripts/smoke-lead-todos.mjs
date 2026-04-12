@@ -110,9 +110,14 @@ context.loadProductOpsDemo();
 const items = context.buildLeadTodoItems();
 const summary = context.buildLeadTodoSummaryText(items);
 const markdown = context.buildLeadTodoMarkdown(items);
+const portfolioSummary = context.buildLeadPortfolioSummaryText();
+const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
 await context.shareLeadTodoSummary();
+await context.shareLeadPortfolioSummary();
 context.exportLeadTodoJson();
 context.exportLeadTodoMarkdown();
+context.exportLeadPortfolioJson();
+context.exportLeadPortfolioMarkdown();
 
 if (!items.length) {
   throw new Error('未生成线索待办');
@@ -130,6 +135,19 @@ if (!markdown.includes('# Passive Income Lab 跟进待办') || !markdown.include
   throw new Error(`线索待办 Markdown 异常: ${markdown}`);
 }
 
+if (!portfolioSummary.includes('跨产品线索摘要｜共 4 条') || !portfolioSummary.includes('当前最热产品：Orion Nexus Quant 研究包')) {
+  throw new Error(`跨产品线索摘要异常: ${portfolioSummary}`);
+}
+
+if (!portfolioMarkdown.includes('# Passive Income Lab 跨产品线索总览') || !portfolioMarkdown.includes('## 产品分布')) {
+  throw new Error(`跨产品线索 Markdown 异常: ${portfolioMarkdown}`);
+}
+
+const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;
+if (!portfolioBoardHtml.includes('跨产品线索总览') || !portfolioBoardHtml.includes('最优先线索')) {
+  throw new Error(`跨产品线索总览未成功渲染: ${portfolioBoardHtml}`);
+}
+
 const downloadNames = downloads.map((item) => item.download);
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {
   throw new Error(`未触发线索待办 JSON 导出: ${JSON.stringify(downloads)}`);
@@ -137,6 +155,14 @@ if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && nam
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.md'))) {
   throw new Error(`未触发线索待办 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.json'))) {
+  throw new Error(`未触发跨产品线索 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.md'))) {
+  throw new Error(`未触发跨产品线索 Markdown 导出: ${JSON.stringify(downloads)}`);
 }
 
 console.log('线索待办冒烟通过:', {

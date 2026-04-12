@@ -269,6 +269,13 @@
           <div id="leadEditingHint" class="mini muted" style="display:flex;align-items:center">当前为新建模式；在线索表中点“编辑”可回填修改。</div>
         </div>
         <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
+        <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
+        <div class="grid g4">
+          <button id="copyLeadPortfolioSummary" class="ghost">复制跨产品线索摘要</button>
+          <button id="shareLeadPortfolioSummary" class="ghost">手机原生分享跨产品线索摘要</button>
+          <button id="exportLeadPortfolioJson" class="ghost">导出跨产品线索 JSON</button>
+          <button id="exportLeadPortfolioMd" class="ghost">导出跨产品线索 Markdown</button>
+        </div>
         <div id="leadFunnelBoard" class="card"><div class="muted">暂无线索漏斗</div></div>
         <div id="leadBoard" class="card"><div class="muted">暂无线索记录</div></div>
       </div>
@@ -2011,8 +2018,178 @@ function renderLeadFunnelBoard(leads){
   board.innerHTML=`<h3>成交漏斗总览</h3><div class="mini muted">当前统计 ${total} 条线索｜${conversionText}</div><div class="grid g4" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px"><b>下一步建议：</b>${nextAction}</div>`;
 }
 
+function getLeadPortfolioReport(){
+  const leads=sortProductLeads(loadProductLeads());
+  const actionable=buildLeadTodoItems(leads.filter(entry=>(entry.stage || '待跟进')!=='暂不推进'));
+  const counts=leads.reduce((acc,entry)=>{
+    const stage=entry.stage || '待跟进';
+    acc[stage]=(acc[stage] || 0)+1;
+    return acc;
+  },{});
+  const productCounts=leads.reduce((acc,entry)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    const key=offer.key;
+    if(!acc[key]){
+      acc[key]={productKey:key,productSlug:offer.slug,productTitle:offer.title,total:0,won:0,quoted:0,pending:0};
+    }
+    acc[key].total+=1;
+    const stage=entry.stage || '待跟进';
+    if(stage==='已成交') acc[key].won+=1;
+    if(stage==='已报价') acc[key].quoted+=1;
+    if(stage==='待跟进') acc[key].pending+=1;
+    return acc;
+  },{});
+  const topProduct=Object.values(productCounts).sort((a,b)=>{
+    const wonDiff=(b.won || 0)-(a.won || 0);
+    if(wonDiff!==0) return wonDiff;
+    const quotedDiff=(b.quoted || 0)-(a.quoted || 0);
+    if(quotedDiff!==0) return quotedDiff;
+    return (b.total || 0)-(a.total || 0);
+  })[0] || null;
+  const topPriorityLead=actionable.slice().sort((a,b)=>{
+    const priorityOrder={高:0,中:1,低:2};
+    const priorityDiff=(priorityOrder[a.priority] ?? 9)-(priorityOrder[b.priority] ?? 9);
+    if(priorityDiff!==0) return priorityDiff;
+    const bucketOrder={'现在':0,'24h':1,'72h':2,'本周':3};
+    const bucketDiff=(bucketOrder[a.timeBucket] ?? 9)-(bucketOrder[b.timeBucket] ?? 9);
+    if(bucketDiff!==0) return bucketDiff;
+    return new Date(b.updatedAt || 0)-new Date(a.updatedAt || 0);
+  })[0] || null;
+  const bucketCounts=actionable.reduce((acc,item)=>{
+    acc[item.timeBucket]=(acc[item.timeBucket] || 0)+1;
+    return acc;
+  },{});
+  const nextAction=topPriorityLead
+    ? `优先处理 ${topPriorityLead.leadName}（${topPriorityLead.product} / ${topPriorityLead.stage} / ${topPriorityLead.timeBucket}）` 
+    : leads.length
+      ? '当前没有可推进待办，可优先补新线索或复盘成交案例。'
+      : '先发单产品链接拿到第一批真实线索。';
+  return {
+    exportedAt:new Date().toISOString(),
+    totalLeads:leads.length,
+    actionableCount:actionable.length,
+    stageCounts:{
+      pending:counts['待跟进'] || 0,
+      sent:counts['已发送资料'] || 0,
+      quoted:counts['已报价'] || 0,
+      won:counts['已成交'] || 0,
+      paused:counts['暂不推进'] || 0
+    },
+    bucketCounts:{
+      now:bucketCounts['现在'] || 0,
+      next24h:bucketCounts['24h'] || 0,
+      next72h:bucketCounts['72h'] || 0,
+      thisWeek:bucketCounts['本周'] || 0
+    },
+    topProduct,
+    topPriorityLead,
+    products:Object.values(productCounts),
+    nextAction
+  };
+}
+
+function buildLeadPortfolioSummaryText(){
+  const report=getLeadPortfolioReport();
+  return [
+    `跨产品线索摘要｜共 ${report.totalLeads} 条`,
+    `可推进 ${report.actionableCount}｜待跟进 ${report.stageCounts.pending}｜已报价 ${report.stageCounts.quoted}｜已成交 ${report.stageCounts.won}`,
+    `时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}`,
+    report.topProduct ? `当前最热产品：${report.topProduct.productTitle}（线索 ${report.topProduct.total}｜已报价 ${report.topProduct.quoted}｜已成交 ${report.topProduct.won}）` : '当前最热产品：暂无',
+    report.topPriorityLead ? `最优先线索：${report.topPriorityLead.leadName}｜${report.topPriorityLead.product}｜${report.topPriorityLead.stage}｜${report.topPriorityLead.timeBucket}` : '最优先线索：暂无',
+    `下一步：${report.nextAction}`
+  ].join('\n');
+}
+
+function buildLeadPortfolioMarkdown(){
+  const report=getLeadPortfolioReport();
+  const productLines=report.products.length
+    ? report.products.map(item=>`- ${item.productTitle}｜线索 ${item.total}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`).join('\n')
+    : '- 暂无产品线索';
+  const lines=[
+    '# Passive Income Lab 跨产品线索总览',
+    '',
+    `- 导出时间：${report.exportedAt.replace('T',' ').slice(0,16)} UTC`,
+    `- 总线索：${report.totalLeads}`,
+    `- 可推进待办：${report.actionableCount}`,
+    `- 待跟进：${report.stageCounts.pending}`,
+    `- 已发送资料：${report.stageCounts.sent}`,
+    `- 已报价：${report.stageCounts.quoted}`,
+    `- 已成交：${report.stageCounts.won}`,
+    `- 暂不推进：${report.stageCounts.paused}`,
+    `- 时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}｜本周 ${report.bucketCounts.thisWeek}`,
+    report.topProduct ? `- 当前最热产品：${report.topProduct.productTitle}` : '- 当前最热产品：暂无',
+    report.topPriorityLead ? `- 最优先线索：${report.topPriorityLead.leadName}｜${report.topPriorityLead.product}｜${report.topPriorityLead.stage}｜${report.topPriorityLead.timeBucket}` : '- 最优先线索：暂无',
+    '',
+    '## 产品分布',
+    productLines,
+    '',
+    `## 下一步建议
+- ${report.nextAction}`
+  ];
+  return lines.join('\n');
+}
+
+function renderLeadPortfolioBoard(){
+  const board=$('leadPortfolioBoard');
+  if(!board) return;
+  const report=getLeadPortfolioReport();
+  if(!report.totalLeads){
+    board.innerHTML='<div class="muted">当前暂无跨产品线索总览</div>';
+    return;
+  }
+  const productCards=(report.products || []).map(item=>`<div style="border:1px solid #243244;border-radius:14px;padding:12px;background:#111827"><div class="mini muted">${item.productTitle}</div><div style="font-size:22px;font-weight:700;margin-top:6px">${item.total}</div><div class="mini muted">线索｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}</div></div>`).join('');
+  const priorityLine=report.topPriorityLead
+    ? `最优先线索：${report.topPriorityLead.leadName}｜${report.topPriorityLead.product}｜${report.topPriorityLead.stage}｜${report.topPriorityLead.timeBucket}`
+    : '最优先线索：暂无';
+  board.innerHTML=`<h3>跨产品线索总览</h3><div class="mini muted">总线索 ${report.totalLeads}｜可推进 ${report.actionableCount}｜时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}</div><div class="grid g2" style="margin-top:12px">${productCards || '<div class="muted">暂无产品分布</div>'}</div><div class="mini" style="margin-top:12px">${report.topProduct ? `当前最热产品：${report.topProduct.productTitle}` : '当前最热产品：暂无'}｜${priorityLine}</div><div class="mini muted" style="margin-top:8px">下一步建议：${report.nextAction}</div>`;
+}
+
+async function copyLeadPortfolioSummary(){
+  const report=getLeadPortfolioReport();
+  if(!report.totalLeads){
+    $('leadStatus').textContent='当前还没有跨产品线索可汇总';
+    return;
+  }
+  await copyText(buildLeadPortfolioSummaryText(),`已复制跨产品线索摘要（${report.totalLeads} 条）`);
+  $('leadStatus').textContent=`已复制跨产品线索摘要（${report.totalLeads} 条）`;
+}
+
+async function shareLeadPortfolioSummary(){
+  const report=getLeadPortfolioReport();
+  if(!report.totalLeads){
+    $('leadStatus').textContent='当前还没有跨产品线索可分享';
+    return;
+  }
+  const text=buildLeadPortfolioSummaryText();
+  await shareText({
+    title:`Passive Income Lab 跨产品线索摘要（${report.totalLeads} 条）`,
+    text
+  },`已调起系统分享跨产品线索摘要（${report.totalLeads} 条）`,()=>copyText(text,'当前浏览器不支持原生分享，已复制跨产品线索摘要'),'leadStatus');
+}
+
+function exportLeadPortfolioJson(){
+  const report=getLeadPortfolioReport();
+  if(!report.totalLeads){
+    $('leadStatus').textContent='当前还没有跨产品线索可导出';
+    return;
+  }
+  const ts=report.exportedAt.replace(/[:.]/g,'-');
+  downloadFile(`lead-portfolio-summary-${ts}.json`,JSON.stringify(report,null,2),'application/json;charset=utf-8');
+  $('leadStatus').textContent=`已导出跨产品线索 JSON（${report.totalLeads} 条）`;
+}
+
+function exportLeadPortfolioMarkdown(){
+  const report=getLeadPortfolioReport();
+  const ts=report.exportedAt.replace(/[:.]/g,'-');
+  downloadFile(`lead-portfolio-summary-${ts}.md`,buildLeadPortfolioMarkdown(),'text/markdown;charset=utf-8');
+  $('leadStatus').textContent=report.totalLeads
+    ? `已导出跨产品线索 Markdown（${report.totalLeads} 条）`
+    : '已导出空白跨产品线索模板 Markdown';
+}
+
 function renderLeadBoard(){
   renderProductOpsBoard();
+  renderLeadPortfolioBoard();
   const board=$('leadBoard');
   if(!board) return;
   const leads=loadProductLeads();
@@ -3512,6 +3689,10 @@ $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);
 $("exportLeadTodoMd").addEventListener('click',exportLeadTodoMarkdown);
+$("copyLeadPortfolioSummary").addEventListener('click',copyLeadPortfolioSummary);
+$("shareLeadPortfolioSummary").addEventListener('click',shareLeadPortfolioSummary);
+$("exportLeadPortfolioJson").addEventListener('click',exportLeadPortfolioJson);
+$("exportLeadPortfolioMd").addEventListener('click',exportLeadPortfolioMarkdown);
 $("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
 $("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
