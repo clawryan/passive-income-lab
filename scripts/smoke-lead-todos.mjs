@@ -148,6 +148,15 @@ if (!portfolioBoardHtml.includes('跨产品线索总览') || !portfolioBoardHtml
   throw new Error(`跨产品线索总览未成功渲染: ${portfolioBoardHtml}`);
 }
 
+const cadenceBoardHtml = context.document.getElementById('leadCadenceBoard').innerHTML;
+if (!cadenceBoardHtml.includes('跟进时效看板') || !cadenceBoardHtml.includes('最需催办')) {
+  throw new Error(`跟进时效看板未成功渲染: ${cadenceBoardHtml}`);
+}
+
+if (!items.some((item) => ['已超期', '即将超期', '节奏正常'].includes(item.cadenceLabel))) {
+  throw new Error(`线索时效标签异常: ${JSON.stringify(items)}`);
+}
+
 const downloadNames = downloads.map((item) => item.download);
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {
   throw new Error(`未触发线索待办 JSON 导出: ${JSON.stringify(downloads)}`);

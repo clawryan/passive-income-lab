@@ -276,6 +276,7 @@
           <button id="exportLeadPortfolioJson" class="ghost">导出跨产品线索 JSON</button>
           <button id="exportLeadPortfolioMd" class="ghost">导出跨产品线索 Markdown</button>
         </div>
+        <div id="leadCadenceBoard" class="card"><div class="muted">当前暂无跟进时效统计</div></div>
         <div id="leadFunnelBoard" class="card"><div class="muted">暂无线索漏斗</div></div>
         <div id="leadBoard" class="card"><div class="muted">暂无线索记录</div></div>
       </div>
@@ -2187,6 +2188,40 @@ function exportLeadPortfolioMarkdown(){
     : '已导出空白跨产品线索模板 Markdown';
 }
 
+function renderLeadCadenceBoard(leads){
+  const board=$('leadCadenceBoard');
+  if(!board) return;
+  const actionable=(leads || []).filter(entry=>(entry.stage || '待跟进')!=='暂不推进');
+  if(!actionable.length){
+    board.innerHTML='<div class="muted">当前暂无跟进时效统计</div>';
+    return;
+  }
+  const items=buildLeadTodoItems(sortProductLeads(actionable));
+  const counts=items.reduce((acc,item)=>{
+    acc[item.cadenceLevel]=(acc[item.cadenceLevel] || 0)+1;
+    acc[item.timeBucket]=(acc[item.timeBucket] || 0)+1;
+    return acc;
+  },{});
+  const cards=[
+    {label:'已超期',key:'overdue',color:'#ef4444'},
+    {label:'即将超期',key:'soon',color:'#f59e0b'},
+    {label:'节奏正常',key:'fresh',color:'#22c55e'}
+  ].map(item=>`<div style="border:1px solid #243244;border-radius:14px;padding:12px;background:#111827"><div class="mini muted">${item.label}</div><div style="font-size:24px;font-weight:700;margin-top:6px;color:${item.color}">${counts[item.key] || 0}</div><div class="mini muted">待办占比 ${Math.round(((counts[item.key] || 0)/items.length)*100)}%</div></div>`).join('');
+  const topStale=items.slice().sort((a,b)=>{
+    const levelOrder={overdue:0,soon:1,fresh:2};
+    const levelDiff=(levelOrder[a.cadenceLevel] ?? 9)-(levelOrder[b.cadenceLevel] ?? 9);
+    if(levelDiff!==0) return levelDiff;
+    const priorityOrder={高:0,中:1,低:2};
+    const priorityDiff=(priorityOrder[a.priority] ?? 9)-(priorityOrder[b.priority] ?? 9);
+    if(priorityDiff!==0) return priorityDiff;
+    return (b.ageHours || 0)-(a.ageHours || 0);
+  })[0] || null;
+  const nextAction=topStale
+    ? `先处理 ${topStale.leadName}（${topStale.product} / ${topStale.stage}），已停留 ${topStale.ageHours}h，状态：${topStale.cadenceLabel}`
+    : '当前暂无需要催办的线索。';
+  board.innerHTML=`<h3>跟进时效看板</h3><div class="mini muted">可推进 ${items.length} 条｜现在 ${counts['现在'] || 0}｜24h ${counts['24h'] || 0}｜72h ${counts['72h'] || 0}</div><div class="grid g4" style="margin-top:12px">${cards}</div><div class="mini" style="margin-top:12px"><b>最需催办：</b>${topStale ? `${topStale.leadName}｜${topStale.timeBucket}｜${topStale.cadenceLabel}｜距上次更新 ${topStale.ageHours}h` : '暂无'}</div><div class="mini" style="margin-top:8px"><b>下一步建议：</b>${nextAction}</div>`;
+}
+
 function renderLeadBoard(){
   renderProductOpsBoard();
   renderLeadPortfolioBoard();
@@ -2194,12 +2229,14 @@ function renderLeadBoard(){
   if(!board) return;
   const leads=loadProductLeads();
   if(!leads.length){
+    renderLeadCadenceBoard([]);
     renderLeadFunnelBoard([]);
     board.innerHTML='<div class="muted">暂无线索记录</div>';
     return;
   }
   const stageFilter=getLeadStageFilter();
   const filtered=leads.filter(entry=>stageFilter==='all' || (entry.stage || '待跟进')===stageFilter);
+  renderLeadCadenceBoard(filtered);
   renderLeadFunnelBoard(filtered);
   if(!filtered.length){
     board.innerHTML='<div class="muted">当前筛选范围暂无线索</div>';
@@ -2348,6 +2385,39 @@ function getLeadTodoBucket(entry){
   return '本周';
 }
 
+function getLeadUpdatedAt(entry){
+  return entry.updatedAt || entry.createdAt || '';
+}
+
+function getLeadAgeHours(entry){
+  const raw=getLeadUpdatedAt(entry);
+  const ts=raw ? new Date(raw).getTime() : NaN;
+  if(!Number.isFinite(ts)) return 0;
+  return Math.max(0, Math.round((Date.now()-ts)/36e5));
+}
+
+function getLeadBucketDeadlineHours(bucket){
+  if(bucket==='现在') return 6;
+  if(bucket==='24h') return 24;
+  if(bucket==='72h') return 72;
+  return 168;
+}
+
+function getLeadCadenceLevel(entry){
+  const bucket=getLeadTodoBucket(entry);
+  const ageHours=getLeadAgeHours(entry);
+  const deadlineHours=getLeadBucketDeadlineHours(bucket);
+  if(ageHours>=deadlineHours) return 'overdue';
+  if(ageHours>=Math.max(1,Math.round(deadlineHours*0.5))) return 'soon';
+  return 'fresh';
+}
+
+function getLeadCadenceLabel(level){
+  if(level==='overdue') return '已超期';
+  if(level==='soon') return '即将超期';
+  return '节奏正常';
+}
+
 function getLeadTodoAction(entry){
   const stage=entry.stage || '待跟进';
   if(stage==='待跟进') return `发送 ${getProductOfferBySlug(entry.productSlug).title} 的单产品链接 + FAQ，并确认预算/决策时点`;
@@ -2360,6 +2430,9 @@ function getLeadTodoAction(entry){
 function buildLeadTodoItems(leads=getActionableLeadEntries()){
   return leads.map((entry,index)=>{
     const offer=getProductOfferBySlug(entry.productSlug);
+    const timeBucket=getLeadTodoBucket(entry);
+    const ageHours=getLeadAgeHours(entry);
+    const cadenceLevel=getLeadCadenceLevel(entry);
     return {
       order:index+1,
       leadId:getLeadEntryId(entry),
@@ -2370,12 +2443,16 @@ function buildLeadTodoItems(leads=getActionableLeadEntries()){
       priority:entry.priority || '中',
       channel:entry.channel || '其他',
       budget:entry.budget || '待确认',
-      updatedAt:entry.updatedAt || entry.createdAt || '',
-      timeBucket:getLeadTodoBucket(entry),
+      updatedAt:getLeadUpdatedAt(entry),
+      timeBucket,
+      ageHours,
+      cadenceLevel,
+      cadenceLabel:getLeadCadenceLabel(cadenceLevel),
+      overdueByHours:cadenceLevel==='overdue' ? Math.max(0,ageHours-getLeadBucketDeadlineHours(timeBucket)) : 0,
       nextAction:getLeadTodoAction(entry),
       suggestedMessage:buildLeadFollowupText(entry),
       nextStep:entry.nextStep || '待确认下一步',
-      need:entry.need || '',
+      need:entry.need || entry.demand || '',
       landingLink:buildProductLandingLink(offer.key)
     };
   });
