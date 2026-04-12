@@ -269,6 +269,26 @@
           <div id="leadEditingHint" class="mini muted" style="display:flex;align-items:center">当前为新建模式；在线索表中点“编辑”可回填修改。</div>
         </div>
         <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
+        <div class="card stack">
+          <h3>线索 Webhook 出口</h3>
+          <div class="grid g2">
+            <label>Webhook URL
+              <input id="leadWebhookUrl" type="url" placeholder="https://example.com/webhook/leads" />
+            </label>
+            <label>Authorization（可选）
+              <input id="leadWebhookAuth" type="text" placeholder="Bearer xxx / 自定义 token" />
+            </label>
+          </div>
+          <div class="grid g2">
+            <button id="saveLeadWebhookConfig" class="ghost">保存 Webhook 配置</button>
+            <button id="copyLeadWebhookCurl" class="ghost">复制测试 cURL</button>
+          </div>
+          <div class="grid g2">
+            <button id="sendLeadTodoWebhook" class="ghost">推送当前筛选待办到 Webhook</button>
+            <button id="sendLeadPortfolioWebhook" class="ghost">推送跨产品总览到 Webhook</button>
+          </div>
+          <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
+        </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
         <div class="grid g4">
           <button id="copyLeadPortfolioSummary" class="ghost">复制跨产品线索摘要</button>
@@ -1865,7 +1885,148 @@ function exportAbHistory(format){
 }
 
 const PRODUCT_LEADS_KEY='passive-income-lab.productLeads.v1';
+const LEAD_WEBHOOK_CONFIG_KEY='passive-income-lab.leadWebhookConfig.v1';
 let currentLeadEditId='';
+
+function loadLeadWebhookConfig(){
+  try{
+    const raw=localStorage.getItem(LEAD_WEBHOOK_CONFIG_KEY);
+    const parsed=raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed==='object' ? parsed : {};
+  }catch(_){
+    return {};
+  }
+}
+
+function normalizeLeadWebhookConfig(config={}){
+  return {
+    url:String(config.url || '').trim(),
+    auth:String(config.auth || '').trim()
+  };
+}
+
+function saveLeadWebhookConfig(config){
+  localStorage.setItem(LEAD_WEBHOOK_CONFIG_KEY,JSON.stringify(normalizeLeadWebhookConfig(config)));
+}
+
+function renderLeadWebhookConfig(){
+  const config=normalizeLeadWebhookConfig(loadLeadWebhookConfig());
+  if($('leadWebhookUrl')) $('leadWebhookUrl').value=config.url || '';
+  if($('leadWebhookAuth')) $('leadWebhookAuth').value=config.auth || '';
+  if($('leadWebhookStatus')){
+    $('leadWebhookStatus').textContent=config.url
+      ? `已载入线索 Webhook：${config.url}${config.auth ? '（含 Authorization）' : '（无 Authorization）'}`
+      : '适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。';
+  }
+}
+
+function persistLeadWebhookConfig(){
+  const config=normalizeLeadWebhookConfig({
+    url:$('leadWebhookUrl')?.value,
+    auth:$('leadWebhookAuth')?.value
+  });
+  saveLeadWebhookConfig(config);
+  if($('leadWebhookStatus')){
+    $('leadWebhookStatus').textContent=config.url
+      ? `已保存线索 Webhook：${config.url}`
+      : '已清空线索 Webhook 配置';
+  }
+}
+
+function getLeadWebhookRequest(kind,payload){
+  const config=normalizeLeadWebhookConfig(loadLeadWebhookConfig());
+  if(!config.url){
+    return null;
+  }
+  return {
+    url:config.url,
+    options:{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json;charset=utf-8',
+        ...(config.auth ? { Authorization: config.auth } : {})
+      },
+      body:JSON.stringify({
+        source:'passive-income-lab',
+        kind,
+        generatedAt:new Date().toISOString(),
+        payload
+      })
+    }
+  };
+}
+
+async function postLeadWebhook(kind,payload,successMessage){
+  const request=getLeadWebhookRequest(kind,payload);
+  if(!request){
+    $('leadWebhookStatus').textContent='请先填写并保存 Lead Webhook URL';
+    return false;
+  }
+  try{
+    const response=await fetch(request.url,request.options);
+    if(!response?.ok){
+      $('leadWebhookStatus').textContent=`Webhook 推送失败：HTTP ${response?.status || 'unknown'}`;
+      return false;
+    }
+    $('leadWebhookStatus').textContent=successMessage;
+    return true;
+  }catch(err){
+    $('leadWebhookStatus').textContent=`Webhook 推送失败：${err.message}`;
+    return false;
+  }
+}
+
+function buildLeadWebhookCurl(kind,payload){
+  const request=getLeadWebhookRequest(kind,payload);
+  if(!request) return '';
+  const headerLines=Object.entries(request.options.headers || {}).map(([key,value])=>`  -H ${JSON.stringify(`${key}: ${value}`)} \\`);
+  return [
+    `curl -X POST ${JSON.stringify(request.url)} \\`,
+    ...headerLines,
+    `  --data-binary ${JSON.stringify(request.options.body)}`
+  ].join('\n');
+}
+
+async function copyLeadWebhookCurl(){
+  const items=buildLeadTodoItems();
+  const payload={
+    filter:getLeadStageFilter(),
+    count:items.length,
+    items
+  };
+  const command=buildLeadWebhookCurl('lead-followup-todos',payload);
+  if(!command){
+    $('leadWebhookStatus').textContent='请先填写并保存 Lead Webhook URL';
+    return;
+  }
+  await copyText(command,'已复制 Lead Webhook 测试 cURL');
+  $('leadWebhookStatus').textContent='已复制 Lead Webhook 测试 cURL';
+}
+
+async function sendLeadTodoWebhook(){
+  const items=buildLeadTodoItems();
+  if(!items.length){
+    $('leadWebhookStatus').textContent='当前筛选范围内暂无可推送的线索待办';
+    return;
+  }
+  await postLeadWebhook('lead-followup-todos',{
+    filter:getLeadStageFilter(),
+    count:items.length,
+    items,
+    summary:buildLeadTodoSummaryText(items)
+  },`已推送当前筛选待办到 Webhook（${items.length} 条）`);
+}
+
+async function sendLeadPortfolioWebhook(){
+  const report=getLeadPortfolioReport();
+  await postLeadWebhook('lead-portfolio-summary',{
+    report,
+    summary:buildLeadPortfolioSummaryText(),
+    markdown:buildLeadPortfolioMarkdown()
+  },report.totalLeads
+    ? `已推送跨产品线索总览到 Webhook（${report.totalLeads} 条）`
+    : '已推送空白跨产品线索总览模板到 Webhook');
+}
 
 function loadProductLeads(){
   try{
@@ -1959,8 +2120,8 @@ function buildLeadFollowupText(entry){
     `预算：${entry.budget}`,
     `优先级：${entry.priority}`,
     `跟进状态：${entry.stage || '待跟进'}`,
-    `需求：${entry.need}`,
-    `建议下一步：${entry.nextStep}`,
+    `需求：${entry.need || entry.demand || '待补充需求场景'}`,
+    `建议下一步：${entry.nextStep || '待确认下一步'}`,
     `可发送材料：报价摘要 / FAQ / 购买说明 / 单产品链接`,
     `单产品链接：${buildProductLandingLink(offer.key)}`
   ].join('\n');
@@ -3762,6 +3923,10 @@ $("importLeadJsonFile").addEventListener('change',(event)=>{
   importLeadJsonFile(file);
 });
 $("exportLeadCsv").addEventListener('click',exportLeadCsv);
+$("saveLeadWebhookConfig").addEventListener('click',persistLeadWebhookConfig);
+$("copyLeadWebhookCurl").addEventListener('click',copyLeadWebhookCurl);
+$("sendLeadTodoWebhook").addEventListener('click',sendLeadTodoWebhook);
+$("sendLeadPortfolioWebhook").addEventListener('click',sendLeadPortfolioWebhook);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);
@@ -3850,6 +4015,7 @@ $('installApp').addEventListener('click', async () => {
 $('refreshApp').addEventListener('click', () => { refreshOfflineCache().catch(e => { $('pwaStatus').textContent = '刷新缓存失败: ' + e.message; }); });
 
 selectProductLanding(getSelectedProduct().key);
+renderLeadWebhookConfig();
 renderLeadBoard();
 loadLeadForSelectedProduct();
 renderAbHistory();

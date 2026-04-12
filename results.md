@@ -82,6 +82,37 @@
 
 # Results
 
+## 2026-04-12 14:0x 午后推进（新增成果）
+
+### 本轮目标
+- 不再继续堆新的本地看板，而是补一个更接近真实多端同步/自动化的低阻力缺口：把线索待办与跨产品线索总览直接推出浏览器，接到飞书机器人、n8n、Make、Zapier 或自建 webhook。
+
+### 新增产出
+- `web/index.html`
+  - 线索区新增“线索 Webhook 出口”，可保存 `Webhook URL / Authorization`
+  - 新增“复制测试 cURL / 推送当前筛选待办 / 推送跨产品总览”动作
+  - 新增 `loadLeadWebhookConfig()` / `renderLeadWebhookConfig()` / `buildLeadWebhookCurl()` / `postLeadWebhook()` / `sendLeadTodoWebhook()` / `sendLeadPortfolioWebhook()`
+  - 顺手修复 `buildLeadFollowupText()` 在部分线索数据下输出 `需求：undefined` 的问题
+- `scripts/smoke-lead-todos.mjs`
+  - 新增对 webhook 配置保存、待办 POST 推送、跨产品总览 POST 推送的冒烟断言
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 全链路回归继续通过：`npm run validate`
+- 关键命令结果：`check:web`、`smoke:ab`、`smoke:ab-history`、`smoke:product-ops`、`smoke:lead-todos` 全部通过
+- 文本级可见证据：页面已出现 `leadWebhookUrl / leadWebhookAuth / saveLeadWebhookConfig / copyLeadWebhookCurl / sendLeadTodoWebhook / sendLeadPortfolioWebhook`
+
+### 阻塞
+- Webhook 只是通用出口，尚未预置具体接收端模板；真实自动化仍需你填入自己的飞书机器人 / n8n / Make / 自建 webhook 地址。
+- 浏览器直连 webhook 依赖目标端支持 CORS；若目标不支持，建议先用 n8n / Cloudflare Worker / 自建中转收口。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 最低阻力的继续路径：补“线索 webhook payload 示例 / 飞书机器人文案模板 / n8n 节点示例”，降低首次接线成本。
+2. 若想继续逼近成交闭环，下一步应补最小远程表单 / serverless lead capture，而不应继续堆本地报表字段。
+3. 若拿到真实 webhook 地址，可直接用当前页面从手机端推一轮真实待办到外部自动化，验证提醒/跟进链路是否顺手。
+
 ## 2026-04-02 17:0x 午后推进（新增成果）
 
 ### 本轮目标

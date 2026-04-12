@@ -43,6 +43,7 @@ const ensureElement = (id) => {
 };
 const storage = new Map();
 const downloads = [];
+const fetchCalls = [];
 
 const context = {
   console,
@@ -91,7 +92,10 @@ const context = {
       ready: Promise.resolve({ active: { postMessage() {} } })
     }
   },
-  fetch: async () => ({ ok: true, async json() { return {}; } })
+  fetch: async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+    return { ok: true, status: 200, async json() { return {}; } };
+  }
 };
 
 context.globalThis = context;
@@ -107,6 +111,9 @@ vm.createContext(context);
 vm.runInContext(scripts.join('\n\n'), context, { filename: 'web/index.html::<script>' });
 
 context.loadProductOpsDemo();
+context.document.getElementById('leadWebhookUrl').value = 'https://example.com/hooks/leads';
+context.document.getElementById('leadWebhookAuth').value = 'Bearer demo-token';
+context.persistLeadWebhookConfig();
 const items = context.buildLeadTodoItems();
 const summary = context.buildLeadTodoSummaryText(items);
 const markdown = context.buildLeadTodoMarkdown(items);
@@ -114,6 +121,9 @@ const portfolioSummary = context.buildLeadPortfolioSummaryText();
 const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
+await context.copyLeadWebhookCurl();
+await context.sendLeadTodoWebhook();
+await context.sendLeadPortfolioWebhook();
 context.exportLeadTodoJson();
 context.exportLeadTodoMarkdown();
 context.exportLeadPortfolioJson();
@@ -172,6 +182,20 @@ if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && 
 
 if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.md'))) {
   throw new Error(`未触发跨产品线索 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+const leadWebhookCalls = fetchCalls.filter((call) => call.url === 'https://example.com/hooks/leads');
+if (leadWebhookCalls.length < 2) {
+  throw new Error(`未触发线索 Webhook 推送: ${JSON.stringify(fetchCalls)}`);
+}
+
+if (!leadWebhookCalls.every((call) => String(call.options?.headers?.Authorization || '') === 'Bearer demo-token')) {
+  throw new Error(`线索 Webhook Authorization 异常: ${JSON.stringify(leadWebhookCalls)}`);
+}
+
+const webhookKinds = leadWebhookCalls.map((call) => JSON.parse(call.options.body).kind);
+if (!webhookKinds.includes('lead-followup-todos') || !webhookKinds.includes('lead-portfolio-summary')) {
+  throw new Error(`线索 Webhook kind 异常: ${JSON.stringify(leadWebhookCalls)}`);
 }
 
 console.log('线索待办冒烟通过:', {

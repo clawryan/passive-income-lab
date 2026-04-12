@@ -123,6 +123,14 @@
 
 # Build Log
 
+## 2026-04-12 14:0x (Asia/Shanghai)
+- 这轮没有继续堆新的本地报表，而是优先补一个更接近真实成交接力的缺口：线索板虽然已经能导出 JSON / Markdown / 分享摘要，但仍默认困在浏览器本地，想接飞书机器人、n8n、Make 或自建自动化时还得手工再搬一次。
+- `web/index.html` 在线索区新增“线索 Webhook 出口”，支持保存 `Webhook URL + Authorization`，并提供 4 个动作：保存配置、复制测试 cURL、推送当前筛选待办、推送跨产品总览。
+- 新增 `LEAD_WEBHOOK_CONFIG_KEY`、`loadLeadWebhookConfig()`、`renderLeadWebhookConfig()`、`buildLeadWebhookCurl()`、`postLeadWebhook()`、`sendLeadTodoWebhook()`、`sendLeadPortfolioWebhook()`；推送负载统一带 `source / kind / generatedAt / payload`，方便下游自动化按类型路由。
+- 顺手修掉 `buildLeadFollowupText()` 在部分演示/导入数据下可能出现 `需求：undefined` 的脏输出，统一回退到 `entry.need || entry.demand || 默认文案`。
+- `scripts/smoke-lead-todos.mjs` 已扩展为校验 Webhook 配置保存、测试 cURL 复制，以及“当前筛选待办 / 跨产品总览”两类 POST 推送，避免这块只停留在按钮层。
+- 结果：线索链路从“可在本地记录 / 导出”推进到“可一键推送进外部自动化”，更接近手机端真实跟进与跨设备同步闭环。
+
 ## 2026-03-30 22:0x (Asia/Shanghai)
 - 这轮没有继续在 A/B 面板里堆更多按钮，而是补了一个更接近收入的缺口：首页此前只有工具，没有“当前到底卖什么”的清晰货架层，访问者即使觉得工具有用，也不一定知道下一步该买哪个产品。
 - `web/index.html` 现已新增“可售产品货架（最小变现入口）”，把现成产物收口成 2 个可售方向：
