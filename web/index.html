@@ -296,6 +296,10 @@
             <button id="copyLeadTodoN8nWorkflow" class="ghost">复制待办 n8n Workflow JSON</button>
             <button id="copyLeadPortfolioN8nWorkflow" class="ghost">复制总览 n8n Workflow JSON</button>
           </div>
+          <div class="grid g2">
+            <button id="copyLeadTodoFeishuCardPayload" class="ghost">复制待办飞书卡片 Payload</button>
+            <button id="copyLeadPortfolioFeishuCardPayload" class="ghost">复制总览飞书卡片 Payload</button>
+          </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
@@ -2066,6 +2070,66 @@ function buildLeadPortfolioWebhookPayload(){
   };
 }
 
+
+function buildLeadFeishuCardPayload(kind='lead-followup-todos'){
+  const isPortfolio=kind==='lead-portfolio-summary';
+  const webhookPayload=isPortfolio ? buildLeadPortfolioWebhookPayload() : buildLeadTodoWebhookPayload();
+  const title=isPortfolio ? 'Passive Income Lab｜跨产品线索总览' : 'Passive Income Lab｜跟进待办';
+  const badge=isPortfolio ? '总览' : '待办';
+  const report=webhookPayload.payload?.report || {};
+  const items=webhookPayload.payload?.items || [];
+  const lines=isPortfolio
+    ? [
+        `总线索：${report.totalLeads || 0}`,
+        `可推进待办：${report.actionableCount || 0}`,
+        `当前最热产品：${report.hottestProduct || '暂无'}`,
+        `最优先线索：${report.priorityLead?.name || '暂无'}`
+      ]
+    : items.slice(0,4).map((item,index)=>`${index+1}. [${item.timeBucket || '现在'}] ${item.productLabel || item.product || '未分类'}｜${item.name || '未命名线索'}｜${item.nextStep || '待确认下一步'}`);
+  const lineText=lines.length ? lines.join('\\n') : (isPortfolio ? '当前暂无跨产品线索摘要' : '当前筛选范围内暂无待跟进线索');
+  return {
+    msg_type:'interactive',
+    card:{
+      schema:'2.0',
+      config:{ wide_screen_mode:true, enable_forward:true },
+      header:{
+        title:{ tag:'plain_text', content:title },
+        template:isPortfolio ? 'blue' : 'orange',
+        subtitle:{ tag:'plain_text', content:`${badge}｜${new Date().toLocaleString('zh-CN',{ hour12:false })}` }
+      },
+      body:{
+        elements:[
+          { tag:'markdown', content:`**来源**：${webhookPayload.source}
+**类型**：${webhookPayload.kind}
+**时间**：${webhookPayload.generatedAt}` },
+          { tag:'hr' },
+          { tag:'markdown', content:webhookPayload.payload?.summary || '暂无摘要' },
+          { tag:'hr' },
+          { tag:'markdown', content:`**关键明细**
+${lineText}` },
+          { tag:'action', actions:[
+            { tag:'button', text:{ tag:'plain_text', content:'查看 Markdown 摘要' }, type:'default', multi_url:{ url:'https://example.com/passive-income-lab/lead-summary' }, value:{ kind:webhookPayload.kind, action:'open-markdown-summary' } },
+            { tag:'button', text:{ tag:'plain_text', content:'复制到 n8n/机器人' }, type:'primary', value:{ kind:webhookPayload.kind, action:'copy-json-payload' } }
+          ] }
+        ]
+      }
+    },
+    meta:{ source:'passive-income-lab', kind:webhookPayload.kind, generatedAt:webhookPayload.generatedAt }
+  };
+}
+
+async function copyLeadTodoFeishuCardPayload(){
+  const payload=JSON.stringify(buildLeadFeishuCardPayload('lead-followup-todos'),null,2);
+  await copyText(payload,'已复制待办飞书卡片 Payload');
+  $('leadWebhookStatus').textContent='已复制待办飞书卡片 Payload';
+}
+
+async function copyLeadPortfolioFeishuCardPayload(){
+  const payload=JSON.stringify(buildLeadFeishuCardPayload('lead-portfolio-summary'),null,2);
+  await copyText(payload,'已复制总览飞书卡片 Payload');
+  $('leadWebhookStatus').textContent='已复制总览飞书卡片 Payload';
+}
+
 function buildLeadN8nWorkflow(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
   const pathSegment=isPortfolio ? 'lead-portfolio-summary' : 'lead-followup-todos';
@@ -2181,7 +2245,11 @@ function buildLeadWebhookIntegrationGuide(){
     '',
     '6) n8n workflow JSON（页面内可直接复制）',
     '- copyLeadTodoN8nWorkflow：把线索待办推到 Feishu Bot。',
-    '- copyLeadPortfolioN8nWorkflow：把跨产品总览推到 Feishu Bot。'
+    '- copyLeadPortfolioN8nWorkflow：把跨产品总览推到 Feishu Bot。',
+    '',
+    '7) 飞书卡片消息 Payload（页面内可直接复制）',
+    '- copyLeadTodoFeishuCardPayload：复制待办 interactive card JSON。',
+    '- copyLeadPortfolioFeishuCardPayload：复制总览 interactive card JSON。'
   ].join('\n');
 }
 
@@ -4118,6 +4186,8 @@ $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioW
 $("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
 $("copyLeadTodoN8nWorkflow").addEventListener('click',copyLeadTodoN8nWorkflow);
 $("copyLeadPortfolioN8nWorkflow").addEventListener('click',copyLeadPortfolioN8nWorkflow);
+$("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCardPayload);
+$("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);

@@ -82,6 +82,36 @@
 
 # Results
 
+## 2026-04-13 08:0x 早间推进（新增成果）
+
+### 本轮目标
+- 沿着昨晚写下的下一步，优先补“飞书卡片消息模板”，把线索 Webhook 区从“能复制 JSON / 导入 n8n”推进到“能直接产出更像正式提醒的飞书卡片 payload”。
+
+### 新增产出
+- `web/index.html`
+  - 在线索 Webhook 区新增 2 个动作：复制待办飞书卡片 Payload、复制总览飞书卡片 Payload
+  - 新增 `buildLeadFeishuCardPayload()` / `copyLeadTodoFeishuCardPayload()` / `copyLeadPortfolioFeishuCardPayload()`
+  - 现可把当前筛选待办或跨产品总览直接整理成 Feishu interactive card JSON，方便喂给机器人、中转服务或自动化节点
+- `scripts/smoke-lead-todos.mjs`
+  - 新增对两类飞书卡片 payload 的冒烟断言，校验 `msg_type=interactive` 与关键标题文案
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 待执行 `npm run validate`
+- 文本级可见证据：页面已出现 `copyLeadTodoFeishuCardPayload / copyLeadPortfolioFeishuCardPayload / buildLeadFeishuCardPayload`
+
+### 阻塞
+- 当前产出的是可直接复制的飞书卡片 JSON，不会替你自动创建机器人或发送消息；真实联调仍需你填入自己的飞书机器人 / n8n / 中转 webhook。
+- 卡片里的按钮仍是占位动作值，适合经中转层二次解释；若要做到“点卡片直接打开真实内部链接”，后续仍需替换成真实 URL。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“可直接复制的飞书文本消息 / Markdown 消息模板”或最小 Cloudflare Worker 中转示例，把卡片 payload 更快接成可发送消息。
+2. 若拿到真实飞书机器人或 webhook 地址，可直接完成一次真联调，并把最终可用卡片模板沉淀到 `outputs/`。
+3. 若要继续逼近成交闭环，下一步应补最小远程 lead capture / serverless 存储，而不是继续堆本地看板字段。
+
+
 ## 2026-04-12 17:0x 傍晚推进（新增成果）
 
 ### 本轮目标

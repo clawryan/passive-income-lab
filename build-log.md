@@ -123,6 +123,14 @@
 
 # Build Log
 
+## 2026-04-13 08:0x (Asia/Shanghai)
+- 这轮继续沿着昨晚 results 里写下的最低阻力路径推进，没有再扩 webhook 协议本身，而是补齐“飞书里看起来像正式提醒”的输出层：此前已经能复制 payload 示例和 n8n workflow，但如果想直接发成飞书卡片，还要自己再拼 interactive card JSON。
+- `web/index.html` 在线索 Webhook 区新增 2 个动作：**复制待办飞书卡片 Payload**、**复制总览飞书卡片 Payload**。
+- 新增 `buildLeadFeishuCardPayload()`、`copyLeadTodoFeishuCardPayload()`、`copyLeadPortfolioFeishuCardPayload()`，把现有待办/总览 payload 收口成可直接交给飞书机器人或中转服务的 interactive card JSON。
+- `buildLeadWebhookIntegrationGuide()` 已同步补上飞书卡片 payload 入口说明，避免页面能力与接线文档漂移。
+- `scripts/smoke-lead-todos.mjs` 已扩展为断言两类飞书卡片 payload 的 `msg_type=interactive` 与关键标题文案，确保这次不是只多了按钮。
+- 结果：现在 Webhook 区已经同时具备**原始 payload**、**n8n workflow**、**飞书卡片 payload** 三层输出，首次把线索提醒接到飞书的摩擦又少了一步。
+
 ## 2026-04-12 17:0x (Asia/Shanghai)
 - 这轮没有继续扩 webhook 能力边界，而是优先补掉“会发了，但第一次怎么接”这个最低阻力却最影响落地的缺口：上轮已经能把待办/总览推到 webhook，但缺少可直接拿去喂给飞书机器人中转、n8n、Make 的 payload 示例和接线说明。
 - `web/index.html` 在线索 Webhook 区新增 3 个动作：**复制待办 Webhook Payload 示例**、**复制总览 Webhook Payload 示例**、**复制飞书 / n8n 接线说明**。

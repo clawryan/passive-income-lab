@@ -124,6 +124,8 @@ const portfolioWebhookPayload = context.buildLeadPortfolioWebhookPayload();
 const todoN8nWorkflow = context.buildLeadN8nWorkflow('lead-followup-todos');
 const portfolioN8nWorkflow = context.buildLeadN8nWorkflow('lead-portfolio-summary');
 const webhookGuide = context.buildLeadWebhookIntegrationGuide();
+const todoFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-followup-todos');
+const portfolioFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-portfolio-summary');
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
 await context.copyLeadWebhookCurl();
@@ -132,6 +134,8 @@ await context.copyLeadPortfolioWebhookPayload();
 await context.copyLeadWebhookIntegrationGuide();
 await context.copyLeadTodoN8nWorkflow();
 await context.copyLeadPortfolioN8nWorkflow();
+await context.copyLeadTodoFeishuCardPayload();
+await context.copyLeadPortfolioFeishuCardPayload();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
 context.exportLeadTodoJson();
@@ -181,6 +185,14 @@ if (todoN8nWorkflow.name !== 'Passive Income Lab｜跟进待办 -> 飞书' || !t
 
 if (portfolioN8nWorkflow.name !== 'Passive Income Lab｜跨产品总览 -> 飞书' || !portfolioN8nWorkflow.pinData?.Webhook?.[0]?.json?.payload?.summary?.includes('跨产品线索摘要')) {
   throw new Error(`总览 n8n workflow 异常: ${JSON.stringify(portfolioN8nWorkflow)}`);
+}
+
+if (todoFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(todoFeishuCardPayload).includes('跟进待办')) {
+  throw new Error(`待办飞书卡片 Payload 异常: ${JSON.stringify(todoFeishuCardPayload)}`);
+}
+
+if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(portfolioFeishuCardPayload).includes('跨产品线索总览')) {
+  throw new Error(`总览飞书卡片 Payload 异常: ${JSON.stringify(portfolioFeishuCardPayload)}`);
 }
 
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;

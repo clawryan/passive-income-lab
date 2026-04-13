@@ -71,6 +71,17 @@
 - 待办提醒：`payload.summary`
 - 跨产品总览：`payload.summary`
 - 长文留档：`payload.markdown`
+- 卡片消息：页面内可直接复制 `buildLeadFeishuCardPayload()` 生成的 interactive card JSON
+
+### 页面内现成可复制的飞书卡片入口
+
+- `复制待办飞书卡片 Payload`
+- `复制总览飞书卡片 Payload`
+
+适合：
+- 浏览器先复制卡片 JSON，再粘到中转服务 / 调试工具
+- 在 n8n / Worker 中把现有 webhook payload 转成更正式的飞书卡片消息
+- 先用演示数据走通卡片渲染，再替换成真实线索
 
 ## 注意事项
 

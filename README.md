@@ -30,6 +30,7 @@
 - **线索 Webhook 出口已补齐**：线索区现可保存 Webhook URL / Authorization，并一键把“当前筛选跟进待办”或“跨产品线索总览”推送到飞书机器人、n8n、Make、Zapier 或自建 webhook；同区也支持复制测试 cURL，方便先在电脑端联调、再到手机端直接点按钮触发。
 - **Webhook 示例 / 接线说明可直接复制**：线索区现可一键复制“待办 payload 示例 / 总览 payload 示例 / 飞书+n8n 接线说明”，并新增 `outputs/lead-webhook-integration-guide.md` 作为留档，降低首次接 webhook 的理解成本。
 - **n8n Workflow JSON 可直接复制导入**：线索 Webhook 区现可一键复制“待办 n8n Workflow JSON / 总览 n8n Workflow JSON”，导入 n8n 后只需替换飞书机器人地址即可收消息；仓库内另有 `outputs/lead-webhook-n8n-workflows.md` 留档说明。
+- **飞书卡片 Payload 可直接复制**：线索 Webhook 区现可一键复制“待办飞书卡片 Payload / 总览飞书卡片 Payload”，方便把线索待办或跨产品总览直接转成 Feishu interactive card JSON，再喂给机器人、中转服务或自动化节点。
 - **成交案例摘要 / Markdown 导出**：线索区现可把所有“已成交”线索聚合成可复制的案例摘要，或导出成 Markdown 案例集，方便继续发朋友圈、私聊背书、补落地页社会证明，而不必手动翻线索记录。
 - **跨产品线索总览可直接复制 / 分享 / 导出**：线索区现新增跨产品总览，可汇总全部产品的总线索、可推进待办、时间桶、当前最热产品与最优先线索，并支持一键复制摘要、手机原生分享，以及导出 Markdown / JSON，减少多产品并行时再手工判断“今天先跟谁”。
 - **跟进时效看板可直接催办**：线索区现会按“现在 / 24h / 72h”待办节奏计算每条线索距上次更新已过去多久，并自动标记“已超期 / 即将超期 / 节奏正常”，方便在手机端先催最容易滑单的那一批。
