@@ -1,3 +1,9 @@
+- 这轮优先补了一个更接近真实跨设备成交推进的缺口：线索虽然已经能导出 JSON / 推 webhook，但手机和电脑之间仍要手工传文件。
+- `web/index.html` 新增“线索远程采集 / 快照”区，支持保存 Lead Capture API URL / Authorization、手动提交当前线索到远程 API、以及拉取远程快照后自动合并回本地。
+- 新增 `api/lead-capture.js`：提供最小 GET / POST serverless 接口；默认把线索快照落到本机 `/tmp/passive-income-lab-leads.json`，并可选继续转发到 `LEAD_CAPTURE_WEBHOOK_URL`。
+- 新增 `scripts/smoke-lead-capture.mjs`，并扩展 `scripts/smoke-lead-todos.mjs` 覆盖远程采集按钮与快照合并链路。
+- 结果：现在可先用本仓库自带 API 做最小远程线索采集 / 快照，再视情况接 webhook 到 n8n / 数据库，离“手机录入、电脑继续跟进”更近一步。
+
 ## 2026-04-12 08:0x (Asia/Shanghai)
 - 这轮没有再补单产品文案，而是先解决多产品并行时最容易卡住的执行判断：虽然线索板已经能按当前筛选导出待办，但一旦 Micro-SaaS 和 Orion 同时推进，仍要自己手工判断“今天到底先跟哪条线索”。
 - `web/index.html` 在线索区新增 **跨产品线索总览** 卡片，以及 4 个动作：**复制跨产品线索摘要**、**手机原生分享跨产品线索摘要**、**导出跨产品线索 JSON**、**导出跨产品线索 Markdown**。

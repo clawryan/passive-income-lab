@@ -276,7 +276,24 @@
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
           <div id="leadEditingHint" class="mini muted" style="display:flex;align-items:center">当前为新建模式；在线索表中点“编辑”可回填修改。</div>
         </div>
-        <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地，可导出 JSON 做跨设备接力。</div>
+        <div id="leadStatus" class="mini muted">线索默认仅保存在当前浏览器本地；现也可手动推送到远程 Lead Capture API，并在另一端拉回快照。</div>
+        <div class="card stack">
+          <h3>线索远程采集 / 快照</h3>
+          <div class="grid g2">
+            <label>Lead Capture API URL
+              <input id="leadCaptureApiUrl" type="url" placeholder="/api/lead-capture 或 https://example.com/api/lead-capture" />
+            </label>
+            <label>Authorization（可选）
+              <input id="leadCaptureApiAuth" type="text" placeholder="Bearer xxx / 自定义 token" />
+            </label>
+          </div>
+          <div class="grid g3">
+            <button id="saveLeadCaptureConfig" class="ghost">保存远程采集配置</button>
+            <button id="sendCurrentLeadCapture" class="ghost">提交当前线索到远程 API</button>
+            <button id="pullLeadCaptureSnapshot" class="ghost">拉取远程线索快照</button>
+          </div>
+          <div id="leadCaptureStatus" class="mini muted">适合先接 /api/lead-capture 或自建 serverless endpoint；默认仅在你点按钮时发请求。</div>
+        </div>
         <div class="card stack">
           <h3>线索 Webhook 出口</h3>
           <div class="grid g2">
@@ -1907,6 +1924,7 @@ function exportAbHistory(format){
 
 const PRODUCT_LEADS_KEY='passive-income-lab.productLeads.v1';
 const LEAD_WEBHOOK_CONFIG_KEY='passive-income-lab.leadWebhookConfig.v1';
+const LEAD_CAPTURE_CONFIG_KEY='passive-income-lab.leadCaptureConfig.v1';
 let currentLeadEditId='';
 
 function loadLeadWebhookConfig(){
@@ -2300,6 +2318,28 @@ function loadProductLeads(){
 
 function saveProductLeads(leads){
   localStorage.setItem(PRODUCT_LEADS_KEY,JSON.stringify(leads.slice(0,30)));
+}
+
+function mergeLeadEntries(baseEntries,incomingEntries=[]){
+  const merged=[...baseEntries];
+  incomingEntries.forEach((entry)=>{
+    const incoming={...entry};
+    if(!getLeadEntryId(incoming)){
+      incoming.id=`lead-${incoming.updatedAt || incoming.createdAt || new Date().toISOString()}`;
+    }
+    const targetId=getLeadEntryId(incoming);
+    const index=merged.findIndex(item=>getLeadEntryId(item)===targetId);
+    if(index===-1){
+      merged.unshift(incoming);
+      return;
+    }
+    const currentUpdatedAt=new Date(merged[index].updatedAt || merged[index].createdAt || 0).getTime();
+    const incomingUpdatedAt=new Date(incoming.updatedAt || incoming.createdAt || 0).getTime();
+    if(incomingUpdatedAt>=currentUpdatedAt){
+      merged[index]={...merged[index],...incoming};
+    }
+  });
+  return sortProductLeads(merged).slice(0,30);
 }
 
 function getLeadFormState(){
@@ -2726,7 +2766,7 @@ function quickUpdateLeadStage(leadId,stage){
   $('leadStatus').textContent=`已将 ${updated.name} 更新为「${stage}」`;
 }
 
-async function saveLeadEntry(){
+function buildLeadEntryFromForm(){
   const offer=getSelectedProduct();
   const now=new Date().toISOString();
   const leads=loadProductLeads();
@@ -2742,15 +2782,26 @@ async function saveLeadEntry(){
     const index=leads.findIndex(item=>getLeadEntryId(item)===currentLeadEditId);
     if(index!==-1){
       entry.createdAt=leads[index].createdAt || now;
-      leads[index]=entry;
-    }else{
-      leads.unshift(entry);
     }
+  }
+  return {entry,offer,wasEditing};
+}
+
+function upsertLeadEntry(entry){
+  const leads=loadProductLeads();
+  const index=leads.findIndex(item=>getLeadEntryId(item)===getLeadEntryId(entry));
+  if(index!==-1){
+    leads[index]=entry;
   }else{
     leads.unshift(entry);
   }
-  saveProductLeads(leads);
+  saveProductLeads(mergeLeadEntries([],leads));
   renderLeadBoard();
+}
+
+async function saveLeadEntry(){
+  const {entry,offer,wasEditing}=buildLeadEntryFromForm();
+  upsertLeadEntry(entry);
   setLeadEditingState(entry);
   $('leadStatus').textContent=wasEditing
     ? `已更新线索：${entry.name} → ${offer.title}（${entry.stage}）`
@@ -2768,6 +2819,96 @@ async function copyLeadFollowup(){
   const text=buildLeadFollowupText(entry);
   await copyText(text,`已复制 ${entry.name} 的跟进摘要`);
   $('leadStatus').textContent=`已复制 ${entry.name} 的跟进摘要。`;
+}
+
+function loadLeadCaptureConfig(){
+  try{
+    const raw=localStorage.getItem(LEAD_CAPTURE_CONFIG_KEY);
+    const parsed=raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed==='object' ? parsed : {};
+  }catch(_){
+    return {};
+  }
+}
+
+function applyLeadCaptureConfig(){
+  const config=loadLeadCaptureConfig();
+  if($('leadCaptureApiUrl')) $('leadCaptureApiUrl').value=config.url || '';
+  if($('leadCaptureApiAuth')) $('leadCaptureApiAuth').value=config.auth || '';
+}
+
+function persistLeadCaptureConfig(){
+  const config={
+    url:($('leadCaptureApiUrl')?.value || '').trim(),
+    auth:($('leadCaptureApiAuth')?.value || '').trim()
+  };
+  localStorage.setItem(LEAD_CAPTURE_CONFIG_KEY,JSON.stringify(config));
+  $('leadCaptureStatus').textContent=config.url
+    ? `已保存远程采集配置：${config.url}`
+    : '已清空远程采集配置；当前不会发出远程采集请求。';
+}
+
+function getLeadCaptureRequest(method,body){
+  const config=loadLeadCaptureConfig();
+  const url=config.url || '/api/lead-capture';
+  const headers={'Content-Type':'application/json'};
+  if(config.auth){
+    headers.Authorization=config.auth;
+  }
+  return {
+    url,
+    options:{
+      method,
+      headers,
+      ...(body ? {body:JSON.stringify(body)} : {})
+    }
+  };
+}
+
+function buildLeadCapturePayload(entry){
+  return {
+    source:'passive-income-lab-web',
+    lead:entry,
+    context:{
+      selectedProduct:getSelectedProduct().slug,
+      landingLink:buildProductLandingLink(entry.productSlug || getSelectedProduct().key),
+      capturedAt:new Date().toISOString()
+    }
+  };
+}
+
+async function sendCurrentLeadCapture(){
+  const {entry,offer}=buildLeadEntryFromForm();
+  upsertLeadEntry(entry);
+  setLeadEditingState(entry);
+  const request=getLeadCaptureRequest('POST',buildLeadCapturePayload(entry));
+  const response=await fetch(request.url,request.options);
+  const data=await response.json();
+  if(!response.ok){
+    throw new Error(data.error || '远程采集失败');
+  }
+  const snapshotEntries=data.snapshot?.entries || [];
+  if(snapshotEntries.length){
+    saveProductLeads(mergeLeadEntries(loadProductLeads(),snapshotEntries));
+    renderLeadBoard();
+  }
+  $('leadCaptureStatus').textContent=`已提交 ${entry.name} 到远程 API：${data.storage?.mode || 'remote'}｜快照 ${data.snapshot?.count ?? snapshotEntries.length ?? 0} 条`;
+  $('leadStatus').textContent=`已本地保存并远程提交：${entry.name} → ${offer.title}`;
+}
+
+async function pullLeadCaptureSnapshot(){
+  const request=getLeadCaptureRequest('GET');
+  const response=await fetch(request.url,request.options);
+  const data=await response.json();
+  if(!response.ok){
+    throw new Error(data.error || '拉取远程快照失败');
+  }
+  const snapshotEntries=data.snapshot?.entries || data.entries || [];
+  const merged=mergeLeadEntries(loadProductLeads(),snapshotEntries);
+  saveProductLeads(merged);
+  renderLeadBoard();
+  $('leadCaptureStatus').textContent=`已拉取远程线索快照：${snapshotEntries.length} 条，合并后本地 ${merged.length} 条`;
+  $('leadStatus').textContent='已完成远程线索快照合并。';
 }
 
 function buildLeadCsv(leads){
@@ -4323,6 +4464,9 @@ $("openSelectedContactLink").addEventListener('click',()=>openProductChannelLink
 $("openSelectedPaymentLink").addEventListener('click',()=>openProductChannelLink('payment'));
 $("saveLeadEntry").addEventListener('click',saveLeadEntry);
 $("copyLeadFollowup").addEventListener('click',copyLeadFollowup);
+$("saveLeadCaptureConfig").addEventListener('click',persistLeadCaptureConfig);
+$("sendCurrentLeadCapture").addEventListener('click',()=>sendCurrentLeadCapture().catch((error)=>{$('leadCaptureStatus').textContent='远程采集失败：'+error.message;}));
+$("pullLeadCaptureSnapshot").addEventListener('click',()=>pullLeadCaptureSnapshot().catch((error)=>{$('leadCaptureStatus').textContent='拉取快照失败：'+error.message;}));
 $("resetLeadForm").addEventListener('click',()=>resetLeadForm());
 $("exportLeadJson").addEventListener('click',exportLeadJson);
 $("importLeadJson").addEventListener('click',triggerLeadJsonImport);
@@ -4434,6 +4578,7 @@ $('installApp').addEventListener('click', async () => {
 $('refreshApp').addEventListener('click', () => { refreshOfflineCache().catch(e => { $('pwaStatus').textContent = '刷新缓存失败: ' + e.message; }); });
 
 selectProductLanding(getSelectedProduct().key);
+applyLeadCaptureConfig();
 renderLeadWebhookConfig();
 renderLeadBoard();
 loadLeadForSelectedProduct();

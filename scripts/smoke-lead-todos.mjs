@@ -44,6 +44,21 @@ const ensureElement = (id) => {
 const storage = new Map();
 const downloads = [];
 const fetchCalls = [];
+const remoteLeadSnapshot = [
+  {
+    id: 'remote-lead-1',
+    name: '远程线索演示',
+    productSlug: 'orion-nexus',
+    channel: '飞书私聊',
+    budget: '¥500-999',
+    priority: '高',
+    stage: '已发送资料',
+    need: '需要先看回测说明',
+    nextStep: '今晚补演示链接',
+    createdAt: '2026-04-13T08:00:00.000Z',
+    updatedAt: '2026-04-13T08:30:00.000Z'
+  }
+];
 
 const context = {
   console,
@@ -94,6 +109,30 @@ const context = {
   },
   fetch: async (url, options = {}) => {
     fetchCalls.push({ url, options });
+    if (String(url).includes('/api/lead-capture')) {
+      if ((options.method || 'GET') === 'POST') {
+        const body = JSON.parse(options.body || '{}');
+        const lead = body.lead || {};
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              ok: true,
+              storage: { mode: 'local-file' },
+              snapshot: { count: remoteLeadSnapshot.length + 1, entries: [lead, ...remoteLeadSnapshot] }
+            };
+          }
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { ok: true, snapshot: { count: remoteLeadSnapshot.length, entries: remoteLeadSnapshot } };
+        }
+      };
+    }
     return { ok: true, status: 200, async json() { return {}; } };
   }
 };
@@ -111,6 +150,12 @@ vm.createContext(context);
 vm.runInContext(scripts.join('\n\n'), context, { filename: 'web/index.html::<script>' });
 
 context.loadProductOpsDemo();
+context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
+context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
+context.persistLeadCaptureConfig();
+await context.sendCurrentLeadCapture();
+await context.pullLeadCaptureSnapshot();
+
 context.document.getElementById('leadWebhookUrl').value = 'https://example.com/hooks/leads';
 context.document.getElementById('leadWebhookAuth').value = 'Bearer demo-token';
 context.persistLeadWebhookConfig();
@@ -167,7 +212,7 @@ if (!markdown.includes('# Passive Income Lab 跟进待办') || !markdown.include
   throw new Error(`线索待办 Markdown 异常: ${markdown}`);
 }
 
-if (!portfolioSummary.includes('跨产品线索摘要｜共 4 条') || !portfolioSummary.includes('当前最热产品：Orion Nexus Quant 研究包')) {
+if (!portfolioSummary.includes('跨产品线索摘要｜共 6 条') || !portfolioSummary.includes('当前最热产品：Orion Nexus Quant 研究包')) {
   throw new Error(`跨产品线索摘要异常: ${portfolioSummary}`);
 }
 
@@ -256,6 +301,23 @@ if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && 
 
 if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.md'))) {
   throw new Error(`未触发跨产品线索 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+const leadCaptureCalls = fetchCalls.filter((call) => String(call.url).includes('/api/lead-capture'));
+if (leadCaptureCalls.length < 2) {
+  throw new Error(`未触发远程 Lead Capture 请求: ${JSON.stringify(fetchCalls)}`);
+}
+
+if (!leadCaptureCalls.some((call) => (call.options.method || 'GET') === 'POST') || !leadCaptureCalls.some((call) => (call.options.method || 'GET') === 'GET')) {
+  throw new Error(`远程 Lead Capture 方法异常: ${JSON.stringify(leadCaptureCalls)}`);
+}
+
+if (!leadCaptureCalls.every((call) => String(call.options?.headers?.Authorization || '') === 'Bearer lead-capture-demo')) {
+  throw new Error(`远程 Lead Capture Authorization 异常: ${JSON.stringify(leadCaptureCalls)}`);
+}
+
+if (!context.document.getElementById('leadCaptureStatus').textContent.includes('已拉取远程线索快照')) {
+  throw new Error(`远程 Lead Capture 状态异常: ${context.document.getElementById('leadCaptureStatus').textContent}`);
 }
 
 const leadWebhookCalls = fetchCalls.filter((call) => call.url === 'https://example.com/hooks/leads');
