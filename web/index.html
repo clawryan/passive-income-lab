@@ -263,6 +263,14 @@
           <button id="copyWonLeadCaseSummary" class="ghost">复制成交案例摘要</button>
           <button id="exportWonLeadCasesMd" class="ghost">导出成交案例 Markdown</button>
         </div>
+        <div class="grid g2">
+          <button id="copyQuotedLeadCloserSummary" class="ghost">复制已报价催单摘要</button>
+          <button id="exportQuotedLeadCloserMd" class="ghost">导出已报价催单 Markdown</button>
+        </div>
+        <div class="grid g2">
+          <button id="copyWonLeadUpsellSummary" class="ghost">复制复购 / 转介绍摘要</button>
+          <button id="exportWonLeadUpsellMd" class="ghost">导出复购 / 转介绍 Markdown</button>
+        </div>
         <input id="importLeadJsonFile" type="file" accept="application/json,.json" style="display:none" />
         <div class="grid g2">
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
@@ -2985,8 +2993,65 @@ function exportLeadTodoMarkdown(){
     : '已导出空白跟进待办 Markdown 模板';
 }
 
+function getQuotedLeads(leads=loadProductLeads()){
+  return sortProductLeads(leads.filter(entry=>(entry.stage || '待跟进')==='已报价'));
+}
+
 function getWonLeads(leads=loadProductLeads()){
   return sortProductLeads(leads.filter(entry=>(entry.stage || '待跟进')==='已成交'));
+}
+
+function buildQuotedLeadCloserSummary(leads=getQuotedLeads()){
+  if(!leads.length){
+    return '';
+  }
+  const lines=[
+    `Passive Income Lab 已报价催单摘要｜共 ${leads.length} 条`,
+    '用途：24 小时内私聊催单、处理异议、推动确认下单。'
+  ];
+  leads.forEach((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    lines.push('');
+    lines.push(`${index+1}. ${entry.name}｜${offer.title}`);
+    lines.push(`- 当前状态：${entry.stage}`);
+    lines.push(`- 渠道 / 预算：${entry.channel}｜${entry.budget}`);
+    lines.push(`- 需求 / 痛点：${entry.need || '待补充'}`);
+    lines.push(`- 建议催单动作：${getLeadTodoAction(entry)}`);
+    lines.push(`- 建议催单文案：${entry.name}，上次给你的 ${offer.title} 方案如果方向没问题，我这边可以按你当前场景先从最小交付开始；如果还有预算、交付边界或时间安排上的顾虑，直接回我卡点，我今晚就帮你收敛成可执行版本。`);
+    lines.push(`- 单产品链接：${buildProductLandingLink(offer.key)}`);
+  });
+  return lines.join('\n');
+}
+
+function buildQuotedLeadCloserMarkdown(leads=getQuotedLeads()){
+  const generatedAt=new Date().toISOString();
+  const lines=[
+    '# Passive Income Lab 已报价催单包',
+    '',
+    `- 生成时间：${generatedAt}`,
+    `- 已报价线索数：${leads.length}`,
+    '- 用途：把“已报价未成交”的线索整理成可直接复制到飞书 / 微信的催单包。',
+    ''
+  ];
+  if(!leads.length){
+    lines.push('> 当前还没有「已报价」线索，可先把待跟进客户推进到报价阶段后再导出。');
+    return lines.join('\n');
+  }
+  leads.forEach((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    lines.push(`## 线索 ${index+1}｜${entry.name}`);
+    lines.push(`- 产品：${offer.title}`);
+    lines.push(`- 渠道：${entry.channel}`);
+    lines.push(`- 预算：${entry.budget}`);
+    lines.push(`- 优先级：${entry.priority}`);
+    lines.push(`- 需求 / 痛点：${entry.need || '待补充'}`);
+    lines.push(`- 记录中的下一步：${entry.nextStep || '待确认下一步'}`);
+    lines.push(`- 建议催单动作：${getLeadTodoAction(entry)}`);
+    lines.push(`- 建议催单文案：${entry.name}，上次给你的 ${offer.title} 方案如果方向没问题，我这边可以按你当前场景先从最小交付开始；如果还有预算、交付边界或时间安排上的顾虑，直接回我卡点，我今晚就帮你收敛成可执行版本。`);
+    lines.push(`- 单产品链接：${buildProductLandingLink(offer.key)}`);
+    lines.push('');
+  });
+  return lines.join('\n');
 }
 
 function buildWonLeadCaseSummary(leads=getWonLeads()){
@@ -3060,6 +3125,95 @@ function exportWonLeadCasesMd(){
   $('leadStatus').textContent=wonLeads.length
     ? `已导出成交案例 Markdown（${wonLeads.length} 条）`
     : '已导出空白成交案例模板 Markdown';
+}
+
+function buildWonLeadUpsellSummary(leads=getWonLeads()){
+  if(!leads.length){
+    return '';
+  }
+  const lines=[
+    `Passive Income Lab 复购 / 转介绍摘要｜共 ${leads.length} 条`,
+    '用途：成交后追反馈、推动复购、索取转介绍或案例授权。'
+  ];
+  leads.forEach((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    lines.push('');
+    lines.push(`${index+1}. ${entry.name}｜${offer.title}`);
+    lines.push(`- 成交后下一步：${entry.nextStep || '待补充交付后动作'}`);
+    lines.push(`- 建议复购动作：确认初次交付感受，顺势追加季度更新 / 定制深化 / 朋友转介绍。`);
+    lines.push(`- 建议跟进文案：${entry.name}，上次那版 ${offer.title} 如果你已经开始用了，我想顺手收个 2 分钟反馈：哪部分最值、哪部分还想继续补强？如果你接下来还要持续跑这块，我可以直接给你接季度更新 / 深化版；如果你身边也有类似需求的人，也欢迎直接把这条单产品链接转给对方。`);
+    lines.push(`- 单产品链接：${buildProductLandingLink(offer.key)}`);
+  });
+  return lines.join('\n');
+}
+
+function buildWonLeadUpsellMarkdown(leads=getWonLeads()){
+  const generatedAt=new Date().toISOString();
+  const lines=[
+    '# Passive Income Lab 复购与转介绍包',
+    '',
+    `- 生成时间：${generatedAt}`,
+    `- 已成交线索数：${leads.length}`,
+    '- 用途：把成交后的复购、评价、转介绍动作整理成可直接复制/分享的跟进包。',
+    ''
+  ];
+  if(!leads.length){
+    lines.push('> 当前还没有「已成交」线索，可先积累首批成交后再导出。');
+    return lines.join('\n');
+  }
+  leads.forEach((entry,index)=>{
+    const offer=getProductOfferBySlug(entry.productSlug);
+    lines.push(`## 客户 ${index+1}｜${entry.name}`);
+    lines.push(`- 产品：${offer.title}`);
+    lines.push(`- 渠道：${entry.channel}`);
+    lines.push(`- 预算：${entry.budget}`);
+    lines.push(`- 成交后下一步：${entry.nextStep || '待补充交付后动作'}`);
+    lines.push(`- 建议复购动作：确认初次交付感受，顺势追加季度更新 / 定制深化 / 朋友转介绍。`);
+    lines.push(`- 建议跟进文案：${entry.name}，上次那版 ${offer.title} 如果你已经开始用了，我想顺手收个 2 分钟反馈：哪部分最值、哪部分还想继续补强？如果你接下来还要持续跑这块，我可以直接给你接季度更新 / 深化版；如果你身边也有类似需求的人，也欢迎直接把这条单产品链接转给对方。`);
+    lines.push(`- 单产品链接：${buildProductLandingLink(offer.key)}`);
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+async function copyQuotedLeadCloserSummary(){
+  const quotedLeads=getQuotedLeads();
+  if(!quotedLeads.length){
+    $('leadStatus').textContent='当前还没有已报价线索，暂时无法生成催单摘要';
+    return;
+  }
+  const text=buildQuotedLeadCloserSummary(quotedLeads);
+  await copyText(text,`已复制 ${quotedLeads.length} 条已报价催单摘要`);
+  $('leadStatus').textContent=`已复制已报价催单摘要（${quotedLeads.length} 条）`;
+}
+
+function exportQuotedLeadCloserMd(){
+  const quotedLeads=getQuotedLeads();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`quoted-lead-closer-${ts}.md`,buildQuotedLeadCloserMarkdown(quotedLeads),'text/markdown;charset=utf-8');
+  $('leadStatus').textContent=quotedLeads.length
+    ? `已导出已报价催单 Markdown（${quotedLeads.length} 条）`
+    : '已导出空白已报价催单模板 Markdown';
+}
+
+async function copyWonLeadUpsellSummary(){
+  const wonLeads=getWonLeads();
+  if(!wonLeads.length){
+    $('leadStatus').textContent='当前还没有已成交线索，暂时无法生成复购 / 转介绍摘要';
+    return;
+  }
+  const text=buildWonLeadUpsellSummary(wonLeads);
+  await copyText(text,`已复制 ${wonLeads.length} 条复购 / 转介绍摘要`);
+  $('leadStatus').textContent=`已复制复购 / 转介绍摘要（${wonLeads.length} 条）`;
+}
+
+function exportWonLeadUpsellMd(){
+  const wonLeads=getWonLeads();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`won-lead-upsell-${ts}.md`,buildWonLeadUpsellMarkdown(wonLeads),'text/markdown;charset=utf-8');
+  $('leadStatus').textContent=wonLeads.length
+    ? `已导出复购 / 转介绍 Markdown（${wonLeads.length} 条）`
+    : '已导出空白复购 / 转介绍模板 Markdown';
 }
 
 function exportLeadJson(){
@@ -4198,6 +4352,10 @@ $("exportLeadPortfolioJson").addEventListener('click',exportLeadPortfolioJson);
 $("exportLeadPortfolioMd").addEventListener('click',exportLeadPortfolioMarkdown);
 $("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
 $("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
+$("copyQuotedLeadCloserSummary").addEventListener('click',copyQuotedLeadCloserSummary);
+$("exportQuotedLeadCloserMd").addEventListener('click',exportQuotedLeadCloserMd);
+$("copyWonLeadUpsellSummary").addEventListener('click',copyWonLeadUpsellSummary);
+$("exportWonLeadUpsellMd").addEventListener('click',exportWonLeadUpsellMd);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
 $("leadStageFilter").addEventListener('change',renderLeadBoard);
 $("leadSortMode").addEventListener('change',renderLeadBoard);

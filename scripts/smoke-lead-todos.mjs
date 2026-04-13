@@ -119,6 +119,10 @@ const summary = context.buildLeadTodoSummaryText(items);
 const markdown = context.buildLeadTodoMarkdown(items);
 const portfolioSummary = context.buildLeadPortfolioSummaryText();
 const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
+const quotedCloserSummary = context.buildQuotedLeadCloserSummary();
+const quotedCloserMarkdown = context.buildQuotedLeadCloserMarkdown();
+const wonUpsellSummary = context.buildWonLeadUpsellSummary();
+const wonUpsellMarkdown = context.buildWonLeadUpsellMarkdown();
 const todoWebhookPayload = context.buildLeadTodoWebhookPayload();
 const portfolioWebhookPayload = context.buildLeadPortfolioWebhookPayload();
 const todoN8nWorkflow = context.buildLeadN8nWorkflow('lead-followup-todos');
@@ -138,6 +142,10 @@ await context.copyLeadTodoFeishuCardPayload();
 await context.copyLeadPortfolioFeishuCardPayload();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
+await context.copyQuotedLeadCloserSummary();
+context.exportQuotedLeadCloserMd();
+await context.copyWonLeadUpsellSummary();
+context.exportWonLeadUpsellMd();
 context.exportLeadTodoJson();
 context.exportLeadTodoMarkdown();
 context.exportLeadPortfolioJson();
@@ -165,6 +173,22 @@ if (!portfolioSummary.includes('跨产品线索摘要｜共 4 条') || !portfoli
 
 if (!portfolioMarkdown.includes('# Passive Income Lab 跨产品线索总览') || !portfolioMarkdown.includes('## 产品分布')) {
   throw new Error(`跨产品线索 Markdown 异常: ${portfolioMarkdown}`);
+}
+
+if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {
+  throw new Error(`已报价催单摘要异常: ${quotedCloserSummary}`);
+}
+
+if (!quotedCloserMarkdown.includes('# Passive Income Lab 已报价催单包') || !quotedCloserMarkdown.includes('## 线索 1｜')) {
+  throw new Error(`已报价催单 Markdown 异常: ${quotedCloserMarkdown}`);
+}
+
+if (!wonUpsellSummary.includes('复购 / 转介绍摘要') || !wonUpsellSummary.includes('建议跟进文案')) {
+  throw new Error(`复购 / 转介绍摘要异常: ${wonUpsellSummary}`);
+}
+
+if (!wonUpsellMarkdown.includes('# Passive Income Lab 复购与转介绍包') || !wonUpsellMarkdown.includes('## 客户 1｜')) {
+  throw new Error(`复购 / 转介绍 Markdown 异常: ${wonUpsellMarkdown}`);
 }
 
 if (todoWebhookPayload.kind !== 'lead-followup-todos' || !todoWebhookPayload.payload?.summary?.includes('Passive Income Lab 跟进待办')) {
@@ -216,6 +240,14 @@ if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && nam
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.md'))) {
   throw new Error(`未触发线索待办 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('quoted-lead-closer-') && name.endsWith('.md'))) {
+  throw new Error(`未触发已报价催单 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('won-lead-upsell-') && name.endsWith('.md'))) {
+  throw new Error(`未触发复购 / 转介绍 Markdown 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.json'))) {
