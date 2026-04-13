@@ -129,6 +129,13 @@
 
 # Build Log
 
+## 2026-04-13 20:0x (Asia/Shanghai)
+- 这轮优先补了一个更贴近“手机上直接执行”的低阻力缺口：虽然线索待办已经能复制 / 分享 / 导出 JSON / Markdown，但真要在手机或电脑上准时跟进，仍常常得再手工抄进日历或提醒工具。
+- `web/index.html` 在线索待办区新增 **导出当前筛选跟进待办 ICS** 按钮，可把当前筛选范围内的待办直接导出为日历文件。
+- 新增 `buildLeadTodoIcs()` / `getLeadTodoReminderAt()` / `exportLeadTodoIcs()`，会按“现在 / 24h / 72h”自动生成对应提醒时间，并附带建议动作、下一步、需求痛点与单产品链接。
+- `scripts/smoke-lead-todos.mjs` 已扩展为校验 ICS 内容结构（`BEGIN:VCALENDAR / SUMMARY / VALARM`）与 `.ics` 文件下载，避免这块只停留在按钮层。
+- 结果：线索板从“能整理待办”推进到“能直接落进手机/电脑日历提醒”，更接近真实成交跟进闭环。
+
 ## 2026-04-13 08:0x (Asia/Shanghai)
 - 这轮继续沿着昨晚 results 里写下的最低阻力路径推进，没有再扩 webhook 协议本身，而是补齐“飞书里看起来像正式提醒”的输出层：此前已经能复制 payload 示例和 n8n workflow，但如果想直接发成飞书卡片，还要自己再拼 interactive card JSON。
 - `web/index.html` 在线索 Webhook 区新增 2 个动作：**复制待办飞书卡片 Payload**、**复制总览飞书卡片 Payload**。

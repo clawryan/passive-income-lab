@@ -260,6 +260,10 @@
           <button id="exportLeadTodoMd" class="ghost">导出当前筛选跟进待办 Markdown</button>
         </div>
         <div class="grid g2">
+          <button id="exportLeadTodoIcs" class="ghost">导出当前筛选跟进待办 ICS</button>
+          <div class="mini muted" style="display:flex;align-items:center">可直接导入手机/电脑日历，按现在 / 24h / 72h 自动生成提醒。</div>
+        </div>
+        <div class="grid g2">
           <button id="copyWonLeadCaseSummary" class="ghost">复制成交案例摘要</button>
           <button id="exportWonLeadCasesMd" class="ghost">导出成交案例 Markdown</button>
         </div>
@@ -3134,6 +3138,101 @@ function exportLeadTodoMarkdown(){
     : '已导出空白跟进待办 Markdown 模板';
 }
 
+function formatIcsDateTime(date){
+  return new Date(date).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+}
+
+function escapeIcsText(text=''){
+  return String(text || '')
+    .replace(/\\/g,'\\\\')
+    .replace(/\n/g,'\\n')
+    .replace(/,/g,'\\,')
+    .replace(/;/g,'\\;');
+}
+
+function getLeadTodoReminderAt(item,baseDate=new Date()){
+  const reminderAt=new Date(baseDate);
+  if(item.timeBucket==='现在'){
+    reminderAt.setMinutes(reminderAt.getMinutes()+15,0,0);
+    return reminderAt;
+  }
+  if(item.timeBucket==='24h'){
+    reminderAt.setHours(reminderAt.getHours()+24,0,0,0);
+    return reminderAt;
+  }
+  if(item.timeBucket==='72h'){
+    reminderAt.setHours(reminderAt.getHours()+72,0,0,0);
+    return reminderAt;
+  }
+  reminderAt.setHours(reminderAt.getHours()+168,0,0,0);
+  return reminderAt;
+}
+
+function buildLeadTodoIcs(items=buildLeadTodoItems()){
+  const now=new Date();
+  const stamp=formatIcsDateTime(now);
+  const lines=[
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Passive Income Lab//Lead Followup Todos//CN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Passive Income Lab 跟进待办',
+    'X-WR-TIMEZONE:Asia/Shanghai'
+  ];
+  if(!items.length){
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:lead-followup-empty-${stamp}@passive-income-lab`);
+    lines.push(`DTSTAMP:${stamp}`);
+    lines.push(`DTSTART:${stamp}`);
+    lines.push(`DTEND:${formatIcsDateTime(new Date(now.getTime()+30*60*1000))}`);
+    lines.push(`SUMMARY:${escapeIcsText('Passive Income Lab｜当前暂无待跟进线索')}`);
+    lines.push(`DESCRIPTION:${escapeIcsText('当前筛选范围内暂无需要推进的线索待办。')}`);
+    lines.push('END:VEVENT');
+  }else{
+    items.forEach((item,index)=>{
+      const startAt=getLeadTodoReminderAt(item,now);
+      const endAt=new Date(startAt.getTime()+30*60*1000);
+      const description=[
+        `状态：${item.stage}`,
+        `优先级：${item.priority}`,
+        `渠道：${item.channel}`,
+        `预算：${item.budget}`,
+        `建议动作：${item.nextAction}`,
+        `记录中的下一步：${item.nextStep}`,
+        item.need ? `需求 / 痛点：${item.need}` : '',
+        `单产品链接：${item.landingLink}`
+      ].filter(Boolean).join('\n');
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${escapeIcsText(item.leadId || `lead-${index+1}`)}-${formatIcsDateTime(startAt)}@passive-income-lab`);
+      lines.push(`DTSTAMP:${stamp}`);
+      lines.push(`DTSTART:${formatIcsDateTime(startAt)}`);
+      lines.push(`DTEND:${formatIcsDateTime(endAt)}`);
+      lines.push(`SUMMARY:${escapeIcsText(`[${item.timeBucket}] 跟进 ${item.leadName}｜${item.product}`)}`);
+      lines.push(`DESCRIPTION:${escapeIcsText(description)}`);
+      lines.push(`URL:${escapeIcsText(item.landingLink)}`);
+      lines.push('BEGIN:VALARM');
+      lines.push('ACTION:DISPLAY');
+      lines.push(`DESCRIPTION:${escapeIcsText(`提醒跟进 ${item.leadName}`)}`);
+      lines.push('TRIGGER:-PT15M');
+      lines.push('END:VALARM');
+      lines.push('END:VEVENT');
+    });
+  }
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
+function exportLeadTodoIcs(){
+  const items=buildLeadTodoItems();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  const ics=buildLeadTodoIcs(items);
+  downloadFile(`lead-followup-todos-${ts}.ics`,ics,'text/calendar;charset=utf-8');
+  $('leadStatus').textContent=items.length
+    ? `已导出当前筛选跟进待办 ICS（${items.length} 条）`
+    : '已导出空白跟进待办 ICS 模板';
+}
+
 function getQuotedLeads(leads=loadProductLeads()){
   return sortProductLeads(leads.filter(entry=>(entry.stage || '待跟进')==='已报价'));
 }
@@ -4490,6 +4589,7 @@ $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);
 $("exportLeadTodoMd").addEventListener('click',exportLeadTodoMarkdown);
+$("exportLeadTodoIcs").addEventListener('click',exportLeadTodoIcs);
 $("copyLeadPortfolioSummary").addEventListener('click',copyLeadPortfolioSummary);
 $("shareLeadPortfolioSummary").addEventListener('click',shareLeadPortfolioSummary);
 $("exportLeadPortfolioJson").addEventListener('click',exportLeadPortfolioJson);

@@ -40,11 +40,15 @@ function mergeEntries(entries, incomingLead) {
   if (index === -1) {
     list.unshift(incomingLead);
   } else {
-    const currentTs = new Date(list[index].updatedAt || list[index].createdAt || 0).getTime();
+    const existing = list[index] || {};
+    const currentTs = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
     const incomingTs = new Date(incomingLead.updatedAt || incomingLead.createdAt || 0).getTime();
-    if (incomingTs >= currentTs) {
-      list[index] = { ...list[index], ...incomingLead };
-    }
+    list[index] = {
+      ...existing,
+      ...incomingLead,
+      createdAt: existing.createdAt || incomingLead.createdAt,
+      updatedAt: new Date(Math.max(currentTs || 0, incomingTs || 0)).toISOString()
+    };
   }
   return list
     .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))

@@ -162,6 +162,7 @@ context.persistLeadWebhookConfig();
 const items = context.buildLeadTodoItems();
 const summary = context.buildLeadTodoSummaryText(items);
 const markdown = context.buildLeadTodoMarkdown(items);
+const ics = context.buildLeadTodoIcs(items);
 const portfolioSummary = context.buildLeadPortfolioSummaryText();
 const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
 const quotedCloserSummary = context.buildQuotedLeadCloserSummary();
@@ -193,6 +194,7 @@ await context.copyWonLeadUpsellSummary();
 context.exportWonLeadUpsellMd();
 context.exportLeadTodoJson();
 context.exportLeadTodoMarkdown();
+context.exportLeadTodoIcs();
 context.exportLeadPortfolioJson();
 context.exportLeadPortfolioMarkdown();
 
@@ -210,6 +212,10 @@ if (!summary.includes('Passive Income Lab 跟进待办') || !summary.includes('[
 
 if (!markdown.includes('# Passive Income Lab 跟进待办') || !markdown.includes('## 1. [')) {
   throw new Error(`线索待办 Markdown 异常: ${markdown}`);
+}
+
+if (!ics.includes('BEGIN:VCALENDAR') || !ics.includes('SUMMARY:[现在] 跟进') || !ics.includes('BEGIN:VALARM')) {
+  throw new Error(`线索待办 ICS 异常: ${ics}`);
 }
 
 if (!portfolioSummary.includes('跨产品线索摘要｜共 6 条') || !portfolioSummary.includes('当前最热产品：Orion Nexus Quant 研究包')) {
@@ -285,6 +291,10 @@ if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && nam
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.md'))) {
   throw new Error(`未触发线索待办 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.ics'))) {
+  throw new Error(`未触发线索待办 ICS 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('quoted-lead-closer-') && name.endsWith('.md'))) {
