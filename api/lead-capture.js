@@ -22,6 +22,7 @@ function normalizeLead(rawLead = {}) {
   return {
     id: String(rawLead.id || `lead-${now}`),
     name: String(rawLead.name || '未命名线索').trim() || '未命名线索',
+    contact: String(rawLead.contact || '').trim(),
     channel: String(rawLead.channel || '待确认').trim() || '待确认',
     budget: String(rawLead.budget || '待确认').trim() || '待确认',
     priority: String(rawLead.priority || '中').trim() || '中',
@@ -29,6 +30,8 @@ function normalizeLead(rawLead = {}) {
     need: String(rawLead.need || '待补充需求场景').trim() || '待补充需求场景',
     nextStep: String(rawLead.nextStep || '待确认下一步').trim() || '待确认下一步',
     productSlug: String(rawLead.productSlug || 'micro-saas').trim() || 'micro-saas',
+    source: String(rawLead.source || 'manual').trim() || 'manual',
+    originPage: String(rawLead.originPage || '').trim(),
     createdAt: String(rawLead.createdAt || now),
     updatedAt: String(rawLead.updatedAt || now)
   };

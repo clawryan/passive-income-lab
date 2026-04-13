@@ -118,6 +118,48 @@
         </div>
       </div>
 
+      <div class="card stack" id="publicInquiryPanel">
+        <div class="section-title">
+          <div>
+            <h3 id="publicInquiryTitle">对外询价 / 留资表单</h3>
+            <div id="publicInquirySubtitle" class="muted">给潜在客户一个能在手机上直接填写的最小询价入口；默认提交到 /api/lead-capture。</div>
+          </div>
+          <span class="pill">公开获客入口</span>
+        </div>
+        <div id="publicInquiryHint" class="mini">适合把单产品页再切成 `?product=...&view=inquiry` 的留资视角，对方填完后会进入本地/远程 lead capture 快照。</div>
+        <div class="grid g2">
+          <button id="copySelectedInquiryLink" style="background:#1c4d62">复制当前产品询价链接</button>
+          <button id="openSelectedInquiryView" class="ghost">切到当前产品询价视图</button>
+        </div>
+        <div class="grid g2">
+          <label>你的称呼
+            <input id="publicInquiryName" type="text" placeholder="如：张三 / 杭州独立开发者" />
+          </label>
+          <label>联系方式
+            <input id="publicInquiryContact" type="text" placeholder="如：微信 / 飞书 / 邮箱 / 手机号" />
+          </label>
+        </div>
+        <div class="grid g2">
+          <label>预算范围
+            <select id="publicInquiryBudget">
+              <option value="待确认" selected>待确认</option>
+              <option value="≤¥99">≤¥99</option>
+              <option value="¥100-499">¥100-499</option>
+              <option value="¥500-999">¥500-999</option>
+              <option value=">¥999">&gt;¥999</option>
+            </select>
+          </label>
+          <label>当前最想解决什么
+            <input id="publicInquiryNeed" type="text" placeholder="如：7 天内做出首版卖点和销售页" />
+          </label>
+        </div>
+        <div class="grid g2">
+          <button id="submitPublicInquiry">提交询价 / 留资</button>
+          <button id="loadPublicInquiryTemplate" class="ghost">按当前产品填入演示问题</button>
+        </div>
+        <div id="publicInquiryStatus" class="mini muted">若当前页配置了 Lead Capture API，将优先提交到该地址；否则默认请求 /api/lead-capture。</div>
+      </div>
+
       <div class="card stack">
         <div class="section-title">
           <div>
@@ -4216,7 +4258,105 @@ function buildProductLandingLink(key){
   if(!offer) return getCurrentPageUrl();
   const url=new URL(getCurrentPageUrl());
   url.searchParams.set('product',offer.slug);
+  url.searchParams.delete('view');
   return url.toString();
+}
+
+function buildProductInquiryLink(key){
+  const offer=PRODUCT_OFFERS[key];
+  if(!offer) return getCurrentPageUrl();
+  const url=new URL(buildProductLandingLink(key));
+  url.searchParams.set('view','inquiry');
+  return url.toString();
+}
+
+function renderPublicInquiryPanel(){
+  const offer=getSelectedProduct();
+  const view=new URL(getCurrentPageUrl()).searchParams.get('view') || 'landing';
+  if($('publicInquiryTitle')) $('publicInquiryTitle').textContent=`${offer.title} · 对外询价 / 留资表单`;
+  if($('publicInquirySubtitle')) $('publicInquirySubtitle').textContent=view==='inquiry'
+    ? '当前已切到公开询价视图：适合直接发给潜在客户在手机上填写。'
+    : '给潜在客户一个能在手机上直接填写的最小询价入口；默认提交到 /api/lead-capture。';
+  if($('publicInquiryHint')) $('publicInquiryHint').textContent=`当前产品：${offer.title}｜公开询价链接：${buildProductInquiryLink(offer.key)}`;
+}
+
+function loadPublicInquiryTemplate(){
+  const offer=getSelectedProduct();
+  if($('publicInquiryNeed')){
+    $('publicInquiryNeed').value=offer.key==='microSaas'
+      ? '我想先确认定位、卖点、落地页文案是否能在 7 天内做出首版。'
+      : '我想先看研究演示，确认标的 / 问题后再决定是否升级定制报告。';
+  }
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已按 ${offer.title} 填入演示询价问题。`;
+}
+
+async function copySelectedInquiryLink(){
+  const offer=getSelectedProduct();
+  const link=buildProductInquiryLink(offer.key);
+  await copyText(link,`已复制 ${offer.title} 询价链接`);
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已复制 ${offer.title} 对外询价链接。`;
+}
+
+function openSelectedInquiryView(){
+  const offer=getSelectedProduct();
+  const url=new URL(buildProductInquiryLink(offer.key));
+  if(typeof history!=='undefined' && history.replaceState){
+    history.replaceState(null,'',url);
+  }
+  renderPublicInquiryPanel();
+  $('publicInquiryPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已切到 ${offer.title} 的公开询价视图。`;
+}
+
+async function submitPublicInquiry(){
+  const offer=getSelectedProduct();
+  const name=($('publicInquiryName')?.value || '').trim();
+  const contact=($('publicInquiryContact')?.value || '').trim();
+  const budget=($('publicInquiryBudget')?.value || '待确认').trim();
+  const need=($('publicInquiryNeed')?.value || '').trim();
+  if(!name || !contact || !need){
+    $('publicInquiryStatus').textContent='请至少填写称呼、联系方式和当前需求。';
+    return;
+  }
+  const config=loadLeadCaptureConfig();
+  const url=(config.url || '/api/lead-capture').trim();
+  const headers={ 'Content-Type':'application/json;charset=utf-8' };
+  if(config.auth) headers.Authorization=config.auth;
+  const now=new Date().toISOString();
+  const response=await fetch(url,{method:'POST',headers,body:JSON.stringify({
+    source:'passive-income-lab-public-inquiry',
+    lead:{
+      id:`public-${offer.slug}-${now}`,
+      name,
+      contact,
+      channel:'公开询价表单',
+      budget,
+      priority:'中',
+      stage:'待跟进',
+      need,
+      nextStep:'收到公开询价，需尽快人工跟进',
+      productSlug:offer.slug,
+      source:'public-inquiry',
+      originPage:getCurrentPageUrl(),
+      createdAt:now,
+      updatedAt:now
+    },
+    context:{
+      view:'inquiry',
+      product:offer.slug,
+      productTitle:offer.title
+    }
+  })});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    $('publicInquiryStatus').textContent=`提交失败：HTTP ${response.status}${data?.error ? `｜${data.error}` : ''}`;
+    return;
+  }
+  $('publicInquiryStatus').textContent=`已提交询价：${name} → ${offer.title}｜快照 ${data?.snapshot?.count ?? 0} 条`;
+  $('publicInquiryName').value='';
+  $('publicInquiryContact').value='';
+  $('publicInquiryBudget').value='待确认';
+  $('publicInquiryNeed').value='';
 }
 
 function selectProductLanding(key,{scroll=false}={}){
@@ -4247,6 +4387,7 @@ function selectProductLanding(key,{scroll=false}={}){
   loadLeadForSelectedProduct();
   renderSelectedChannelConfig();
   renderProductOpsBoard();
+  renderPublicInquiryPanel();
   if(scroll){
     $('productDetailPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
   }
@@ -4548,6 +4689,10 @@ $("copySelectedProductLink").addEventListener('click',copySelectedProductLink);
 $("shareSelectedProductLink").addEventListener('click',shareSelectedProductLink);
 $("copySelectedProductSummary").addEventListener('click',copySelectedProductSummary);
 $("loadSelectedProductDemo").addEventListener('click',loadSelectedProductDemo);
+$("copySelectedInquiryLink").addEventListener('click',copySelectedInquiryLink);
+$("openSelectedInquiryView").addEventListener('click',openSelectedInquiryView);
+$("submitPublicInquiry").addEventListener('click',()=>submitPublicInquiry().catch((error)=>{$('publicInquiryStatus').textContent='公开询价提交失败：'+error.message;}));
+$("loadPublicInquiryTemplate").addEventListener('click',loadPublicInquiryTemplate);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
 $("copySelectedChannelSummary").addEventListener('click',copySelectedChannelSummary);
 $("copySelectedProductOpsSummary").addEventListener('click',copySelectedProductOpsSummary);

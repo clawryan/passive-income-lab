@@ -26,8 +26,8 @@ if (res.statusCode !== 200 || res.body.snapshot.count !== 0) {
 }
 
 res = createRes();
-await handler({ method: 'POST', body: { lead: { id: 'lead-fixed', name: '测试线索A', productSlug: 'micro-saas', stage: '待跟进', need: '需要 7 天冷启动包', nextStep: '今晚发报价' } } }, res);
-if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.lead.name !== '测试线索A') {
+await handler({ method: 'POST', body: { lead: { id: 'lead-fixed', name: '测试线索A', contact: 'wechat:test-a', source: 'public-inquiry', originPage: 'https://example.com/web/?product=micro-saas&view=inquiry', productSlug: 'micro-saas', stage: '待跟进', need: '需要 7 天冷启动包', nextStep: '今晚发报价' } } }, res);
+if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.lead.name !== '测试线索A' || res.body.lead.contact !== 'wechat:test-a' || res.body.lead.source !== 'public-inquiry') {
   throw new Error(`POST 保存异常: ${JSON.stringify(res.body)}`);
 }
 

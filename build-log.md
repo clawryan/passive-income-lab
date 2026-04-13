@@ -129,6 +129,13 @@
 
 # Build Log
 
+## 2026-04-13 22:0x (Asia/Shanghai)
+- 这轮优先补了一个比“继续优化自己录线索”更接近真实获客的低阻力缺口：虽然已有单产品分享页、线索板和远程 Lead Capture API，但潜在客户仍不能自己在手机端直接留资，仍要靠我手动转录。
+- `web/index.html` 新增 **对外询价 / 留资表单** 卡片：可为当前产品一键复制 `?product=...&view=inquiry` 公开询价链接、切到询价视图、填写称呼 / 联系方式 / 预算 / 需求，并直接提交到 `/api/lead-capture`（或已保存的自定义 Lead Capture API）。
+- 新增 `buildProductInquiryLink()` / `renderPublicInquiryPanel()` / `submitPublicInquiry()` / `copySelectedInquiryLink()` / `openSelectedInquiryView()` / `loadPublicInquiryTemplate()`，把“单产品页”推进成“可直接发给潜在客户填写的最小留资入口”。
+- `api/lead-capture.js` 已扩展保留 `contact / source / originPage` 字段；`scripts/smoke-lead-capture.mjs` 也补上对公开询价来源字段的断言，避免这条链路只停留在按钮层。
+- 结果：现在不仅能自己录线索，也能把一个公开询价链接直接丢给潜在客户，让手机端访客先留资，再回到线索板 / Webhook / 日历提醒链路继续推进。
+
 ## 2026-04-13 20:0x (Asia/Shanghai)
 - 这轮优先补了一个更贴近“手机上直接执行”的低阻力缺口：虽然线索待办已经能复制 / 分享 / 导出 JSON / Markdown，但真要在手机或电脑上准时跟进，仍常常得再手工抄进日历或提醒工具。
 - `web/index.html` 在线索待办区新增 **导出当前筛选跟进待办 ICS** 按钮，可把当前筛选范围内的待办直接导出为日历文件。
