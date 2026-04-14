@@ -139,6 +139,14 @@
 
 # Build Log
 
+## 2026-04-14 22:0x (Asia/Shanghai)
+- 这轮没有继续堆更多本地报表，而是补了一个更接近真实获客验证的低阻力缺口：公开询价链接虽然已经能留资，但还看不出到底是飞书私聊、微信群还是别的分发渠道带来的线索。
+- `web/index.html` 的公开询价区新增 **渠道来源标签** 输入；复制或打开询价链接时会自动附带 `?src=...`，提交后会把来源写入 `lead.source / lead.channel`，并在状态提示中回显，适合直接做最小渠道归因。
+- `api/lead-capture.js` 的 `GET /api/lead-capture` 摘要现新增 `sourceCounts / topSource`，可直接用手机或 cURL 看远程快照里哪种来源带来的线索最多。
+- 顺手修掉一个真实数据风险：同一条 lead 后续更新阶段时，默认值不再把原先的 `contact / channel / source / originPage` 冲掉；`mergeEntries()` 现会优先保留已有有效信息。
+- `scripts/smoke-lead-capture.mjs` 已扩展为断言 `public-inquiry:feishu-dm` 来源与 `topSource` 摘要，避免这层归因只停留在 UI 文案。
+- 结果：公开询价从“能留资”推进到“能留资 + 能看最小来源归因 + 更新阶段不丢来源数据”，更利于下一步验证哪种分发动作最值得持续做。
+
 ## 2026-04-14 14:0x (Asia/Shanghai)
 - 这轮没有继续扩 API 字段，而是补掉一个更接近“真部署可用”的低阻力缺口：虽然 `api/lead-capture.js` 已支持托管 KV，但首次接入时还缺一份把环境变量、验证命令和常见故障收口在一起的部署清单。
 - 新增 `outputs/lead-capture-kv-deploy.md`，把 `KV_REST_API_URL / KV_REST_API_TOKEN / LEAD_CAPTURE_KV_KEY`、Vercel + Upstash/KV REST 接入顺序、GET/POST 验收 cURL，以及 `storage.mode` 应如何判断是否真的持久化写清楚。

@@ -115,6 +115,14 @@ function normalizeLead(rawLead = {}) {
   };
 }
 
+function pickPreferExisting(existingValue, incomingValue, placeholders = []) {
+  if (incomingValue === undefined || incomingValue === null) return existingValue;
+  const normalizedIncoming = String(incomingValue).trim();
+  if (!normalizedIncoming) return existingValue;
+  if (placeholders.includes(normalizedIncoming) && existingValue) return existingValue;
+  return incomingValue;
+}
+
 function mergeEntries(entries, incomingLead) {
   const list = Array.isArray(entries) ? [...entries] : [];
   const index = list.findIndex((item) => item.id === incomingLead.id);
@@ -127,6 +135,12 @@ function mergeEntries(entries, incomingLead) {
     list[index] = {
       ...existing,
       ...incomingLead,
+      contact: pickPreferExisting(existing.contact, incomingLead.contact),
+      channel: pickPreferExisting(existing.channel, incomingLead.channel, ['待确认']),
+      budget: pickPreferExisting(existing.budget, incomingLead.budget, ['待确认']),
+      priority: pickPreferExisting(existing.priority, incomingLead.priority, ['中']),
+      source: pickPreferExisting(existing.source, incomingLead.source, ['manual']),
+      originPage: pickPreferExisting(existing.originPage, incomingLead.originPage),
       createdAt: existing.createdAt || incomingLead.createdAt,
       updatedAt: new Date(Math.max(currentTs || 0, incomingTs || 0)).toISOString()
     };
@@ -140,21 +154,27 @@ function buildSnapshotSummary(snapshot = {}) {
   const entries = Array.isArray(snapshot.entries) ? snapshot.entries : [];
   const stageCounts = {};
   const productCounts = {};
+  const sourceCounts = {};
   for (const entry of entries) {
     const stage = String(entry.stage || '待跟进').trim() || '待跟进';
     const product = String(entry.productSlug || 'micro-saas').trim() || 'micro-saas';
+    const source = String(entry.source || entry.channel || 'manual').trim() || 'manual';
     stageCounts[stage] = (stageCounts[stage] || 0) + 1;
     productCounts[product] = (productCounts[product] || 0) + 1;
+    sourceCounts[source] = (sourceCounts[source] || 0) + 1;
   }
   const topStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0] || null;
   const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  const topSource = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])[0] || null;
   return {
     updatedAt: snapshot.updatedAt || null,
     count: entries.length,
     stageCounts,
     productCounts,
+    sourceCounts,
     topStage: topStage ? { stage: topStage[0], count: topStage[1] } : null,
-    topProduct: topProduct ? { productSlug: topProduct[0], count: topProduct[1] } : null
+    topProduct: topProduct ? { productSlug: topProduct[0], count: topProduct[1] } : null,
+    topSource: topSource ? { source: topSource[0], count: topSource[1] } : null
   };
 }
 

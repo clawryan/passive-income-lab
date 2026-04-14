@@ -36,8 +36,8 @@ if (res.statusCode !== 200 || res.body.snapshot.count !== 0 || res.body.storage.
 }
 
 res = createRes();
-await handler({ method: 'POST', body: { lead: { id: 'lead-fixed', name: '测试线索A', contact: 'wechat:test-a', source: 'public-inquiry', originPage: 'https://example.com/web/?product=micro-saas&view=inquiry', productSlug: 'micro-saas', stage: '待跟进', need: '需要 7 天冷启动包', nextStep: '今晚发报价' } } }, res);
-if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.lead.name !== '测试线索A' || res.body.lead.contact !== 'wechat:test-a' || res.body.lead.source !== 'public-inquiry') {
+await handler({ method: 'POST', body: { lead: { id: 'lead-fixed', name: '测试线索A', contact: 'wechat:test-a', source: 'public-inquiry:feishu-dm', originPage: 'https://example.com/web/?product=micro-saas&view=inquiry&src=feishu-dm', productSlug: 'micro-saas', stage: '待跟进', need: '需要 7 天冷启动包', nextStep: '今晚发报价' } } }, res);
+if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.lead.name !== '测试线索A' || res.body.lead.contact !== 'wechat:test-a' || res.body.lead.source !== 'public-inquiry:feishu-dm') {
   throw new Error(`POST 保存异常: ${JSON.stringify(res.body)}`);
 }
 
@@ -49,7 +49,7 @@ if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.snapshot
 
 res = createRes();
 await handler({ method: 'GET' }, res);
-if (res.body.snapshot.count !== 1 || !fs.existsSync(storePath) || res.body.summary?.topStage?.stage !== '已报价' || res.body.summary?.topProduct?.productSlug !== 'micro-saas') {
+if (res.body.snapshot.count !== 1 || !fs.existsSync(storePath) || res.body.summary?.topStage?.stage !== '已报价' || res.body.summary?.topProduct?.productSlug !== 'micro-saas' || res.body.summary?.topSource?.source !== 'public-inquiry:feishu-dm') {
   throw new Error(`最终 GET / 文件存储异常: ${JSON.stringify(res.body)}`);
 }
 
@@ -104,6 +104,7 @@ console.log('lead-capture 冒烟通过:', {
   localStorePath: storePath,
   localCount: 1,
   localStage: '已报价',
+  localTopSource: 'public-inquiry:feishu-dm',
   kvCount: res.body.snapshot.count,
   kvMode: res.body.storage.mode
 });

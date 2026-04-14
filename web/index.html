@@ -128,6 +128,12 @@
         </div>
         <div id="publicInquiryHint" class="mini">适合把单产品页再切成 `?product=...&view=inquiry` 的留资视角，对方填完后会进入本地/远程 lead capture 快照。</div>
         <div class="grid g2">
+          <label>渠道来源标签（可选）
+            <input id="publicInquirySource" type="text" placeholder="如：feishu-dm / wechat-group / xhs-post" />
+          </label>
+          <div class="mini muted" style="display:flex;align-items:flex-end">复制或打开询价链接时会自动附带 `?src=...`，提交留资后也会进入远程快照摘要，方便判断哪个渠道真的带来线索。</div>
+        </div>
+        <div class="grid g2">
           <button id="copySelectedInquiryLink" style="background:#1c4d62">复制当前产品询价链接</button>
           <button id="openSelectedInquiryView" class="ghost">切到当前产品询价视图</button>
         </div>
@@ -4262,22 +4268,34 @@ function buildProductLandingLink(key){
   return url.toString();
 }
 
-function buildProductInquiryLink(key){
+function getPublicInquirySourceTag(){
+  const inputValue=($('publicInquirySource')?.value || '').trim();
+  if(inputValue) return inputValue;
+  return new URL(getCurrentPageUrl()).searchParams.get('src') || '';
+}
+
+function buildProductInquiryLink(key,sourceTag=''){
   const offer=PRODUCT_OFFERS[key];
   if(!offer) return getCurrentPageUrl();
   const url=new URL(buildProductLandingLink(key));
   url.searchParams.set('view','inquiry');
+  const normalizedSource=String(sourceTag || '').trim();
+  if(normalizedSource) url.searchParams.set('src',normalizedSource);
+  else url.searchParams.delete('src');
   return url.toString();
 }
 
 function renderPublicInquiryPanel(){
   const offer=getSelectedProduct();
-  const view=new URL(getCurrentPageUrl()).searchParams.get('view') || 'landing';
+  const pageUrl=new URL(getCurrentPageUrl());
+  const view=pageUrl.searchParams.get('view') || 'landing';
+  const sourceTag=pageUrl.searchParams.get('src') || '';
   if($('publicInquiryTitle')) $('publicInquiryTitle').textContent=`${offer.title} · 对外询价 / 留资表单`;
   if($('publicInquirySubtitle')) $('publicInquirySubtitle').textContent=view==='inquiry'
     ? '当前已切到公开询价视图：适合直接发给潜在客户在手机上填写。'
     : '给潜在客户一个能在手机上直接填写的最小询价入口；默认提交到 /api/lead-capture。';
-  if($('publicInquiryHint')) $('publicInquiryHint').textContent=`当前产品：${offer.title}｜公开询价链接：${buildProductInquiryLink(offer.key)}`;
+  if($('publicInquirySource')) $('publicInquirySource').value=sourceTag;
+  if($('publicInquiryHint')) $('publicInquiryHint').textContent=`当前产品：${offer.title}｜公开询价链接：${buildProductInquiryLink(offer.key,sourceTag)}${sourceTag ? `｜来源标签：${sourceTag}` : '｜可附带 src 追踪渠道来源'}`;
 }
 
 function loadPublicInquiryTemplate(){
@@ -4292,20 +4310,22 @@ function loadPublicInquiryTemplate(){
 
 async function copySelectedInquiryLink(){
   const offer=getSelectedProduct();
-  const link=buildProductInquiryLink(offer.key);
+  const sourceTag=getPublicInquirySourceTag();
+  const link=buildProductInquiryLink(offer.key,sourceTag);
   await copyText(link,`已复制 ${offer.title} 询价链接`);
-  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已复制 ${offer.title} 对外询价链接。`;
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已复制 ${offer.title} 对外询价链接${sourceTag ? `（来源：${sourceTag}）` : ''}。`;
 }
 
 function openSelectedInquiryView(){
   const offer=getSelectedProduct();
-  const url=new URL(buildProductInquiryLink(offer.key));
+  const sourceTag=getPublicInquirySourceTag();
+  const url=new URL(buildProductInquiryLink(offer.key,sourceTag));
   if(typeof history!=='undefined' && history.replaceState){
     history.replaceState(null,'',url);
   }
   renderPublicInquiryPanel();
   $('publicInquiryPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
-  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已切到 ${offer.title} 的公开询价视图。`;
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已切到 ${offer.title} 的公开询价视图${sourceTag ? `（来源：${sourceTag}）` : ''}。`;
 }
 
 async function submitPublicInquiry(){
@@ -4314,6 +4334,7 @@ async function submitPublicInquiry(){
   const contact=($('publicInquiryContact')?.value || '').trim();
   const budget=($('publicInquiryBudget')?.value || '待确认').trim();
   const need=($('publicInquiryNeed')?.value || '').trim();
+  const sourceTag=getPublicInquirySourceTag();
   if(!name || !contact || !need){
     $('publicInquiryStatus').textContent='请至少填写称呼、联系方式和当前需求。';
     return;
@@ -4329,14 +4350,14 @@ async function submitPublicInquiry(){
       id:`public-${offer.slug}-${now}`,
       name,
       contact,
-      channel:'公开询价表单',
+      channel:sourceTag ? `公开询价表单/${sourceTag}` : '公开询价表单',
       budget,
       priority:'中',
       stage:'待跟进',
       need,
       nextStep:'收到公开询价，需尽快人工跟进',
       productSlug:offer.slug,
-      source:'public-inquiry',
+      source:sourceTag ? `public-inquiry:${sourceTag}` : 'public-inquiry',
       originPage:getCurrentPageUrl(),
       createdAt:now,
       updatedAt:now
@@ -4344,7 +4365,8 @@ async function submitPublicInquiry(){
     context:{
       view:'inquiry',
       product:offer.slug,
-      productTitle:offer.title
+      productTitle:offer.title,
+      sourceTag
     }
   })});
   const data=await response.json().catch(()=>({}));
@@ -4352,7 +4374,7 @@ async function submitPublicInquiry(){
     $('publicInquiryStatus').textContent=`提交失败：HTTP ${response.status}${data?.error ? `｜${data.error}` : ''}`;
     return;
   }
-  $('publicInquiryStatus').textContent=`已提交询价：${name} → ${offer.title}｜快照 ${data?.snapshot?.count ?? 0} 条`;
+  $('publicInquiryStatus').textContent=`已提交询价：${name} → ${offer.title}${sourceTag ? `｜来源 ${sourceTag}` : ''}｜快照 ${data?.snapshot?.count ?? 0} 条`;
   $('publicInquiryName').value='';
   $('publicInquiryContact').value='';
   $('publicInquiryBudget').value='待确认';
