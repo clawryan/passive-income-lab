@@ -27,6 +27,9 @@
 - **线索可回填编辑 / 一键推进状态**：线索表现已支持把单条记录回填到表单继续修改，并可在表格内一键切换到“待跟进 / 已发送资料 / 已报价 / 已成交”，减少重复录入，让私聊咨询后的推进更接近轻量成交看板。
 - **线索 JSON 可导入恢复**：在导出线索 JSON 之外，现已支持把历史线索包重新导入浏览器，并按 `id + 更新时间` 自动合并去重，适合手机和电脑之间接力恢复本地 CRM。
 - **远程 Lead Capture API / 快照**：线索区现可配置 `/api/lead-capture`（或自建 serverless endpoint），手动把当前线索提交到远程 API，并在另一台设备拉取远程快照合并回本地，减少只靠手工 JSON 传来传去的摩擦。
+- **Lead Capture 已支持托管 KV 持久化**：`api/lead-capture.js` 现可在检测到 `KV_REST_API_URL + KV_REST_API_TOKEN`（兼容 Upstash/Vercel KV REST）时把线索快照写入托管 KV；未配置时继续回退到本地文件，方便本机调试、部署后多端共享与逐步迁移。
+- **Lead Capture GET 已自带汇总摘要**：`GET /api/lead-capture` 现在除了返回全量 `entries`，还会额外返回 `summary.updatedAt / stageCounts / productCounts / topStage / topProduct`，方便用手机或 cURL 快速验收远程快照是否真的在累积，而不用每次手翻全量线索。
+- **KV 部署清单已留档**：新增 `outputs/lead-capture-kv-deploy.md`，把 Vercel / Upstash（或兼容 KV REST）所需环境变量、验收 cURL 与常见故障检查收口成可直接照着走的上线清单。
 - **公开询价链接 / 留资表单**：单产品页现可一键复制 `?product=...&view=inquiry` 公开询价链接；潜在客户可在手机端直接填写称呼、联系方式、预算和需求，并提交到 `/api/lead-capture`，把“先聊再手录”推进到“先留资后跟进”。
 - **导入后可直接生成跟进待办**：线索区现可按当前筛选范围一键复制、手机原生分享“跟进待办”摘要，或导出结构化 JSON / Markdown / ICS 待办包；其中 ICS 可直接导入手机/电脑日历，按“现在 / 24h / 72h”自动生成跟进提醒；导入线索后状态栏也会直接提示当前可推进待办数，减少再手工整理到任务工具的摩擦。
 - **线索 Webhook 出口已补齐**：线索区现可保存 Webhook URL / Authorization，并一键把“当前筛选跟进待办”或“跨产品线索总览”推送到飞书机器人、n8n、Make、Zapier 或自建 webhook；同区也支持复制测试 cURL，方便先在电脑端联调、再到手机端直接点按钮触发。
@@ -90,3 +93,5 @@
 5. 若需验证 API，再请求 `/api/ab-funnel`
 
 > 说明：当前 Web 工具以前端静态页 + Serverless API 形式运行，适合先做轻量验证与手机端安装；后续若接入真实支付/用户系统，再补环境变量与后端状态存储。
+>
+> `api/lead-capture` 若部署到 Vercel，可优先配置 `KV_REST_API_URL`、`KV_REST_API_TOKEN`（或 Upstash 兼容变量）启用持久化；未配置时默认回退到本地文件，仅适合单机/调试。

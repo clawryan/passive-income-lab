@@ -1,20 +1,98 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const LOCAL_STORE_PATH = process.env.LEAD_CAPTURE_LOCAL_PATH || '/tmp/passive-income-lab-leads.json';
 const MAX_SNAPSHOT_ENTRIES = 100;
+
+function getLocalStorePath() {
+  return process.env.LEAD_CAPTURE_LOCAL_PATH || '/tmp/passive-income-lab-leads.json';
+}
+
+function getKvRestUrl() {
+  return process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+}
+
+function getKvRestToken() {
+  return process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+}
+
+function getKvStoreKey() {
+  return process.env.LEAD_CAPTURE_KV_KEY || 'passive-income-lab:lead-capture:snapshot';
+}
+
+function hasKvStore() {
+  return Boolean(getKvRestUrl() && getKvRestToken());
+}
+
+async function kvRequest(command, ...args) {
+  const encodedArgs = args.map((item) => encodeURIComponent(String(item))).join('/');
+  const url = `${getKvRestUrl().replace(/\/$/, '')}/${command}${encodedArgs ? `/${encodedArgs}` : ''}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getKvRestToken()}`
+    }
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error || `KV request failed: ${response.status}`);
+  }
+  return payload.result;
+}
+
+async function readKvStore() {
+  const result = await kvRequest('get', getKvStoreKey());
+  if (!result) return { entries: [] };
+  try {
+    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    return parsed && typeof parsed === 'object' ? parsed : { entries: [] };
+  } catch (_error) {
+    return { entries: [] };
+  }
+}
+
+async function writeKvStore(snapshot) {
+  await kvRequest('set', getKvStoreKey(), JSON.stringify(snapshot));
+}
 
 function readLocalStore() {
   try {
-    return JSON.parse(fs.readFileSync(LOCAL_STORE_PATH, 'utf8'));
+    return JSON.parse(fs.readFileSync(getLocalStorePath(), 'utf8'));
   } catch (_error) {
     return { entries: [] };
   }
 }
 
 function writeLocalStore(snapshot) {
-  fs.mkdirSync(path.dirname(LOCAL_STORE_PATH), { recursive: true });
-  fs.writeFileSync(LOCAL_STORE_PATH, JSON.stringify(snapshot, null, 2));
+  fs.mkdirSync(path.dirname(getLocalStorePath()), { recursive: true });
+  fs.writeFileSync(getLocalStorePath(), JSON.stringify(snapshot, null, 2));
+}
+
+async function readSnapshot() {
+  return hasKvStore() ? readKvStore() : readLocalStore();
+}
+
+async function writeSnapshot(snapshot) {
+  return hasKvStore() ? writeKvStore(snapshot) : writeLocalStore(snapshot);
+}
+
+function buildStorageMeta(extra = {}) {
+  if (hasKvStore()) {
+    return {
+      mode: process.env.LEAD_CAPTURE_WEBHOOK_URL ? 'vercel-kv+webhook-forward' : 'vercel-kv',
+      durable: true,
+      provider: 'vercel-kv-rest',
+      key: getKvStoreKey(),
+      note: '已启用托管 KV 持久化，适合部署后让手机 / 电脑共享线索快照。',
+      ...extra
+    };
+  }
+  return {
+    mode: process.env.LEAD_CAPTURE_WEBHOOK_URL ? 'local-file+webhook-forward' : 'local-file',
+    durable: false,
+    path: getLocalStorePath(),
+    note: '本地文件存储适合本机 / 调试；若要真正持久化，建议配置 KV_REST_API_URL / KV_REST_API_TOKEN。',
+    ...extra
+  };
 }
 
 function normalizeLead(rawLead = {}) {
@@ -58,6 +136,28 @@ function mergeEntries(entries, incomingLead) {
     .slice(0, MAX_SNAPSHOT_ENTRIES);
 }
 
+function buildSnapshotSummary(snapshot = {}) {
+  const entries = Array.isArray(snapshot.entries) ? snapshot.entries : [];
+  const stageCounts = {};
+  const productCounts = {};
+  for (const entry of entries) {
+    const stage = String(entry.stage || '待跟进').trim() || '待跟进';
+    const product = String(entry.productSlug || 'micro-saas').trim() || 'micro-saas';
+    stageCounts[stage] = (stageCounts[stage] || 0) + 1;
+    productCounts[product] = (productCounts[product] || 0) + 1;
+  }
+  const topStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  return {
+    updatedAt: snapshot.updatedAt || null,
+    count: entries.length,
+    stageCounts,
+    productCounts,
+    topStage: topStage ? { stage: topStage[0], count: topStage[1] } : null,
+    topProduct: topProduct ? { productSlug: topProduct[0], count: topProduct[1] } : null
+  };
+}
+
 async function forwardToWebhook(payload) {
   const url = process.env.LEAD_CAPTURE_WEBHOOK_URL;
   if (!url) return null;
@@ -75,19 +175,16 @@ async function forwardToWebhook(payload) {
 
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
-    const snapshot = readLocalStore();
+    const snapshot = await readSnapshot();
     return res.status(200).json({
       ok: true,
-      storage: {
-        mode: process.env.LEAD_CAPTURE_WEBHOOK_URL ? 'local-file+webhook-forward' : 'local-file',
-        path: LOCAL_STORE_PATH,
-        durable: false,
-        note: '本地文件存储适合本机 / 调试；若要真正持久化，建议再接 webhook 到 n8n / 数据库。'
-      },
+      storage: buildStorageMeta(),
       snapshot: {
+        updatedAt: snapshot.updatedAt || null,
         count: Array.isArray(snapshot.entries) ? snapshot.entries.length : 0,
         entries: Array.isArray(snapshot.entries) ? snapshot.entries : []
-      }
+      },
+      summary: buildSnapshotSummary(snapshot)
     });
   }
 
@@ -101,10 +198,10 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Missing lead payload' });
     }
     const lead = normalizeLead(body.lead);
-    const snapshot = readLocalStore();
+    const snapshot = await readSnapshot();
     const nextEntries = mergeEntries(snapshot.entries, lead);
     const nextSnapshot = { updatedAt: new Date().toISOString(), entries: nextEntries };
-    writeLocalStore(nextSnapshot);
+    await writeSnapshot(nextSnapshot);
     const forwardResult = await forwardToWebhook({
       kind: 'lead-capture',
       source: body.source || 'passive-income-lab-api',
@@ -115,13 +212,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       lead,
-      storage: {
-        mode: forwardResult ? 'local-file+webhook-forward' : 'local-file',
-        path: LOCAL_STORE_PATH,
-        durable: false,
-        webhook: forwardResult
-      },
-      snapshot: { count: nextEntries.length, entries: nextEntries }
+      storage: buildStorageMeta({ webhook: forwardResult }),
+      snapshot: { updatedAt: nextSnapshot.updatedAt, count: nextEntries.length, entries: nextEntries },
+      summary: buildSnapshotSummary(nextSnapshot)
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || String(error) });

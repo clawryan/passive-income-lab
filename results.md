@@ -1,3 +1,24 @@
+## 2026-04-14 11:00
+
+### 本轮做了什么
+- 沿着昨天写下的“把 `api/lead-capture.js` 从本地文件切到真正持久化层”推进，优先补了最低阻力、最适合 Vercel / 手机多端共享的托管 KV 路线。
+- `api/lead-capture.js` 现支持检测 `KV_REST_API_URL + KV_REST_API_TOKEN`（兼容 Upstash/Vercel KV REST）后，把线索快照直接写入托管 KV；未配置时继续回退到本地文件，保留本机调试体验。
+- GET / POST 返回体新增明确的 `storage.mode / durable / provider / key` 元信息，部署后可直接确认当前是否真的在走持久化，而不是误以为已经跨设备同步。
+- `scripts/smoke-lead-capture.mjs` 扩展为同时覆盖本地文件模式与 KV 模式，确保旧链路不回退、新链路也不是只改了说明文案。
+- `README.md` / `build-log.md` 已同步补充 KV 环境变量与部署提示。
+
+### 为什么做这步
+- 这一步比继续堆本地报表、卡片模板或说明文本更贴近收入闭环：如果手机端留资后部署环境不能稳定保留线索，后续跟进、报价和成交统计都会断。
+
+### 下一步
+1. 若要继续逼近真实成交闭环，下一步应补一个最小“远程已成交 / 已付款回写”入口，把线索推进状态从手工改状态进一步推进到回传事件。
+2. 若拿到真实 Vercel / Upstash 环境变量，可直接做一次线上真验证：手机端公开询价提交 → 另一端拉远程快照 → 状态推进。
+3. 若继续走低阻力路线，可补 `outputs/lead-capture-kv-deploy.md` 一页部署清单，进一步降低首次接入摩擦。
+
+### 结论
+- **建议继续推进。** 这步已经把 lead capture 从“演示级 serverless 存储”推进到了“可部署持久化后端”，比再加本地 UI 更接近真实可卖的最小 CRM。
+
+
 ## 2026-04-13 17:00
 
 ### 本轮做了什么
@@ -101,6 +122,17 @@
 3. 若要继续逼近自动化闭环，下一步应补最小远程表单 / webhook 接入，而不是继续堆说明性文本。
 
 # Results
+
+## 2026-04-14 20:0x (Asia/Shanghai)
+- `GET /api/lead-capture` 现新增 `summary.updatedAt / stageCounts / productCounts / topStage / topProduct`，部署后可直接用 `curl ... | jq '.summary'` 快速判断远程快照是否真的在累积、当前最卡在哪个产品或阶段。
+- `scripts/smoke-lead-capture.mjs` 已同步覆盖本地文件模式与 KV 模式下的摘要断言，避免这层验收能力只停留在 README 文字里。
+- `outputs/lead-capture-kv-deploy.md` 也补了 `jq '.summary'` 的线上 smoke 示例；这一步虽然不扩新增长功能，但显著降低了“手机留资 -> 线上验证 -> 电脑确认”的验收摩擦。
+- 下一步最值得做的仍是线上真验收：手机提交一条询价 → `/api/lead-capture` 返回 `storage.mode=vercel-kv` 且 `summary.count >= 1` → 电脑端拉远程快照合并回本地线索板。
+
+## 2026-04-14 14:0x (Asia/Shanghai)
+- 新增 `outputs/lead-capture-kv-deploy.md`，把 Lead Capture 托管 KV 的环境变量、Vercel 接入顺序、GET/POST 验收 cURL 与常见故障检查固化为可直接执行的上线清单。
+- 这一步虽然不扩功能面，但直接降低了把“公开询价 / 远程快照”真正跑到线上并长期保留数据的摩擦，比继续堆本地报表字段更接近真实获客闭环。
+- 下一步最值得做的是线上真验收：手机提交一条询价 → `/api/lead-capture` 返回 `storage.mode=vercel-kv` → 电脑端拉远程快照合并回本地线索板。
 
 ## 2026-04-13 22:0x (Asia/Shanghai)
 - 单产品页新增 **公开询价链接 / 留资表单**，可直接生成 `?product=...&view=inquiry` 链接发给潜在客户在手机端填写。

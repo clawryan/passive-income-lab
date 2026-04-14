@@ -1,3 +1,13 @@
+- 这轮没有继续扩 KV 写入逻辑，而是补了一个更接近“真上线验收”的低阻力缺口：`GET /api/lead-capture` 现在除了返回全量 `entries`，还会额外返回 `summary.updatedAt / stageCounts / productCounts / topStage / topProduct`，方便部署后直接用手机或 cURL 判断远程快照是否真的在累积、当前卡在哪个产品/阶段。
+- `api/lead-capture.js` 新增 `buildSnapshotSummary()`，并在 GET / POST 响应里同步带出 `summary` 与 `snapshot.updatedAt`；这样无论是公开询价刚写入，还是电脑端二次确认，都不必每次手看完整快照。
+- `scripts/smoke-lead-capture.mjs` 已扩展为同时断言本地文件模式与 KV 模式下的 `summary.topStage / summary.topProduct`，避免这层摘要只停留在文档里。
+- `outputs/lead-capture-kv-deploy.md` 与 `README.md` 已同步补充 `jq '.summary'` 的验收方法，让首次线上 smoke 更快收口。
+- 结果：Lead Capture 从“可持久化”再推进到“可更快验收持久化是否真的在工作”，更利于尽快做一次手机提交 → 电脑确认的真实验证。
+- 这轮继续沿着“别再只靠 /tmp，本轮该把 lead capture 变成可长期部署”的下一步推进：`/api/lead-capture` 现已支持检测 `KV_REST_API_URL + KV_REST_API_TOKEN`（兼容 Upstash/Vercel KV REST）后把线索快照写入托管 KV，未配置时继续回退到本地文件。
+- `api/lead-capture.js` 新增 `readKvStore / writeKvStore / buildStorageMeta`，GET / POST 响应也会明确返回当前存储模式（`vercel-kv` 或 `local-file`）与 durable 状态，方便部署后确认自己是否真的已经持久化。
+- `scripts/smoke-lead-capture.mjs` 现同时覆盖本地文件模式与 KV 模式：前者验证原有 GET / POST / 合并更新不回退，后者用 fetch stub 验证 REST `get/set` 持久化链路。
+- `README.md` 已补充托管 KV 持久化说明与部署提示，减少后续在 Vercel 上还得翻代码确认该配什么环境变量。
+- 结果：线索远程采集从“可演示的 serverless 快照”推进到“部署后可持续保留的最小远程 CRM 存储”，更接近手机录入、电脑继续跟进的真实多端闭环。
 - 这轮优先补了一个更接近真实跨设备成交推进的缺口：线索虽然已经能导出 JSON / 推 webhook，但手机和电脑之间仍要手工传文件。
 - `web/index.html` 新增“线索远程采集 / 快照”区，支持保存 Lead Capture API URL / Authorization、手动提交当前线索到远程 API、以及拉取远程快照后自动合并回本地。
 - 新增 `api/lead-capture.js`：提供最小 GET / POST serverless 接口；默认把线索快照落到本机 `/tmp/passive-income-lab-leads.json`，并可选继续转发到 `LEAD_CAPTURE_WEBHOOK_URL`。
@@ -128,6 +138,12 @@
 - 结果：首页现在不只是告诉访客“能买什么”，还支持立刻进入“复制文案去问价 / 分享报价 / 载入演示验证”这三种成交前动作，更接近真实变现闭环。
 
 # Build Log
+
+## 2026-04-14 14:0x (Asia/Shanghai)
+- 这轮没有继续扩 API 字段，而是补掉一个更接近“真部署可用”的低阻力缺口：虽然 `api/lead-capture.js` 已支持托管 KV，但首次接入时还缺一份把环境变量、验证命令和常见故障收口在一起的部署清单。
+- 新增 `outputs/lead-capture-kv-deploy.md`，把 `KV_REST_API_URL / KV_REST_API_TOKEN / LEAD_CAPTURE_KV_KEY`、Vercel + Upstash/KV REST 接入顺序、GET/POST 验收 cURL，以及 `storage.mode` 应如何判断是否真的持久化写清楚。
+- `README.md` 已同步补充该清单入口，减少“代码已经支持，但上线时还得翻源码确认该配什么”的摩擦。
+- 结果：把 lead capture 从“代码层支持托管 KV”再推进到“部署层可直接照单执行”，更利于尽快完成手机留资 → 远程持久化 → 电脑拉回快照的真验收。
 
 ## 2026-04-13 22:0x (Asia/Shanghai)
 - 这轮优先补了一个比“继续优化自己录线索”更接近真实获客的低阻力缺口：虽然已有单产品分享页、线索板和远程 Lead Capture API，但潜在客户仍不能自己在手机端直接留资，仍要靠我手动转录。
