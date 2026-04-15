@@ -461,3 +461,11 @@
 - 继续补齐“整理完待办就发出去”的最后一公里：线索区新增“手机原生分享跟进待办”和“导出当前筛选跟进待办 Markdown”，使导入后的待办可直接转发到飞书/微信或沉淀为周报附件。
 - 把待办摘要构建拆成 `buildLeadTodoSummaryLines()`，统一驱动纯文本与 Markdown 输出，避免手机分享与文件导出各写一套逻辑。
 - `scripts/smoke-lead-todos.mjs` 现同时覆盖跟进待办分享入口、JSON 导出与 Markdown 导出，减少后续 UI 调整时把交接链路悄悄改坏。
+
+## 2026-04-15 22:0x (Asia/Shanghai)
+- 这轮没有再加新的本地报表，而是优先补一个更容易真接起来的低阻力缺口：既然页面已经能产出待办 / 总览 payload、n8n workflow 和飞书卡片，下一步最值得做的是给“不想先装 n8n、但又被 CORS / 鉴权卡住”的场景一份可直接粘贴的中转模板。
+- `web/index.html` 的线索 Webhook 区新增 2 个动作：**复制待办 Cloudflare Worker 模板**、**复制总览 Cloudflare Worker 模板**。
+- 新增 `buildLeadWorkerTemplate()`，默认生成带 `OPTIONS + CORS`、`Authorization` 校验占位、`kind` 校验、dry-run 预览与飞书文本转发逻辑的 Worker 代码；未配置 `FEISHU_BOT_WEBHOOK` 时先返回预览，便于低成本联调。
+- `buildLeadWebhookIntegrationGuide()` 已同步加入 Worker 接法说明；`scripts/smoke-lead-todos.mjs` 现会校验两份 Worker 模板包含 `env.FEISHU_BOT_WEBHOOK` 与对应 `kind`，避免只多了按钮。
+- 新增 `outputs/lead-webhook-worker-template.md`，把上线步骤、环境变量和 dry-run 验收方法留档。
+- 目的：把“浏览器能发 payload”推进到“更容易真接上可公开部署的 webhook relay”，减少为了联通飞书机器人还得临时写中转脚本的阻力。

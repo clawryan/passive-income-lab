@@ -37,6 +37,7 @@
 - **线索 Webhook 出口已补齐**：线索区现可保存 Webhook URL / Authorization，并一键把“当前筛选跟进待办”或“跨产品线索总览”推送到飞书机器人、n8n、Make、Zapier 或自建 webhook；同区也支持复制测试 cURL，方便先在电脑端联调、再到手机端直接点按钮触发。
 - **Webhook 示例 / 接线说明可直接复制**：线索区现可一键复制“待办 payload 示例 / 总览 payload 示例 / 飞书+n8n 接线说明”，并新增 `outputs/lead-webhook-integration-guide.md` 作为留档，降低首次接 webhook 的理解成本。
 - **n8n Workflow JSON 可直接复制导入**：线索 Webhook 区现可一键复制“待办 n8n Workflow JSON / 总览 n8n Workflow JSON”，导入 n8n 后只需替换飞书机器人地址即可收消息；仓库内另有 `outputs/lead-webhook-n8n-workflows.md` 留档说明。
+- **Cloudflare Worker 中转模板可直接复制**：线索 Webhook 区现可一键复制“待办 Cloudflare Worker 模板 / 总览 Cloudflare Worker 模板”，默认带 CORS、`Authorization` 校验占位与飞书转发逻辑，适合把浏览器按钮快速接到 Worker 再转发到 Feishu Bot、自建接口或后续自动化。
 - **飞书卡片 Payload 可直接复制**：线索 Webhook 区现可一键复制“待办飞书卡片 Payload / 总览飞书卡片 Payload”，方便把线索待办或跨产品总览直接转成 Feishu interactive card JSON，再喂给机器人、中转服务或自动化节点。
 - **成交案例摘要 / Markdown 导出**：线索区现可把所有“已成交”线索聚合成可复制的案例摘要，或导出成 Markdown 案例集，方便继续发朋友圈、私聊背书、补落地页社会证明，而不必手动翻线索记录。
 - **已报价催单 / 复购转介绍素材包**：线索区现可把“已报价”线索整理成一键复制或导出的催单摘要，把“已成交”线索整理成复购 / 转介绍跟进包，方便直接在飞书 / 微信私聊里推进成交和二次变现。

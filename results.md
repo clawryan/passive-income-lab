@@ -1253,3 +1253,34 @@
 1. 用真实实验数据验证“24h 清单”是否比单纯看信号灯更容易推动当日执行。
 2. 已完成：当前实验历史区可一键导出最新 24h 运营清单为 CSV，便于直接导入表格或任务工具。
 3. 若真实样本显示建议过度保守/激进，优先调整清单阈值而不是继续堆更多卡片。
+
+## 2026-04-15 22:0x 夜间推进（新增成果）
+
+### 本轮目标
+- 沿着最近 results 里写下的下一步，优先补“最小 Cloudflare Worker 中转模板”，把已有 webhook 出口从“会发 payload / 会复制 n8n”推进到“更容易直接接上可公开部署的 relay”。
+
+### 新增产出
+- `web/index.html`
+  - 在线索 Webhook 区新增 2 个动作：复制待办 Cloudflare Worker 模板、复制总览 Cloudflare Worker 模板
+  - 新增 `buildLeadWorkerTemplate()` / `copyLeadTodoWorkerTemplate()` / `copyLeadPortfolioWorkerTemplate()`
+  - 模板默认带 `OPTIONS + CORS`、`Authorization` 校验占位、`kind` 校验、dry-run 预览与飞书文本转发逻辑
+- `scripts/smoke-lead-todos.mjs`
+  - 新增对两份 Worker 模板的断言，校验 `env.FEISHU_BOT_WEBHOOK` 与 `lead-followup-todos / lead-portfolio-summary` 两类路由均存在
+- `outputs/lead-webhook-worker-template.md`
+  - 新增留档，收口环境变量、上线步骤与 dry-run 验收方法
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- 待执行 `npm run validate`
+- 文本级可见证据：页面已出现 `copyLeadTodoWorkerTemplate / copyLeadPortfolioWorkerTemplate / buildLeadWorkerTemplate`
+
+### 阻塞
+- 当前仍是“可直接复制的 relay 模板”，不包含飞书机器人签名算法或 Cloudflare 控制台实际部署步骤的自动执行。
+- 若要做真联调，仍需拿到一个可用的 Worker URL 与（可选）飞书机器人 webhook 地址。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 若继续沿低阻力路径推进，可补“Worker 直接转飞书卡片 / Markdown 富文本”的专用模板，而不只是文本消息。
+2. 若拿到真实 Worker URL 与机器人地址，可直接完成一次真联调，并把最终 cURL / 返回样例沉淀到 `outputs/`。
+3. 若要继续逼近收入闭环，仍值得做一次线上真验收：手机留资 → 电脑拉快照 → 付款回写 → 收入摘要更新。

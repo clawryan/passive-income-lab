@@ -401,6 +401,10 @@
             <button id="copyLeadPortfolioN8nWorkflow" class="ghost">复制总览 n8n Workflow JSON</button>
           </div>
           <div class="grid g2">
+            <button id="copyLeadTodoWorkerTemplate" class="ghost">复制待办 Cloudflare Worker 模板</button>
+            <button id="copyLeadPortfolioWorkerTemplate" class="ghost">复制总览 Cloudflare Worker 模板</button>
+          </div>
+          <div class="grid g2">
             <button id="copyLeadTodoFeishuCardPayload" class="ghost">复制待办飞书卡片 Payload</button>
             <button id="copyLeadPortfolioFeishuCardPayload" class="ghost">复制总览飞书卡片 Payload</button>
           </div>
@@ -2320,6 +2324,91 @@ function buildLeadN8nWorkflow(kind='lead-followup-todos'){
   };
 }
 
+function buildLeadWorkerTemplate(kind='lead-followup-todos'){
+  const isPortfolio=kind==='lead-portfolio-summary';
+  const examplePayload=isPortfolio ? buildLeadPortfolioWebhookPayload() : buildLeadTodoWebhookPayload();
+  const summaryExpr=isPortfolio
+    ? "String(payload.summary || payload.markdown || 'Passive Income Lab 跨产品总览')"
+    : "String(payload.summary || payload.markdown || 'Passive Income Lab 跟进待办')";
+  return [
+    "export default {",
+    "  async fetch(request, env) {",
+    "    if (request.method === 'OPTIONS') {",
+    "      return new Response(null, { headers: corsHeaders() });",
+    "    }",
+    "",
+    "    if (request.method !== 'POST') {",
+    "      return json({ ok: false, error: 'method_not_allowed' }, 405);",
+    "    }",
+    "",
+    "    let body;",
+    "    try {",
+    "      body = await request.json();",
+    "    } catch (_error) {",
+    "      return json({ ok: false, error: 'invalid_json' }, 400);",
+    "    }",
+    "",
+    "    const auth = request.headers.get('authorization') || '';",
+    "    if (env.RELAY_TOKEN && auth !== `Bearer ${env.RELAY_TOKEN}`) {",
+    "      return json({ ok: false, error: 'unauthorized' }, 401);",
+    "    }",
+    "",
+    `    if ((body.kind || '') !== '${kind}') {`,
+    `      return json({ ok: false, error: 'unexpected_kind', expected: '${kind}', received: body.kind || null }, 400);`,
+    "    }",
+    "",
+    "    const payload = body.payload || {};",
+    `    const text = ${summaryExpr};`,
+    "    const feishuBody = {",
+    "      msg_type: 'text',",
+    "      content: { text }",
+    "    };",
+    "",
+    "    if (!env.FEISHU_BOT_WEBHOOK) {",
+    "      return json({ ok: true, dryRun: true, forwarded: false, preview: feishuBody, receivedKind: body.kind || null });",
+    "    }",
+    "",
+    "    const upstream = await fetch(env.FEISHU_BOT_WEBHOOK, {",
+    "      method: 'POST',",
+    "      headers: { 'content-type': 'application/json' },",
+    "      body: JSON.stringify(feishuBody)",
+    "    });",
+    "",
+    "    const upstreamText = await upstream.text();",
+    "    return json({",
+    "      ok: upstream.ok,",
+    "      forwarded: upstream.ok,",
+    "      upstreamStatus: upstream.status,",
+    "      upstreamBody: upstreamText.slice(0, 500),",
+    "      receivedKind: body.kind || null",
+    "    }, upstream.ok ? 200 : 502);",
+    "  }",
+    "};",
+    "",
+    "function corsHeaders() {",
+    "  return {",
+    "    'access-control-allow-origin': '*',",
+    "    'access-control-allow-methods': 'POST,OPTIONS',",
+    "    'access-control-allow-headers': 'content-type,authorization'",
+    "  };",
+    "}",
+    "",
+    "function json(data, status = 200) {",
+    "  return new Response(JSON.stringify(data, null, 2), {",
+    "    status,",
+    "    headers: {",
+    "      'content-type': 'application/json; charset=utf-8',",
+    "      ...corsHeaders()",
+    "    }",
+    "  });",
+    "}",
+    "",
+    "/* 示例 payload（本地 dry-run 用）",
+    JSON.stringify(examplePayload, null, 2),
+    "*/"
+  ].join('\n');
+}
+
 function buildLeadWebhookIntegrationGuide(){
   const todoExample=buildLeadTodoWebhookPayload();
   const portfolioExample=buildLeadPortfolioWebhookPayload();
@@ -2337,22 +2426,31 @@ function buildLeadWebhookIntegrationGuide(){
     '- 发飞书消息时，可直接使用 body.payload.summary；若要发长文，可改用 body.payload.markdown。',
     '- 页面已支持直接复制两份 n8n workflow JSON：待办流 / 总览流；导入后只需替换 Feishu 机器人地址。',
     '',
-    '3) 字段结构',
+    '3) Cloudflare Worker 中转建议',
+    '- 页面已支持直接复制两份 Worker 模板：待办流 / 总览流。',
+    '- 模板默认放开 CORS，并可用 RELAY_TOKEN 校验 Authorization。',
+    '- 只配置 RELAY_TOKEN 时可先 dry-run 回显消息；再补 FEISHU_BOT_WEBHOOK 即可真正转发到飞书。',
+    '',
+    '4) 字段结构',
     '- 顶层固定包含 source / kind / generatedAt / payload。',
     '- 待办 payload 含 filter / count / items / summary。',
     '- 总览 payload 含 report / summary / markdown。',
     '',
-    '4) 待办 payload 示例',
+    '5) 待办 payload 示例',
     JSON.stringify(todoExample,null,2),
     '',
-    '5) 总览 payload 示例',
+    '6) 总览 payload 示例',
     JSON.stringify(portfolioExample,null,2),
     '',
-    '6) n8n workflow JSON（页面内可直接复制）',
+    '7) n8n workflow JSON（页面内可直接复制）',
     '- copyLeadTodoN8nWorkflow：把线索待办推到 Feishu Bot。',
     '- copyLeadPortfolioN8nWorkflow：把跨产品总览推到 Feishu Bot。',
     '',
-    '7) 飞书卡片消息 Payload（页面内可直接复制）',
+    '8) Cloudflare Worker 模板（页面内可直接复制）',
+    '- copyLeadTodoWorkerTemplate：复制待办中转模板。',
+    '- copyLeadPortfolioWorkerTemplate：复制总览中转模板。',
+    '',
+    '9) 飞书卡片消息 Payload（页面内可直接复制）',
     '- copyLeadTodoFeishuCardPayload：复制待办 interactive card JSON。',
     '- copyLeadPortfolioFeishuCardPayload：复制总览 interactive card JSON。'
   ].join('\n');
@@ -2385,6 +2483,18 @@ async function copyLeadPortfolioN8nWorkflow(){
   const payload=JSON.stringify(buildLeadN8nWorkflow('lead-portfolio-summary'),null,2);
   await copyText(payload,'已复制总览 n8n Workflow JSON');
   $('leadWebhookStatus').textContent='已复制总览 n8n Workflow JSON';
+}
+
+async function copyLeadTodoWorkerTemplate(){
+  const payload=buildLeadWorkerTemplate('lead-followup-todos');
+  await copyText(payload,'已复制待办 Cloudflare Worker 模板');
+  $('leadWebhookStatus').textContent='已复制待办 Cloudflare Worker 模板';
+}
+
+async function copyLeadPortfolioWorkerTemplate(){
+  const payload=buildLeadWorkerTemplate('lead-portfolio-summary');
+  await copyText(payload,'已复制总览 Cloudflare Worker 模板');
+  $('leadWebhookStatus').textContent='已复制总览 Cloudflare Worker 模板';
 }
 
 function loadProductLeads(){
@@ -4838,6 +4948,8 @@ $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioW
 $("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
 $("copyLeadTodoN8nWorkflow").addEventListener('click',copyLeadTodoN8nWorkflow);
 $("copyLeadPortfolioN8nWorkflow").addEventListener('click',copyLeadPortfolioN8nWorkflow);
+$("copyLeadTodoWorkerTemplate").addEventListener('click',copyLeadTodoWorkerTemplate);
+$("copyLeadPortfolioWorkerTemplate").addEventListener('click',copyLeadPortfolioWorkerTemplate);
 $("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCardPayload);
 $("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);

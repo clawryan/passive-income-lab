@@ -216,6 +216,8 @@ const todoWebhookPayload = context.buildLeadTodoWebhookPayload();
 const portfolioWebhookPayload = context.buildLeadPortfolioWebhookPayload();
 const todoN8nWorkflow = context.buildLeadN8nWorkflow('lead-followup-todos');
 const portfolioN8nWorkflow = context.buildLeadN8nWorkflow('lead-portfolio-summary');
+const todoWorkerTemplate = context.buildLeadWorkerTemplate('lead-followup-todos');
+const portfolioWorkerTemplate = context.buildLeadWorkerTemplate('lead-portfolio-summary');
 const webhookGuide = context.buildLeadWebhookIntegrationGuide();
 const todoFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-followup-todos');
 const portfolioFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-portfolio-summary');
@@ -227,6 +229,8 @@ await context.copyLeadPortfolioWebhookPayload();
 await context.copyLeadWebhookIntegrationGuide();
 await context.copyLeadTodoN8nWorkflow();
 await context.copyLeadPortfolioN8nWorkflow();
+await context.copyLeadTodoWorkerTemplate();
+await context.copyLeadPortfolioWorkerTemplate();
 await context.copyLeadTodoFeishuCardPayload();
 await context.copyLeadPortfolioFeishuCardPayload();
 await context.sendLeadTodoWebhook();
@@ -293,7 +297,7 @@ if (portfolioWebhookPayload.kind !== 'lead-portfolio-summary' || !portfolioWebho
   throw new Error(`总览 Webhook Payload 异常: ${JSON.stringify(portfolioWebhookPayload)}`);
 }
 
-if (!webhookGuide.includes('Passive Income Lab 线索 Webhook 接线说明') || !webhookGuide.includes('lead-followup-todos') || !webhookGuide.includes('n8n')) {
+if (!webhookGuide.includes('Passive Income Lab 线索 Webhook 接线说明') || !webhookGuide.includes('lead-followup-todos') || !webhookGuide.includes('Cloudflare Worker')) {
   throw new Error(`Webhook 接线说明异常: ${webhookGuide}`);
 }
 
@@ -303,6 +307,14 @@ if (todoN8nWorkflow.name !== 'Passive Income Lab｜跟进待办 -> 飞书' || !t
 
 if (portfolioN8nWorkflow.name !== 'Passive Income Lab｜跨产品总览 -> 飞书' || !portfolioN8nWorkflow.pinData?.Webhook?.[0]?.json?.payload?.summary?.includes('跨产品线索摘要')) {
   throw new Error(`总览 n8n workflow 异常: ${JSON.stringify(portfolioN8nWorkflow)}`);
+}
+
+if (!todoWorkerTemplate.includes('env.FEISHU_BOT_WEBHOOK') || !todoWorkerTemplate.includes('lead-followup-todos')) {
+  throw new Error(`待办 Worker 模板异常: ${todoWorkerTemplate}`);
+}
+
+if (!portfolioWorkerTemplate.includes('env.FEISHU_BOT_WEBHOOK') || !portfolioWorkerTemplate.includes('lead-portfolio-summary')) {
+  throw new Error(`总览 Worker 模板异常: ${portfolioWorkerTemplate}`);
 }
 
 if (todoFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(todoFeishuCardPayload).includes('跟进待办')) {
