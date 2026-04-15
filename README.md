@@ -29,6 +29,7 @@
 - **远程 Lead Capture API / 快照**：线索区现可配置 `/api/lead-capture`（或自建 serverless endpoint），手动把当前线索提交到远程 API，并在另一台设备拉取远程快照合并回本地，减少只靠手工 JSON 传来传去的摩擦。
 - **Lead Capture 已支持托管 KV 持久化**：`api/lead-capture.js` 现可在检测到 `KV_REST_API_URL + KV_REST_API_TOKEN`（兼容 Upstash/Vercel KV REST）时把线索快照写入托管 KV；未配置时继续回退到本地文件，方便本机调试、部署后多端共享与逐步迁移。
 - **Lead Capture GET 已自带汇总摘要**：`GET /api/lead-capture` 现在除了返回全量 `entries`，还会额外返回 `summary.updatedAt / stageCounts / productCounts / sourceCounts / topStage / topProduct / topSource`，方便用手机或 cURL 快速验收远程快照是否真的在累积、哪种渠道来源最有效，而不用每次手翻全量线索。
+- **已成交 / 付款事件可远程回写**：`POST /api/lead-capture` 现已支持 `event` 载荷（如 `leadId + status=paid + amount + reference`），可把既有线索远程更新为“已成交”，并写入 `paymentAmount / paymentCurrency / paymentReference / paymentAt`，同时在 `summary` 中返回 `paymentStatusCounts / paidLeadCount / revenueByCurrency`，更接近真实收款后的回写闭环。
 - **KV 部署清单已留档**：新增 `outputs/lead-capture-kv-deploy.md`，把 Vercel / Upstash（或兼容 KV REST）所需环境变量、验收 cURL 与常见故障检查收口成可直接照着走的上线清单。
 - **公开询价链接 / 留资表单**：单产品页现可一键复制 `?product=...&view=inquiry` 公开询价链接；潜在客户可在手机端直接填写称呼、联系方式、预算和需求，并提交到 `/api/lead-capture`，把“先聊再手录”推进到“先留资后跟进”。
 - **导入后可直接生成跟进待办**：线索区现可按当前筛选范围一键复制、手机原生分享“跟进待办”摘要，或导出结构化 JSON / Markdown / ICS 待办包；其中 ICS 可直接导入手机/电脑日历，按“现在 / 24h / 72h”自动生成跟进提醒；导入线索后状态栏也会直接提示当前可推进待办数，减少再手工整理到任务工具的摩擦。

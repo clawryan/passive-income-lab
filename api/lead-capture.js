@@ -95,6 +95,13 @@ function buildStorageMeta(extra = {}) {
   };
 }
 
+function normalizeMoneyValue(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
+  const normalized = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(normalized) ? Math.round(normalized * 100) / 100 : null;
+}
+
 function normalizeLead(rawLead = {}) {
   const now = new Date().toISOString();
   return {
@@ -105,13 +112,37 @@ function normalizeLead(rawLead = {}) {
     budget: String(rawLead.budget || '待确认').trim() || '待确认',
     priority: String(rawLead.priority || '中').trim() || '中',
     stage: String(rawLead.stage || '待跟进').trim() || '待跟进',
-    need: String(rawLead.need || '待补充需求场景').trim() || '待补充需求场景',
+    need: String(rawLead.need || rawLead.demand || '待补充需求场景').trim() || '待补充需求场景',
     nextStep: String(rawLead.nextStep || '待确认下一步').trim() || '待确认下一步',
     productSlug: String(rawLead.productSlug || 'micro-saas').trim() || 'micro-saas',
     source: String(rawLead.source || 'manual').trim() || 'manual',
     originPage: String(rawLead.originPage || '').trim(),
+    paymentStatus: String(rawLead.paymentStatus || '').trim(),
+    paymentCurrency: String(rawLead.paymentCurrency || 'CNY').trim() || 'CNY',
+    paymentReference: String(rawLead.paymentReference || '').trim(),
+    paymentNote: String(rawLead.paymentNote || '').trim(),
+    paymentAmount: normalizeMoneyValue(rawLead.paymentAmount),
+    paymentAt: rawLead.paymentAt ? String(rawLead.paymentAt) : null,
     createdAt: String(rawLead.createdAt || now),
     updatedAt: String(rawLead.updatedAt || now)
+  };
+}
+
+function normalizeLeadEvent(rawEvent = {}) {
+  const now = new Date().toISOString();
+  const status = String(rawEvent.status || rawEvent.paymentStatus || 'paid').trim() || 'paid';
+  return {
+    kind: String(rawEvent.kind || 'payment-status').trim() || 'payment-status',
+    leadId: String(rawEvent.leadId || rawEvent.id || '').trim(),
+    status,
+    stage: String(rawEvent.stage || (status === 'paid' ? '已成交' : '')).trim(),
+    paymentAmount: normalizeMoneyValue(rawEvent.paymentAmount ?? rawEvent.amount),
+    paymentCurrency: String(rawEvent.paymentCurrency || rawEvent.currency || 'CNY').trim() || 'CNY',
+    paymentReference: String(rawEvent.paymentReference || rawEvent.reference || '').trim(),
+    paymentNote: String(rawEvent.paymentNote || rawEvent.note || '').trim(),
+    nextStep: String(rawEvent.nextStep || (status === 'paid' ? '已收款，下一步整理交付、反馈与转介绍动作' : '')).trim(),
+    updatedAt: String(rawEvent.updatedAt || now),
+    paymentAt: String(rawEvent.paymentAt || now)
   };
 }
 
@@ -141,6 +172,12 @@ function mergeEntries(entries, incomingLead) {
       priority: pickPreferExisting(existing.priority, incomingLead.priority, ['中']),
       source: pickPreferExisting(existing.source, incomingLead.source, ['manual']),
       originPage: pickPreferExisting(existing.originPage, incomingLead.originPage),
+      paymentCurrency: pickPreferExisting(existing.paymentCurrency, incomingLead.paymentCurrency, ['CNY']),
+      paymentReference: pickPreferExisting(existing.paymentReference, incomingLead.paymentReference),
+      paymentNote: pickPreferExisting(existing.paymentNote, incomingLead.paymentNote),
+      paymentStatus: pickPreferExisting(existing.paymentStatus, incomingLead.paymentStatus),
+      paymentAmount: incomingLead.paymentAmount ?? existing.paymentAmount ?? null,
+      paymentAt: incomingLead.paymentAt || existing.paymentAt || null,
       createdAt: existing.createdAt || incomingLead.createdAt,
       updatedAt: new Date(Math.max(currentTs || 0, incomingTs || 0)).toISOString()
     };
@@ -150,18 +187,65 @@ function mergeEntries(entries, incomingLead) {
     .slice(0, MAX_SNAPSHOT_ENTRIES);
 }
 
+function applyLeadEvent(snapshotEntries, rawEvent) {
+  const event = normalizeLeadEvent(rawEvent);
+  if (!event.leadId) {
+    const error = new Error('Missing event.leadId');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = (Array.isArray(snapshotEntries) ? snapshotEntries : []).find((item) => item.id === event.leadId);
+  if (!existing) {
+    const error = new Error(`Lead not found for event.leadId=${event.leadId}`);
+    error.statusCode = 404;
+    throw error;
+  }
+  const nextLead = normalizeLead({
+    ...existing,
+    stage: event.stage || existing.stage,
+    paymentStatus: event.status,
+    paymentAmount: event.paymentAmount ?? existing.paymentAmount,
+    paymentCurrency: event.paymentCurrency || existing.paymentCurrency,
+    paymentReference: event.paymentReference || existing.paymentReference,
+    paymentNote: event.paymentNote || existing.paymentNote,
+    paymentAt: event.paymentAt || existing.paymentAt,
+    nextStep: event.nextStep || existing.nextStep,
+    updatedAt: event.updatedAt
+  });
+  return {
+    event,
+    lead: nextLead,
+    entries: mergeEntries(snapshotEntries, nextLead)
+  };
+}
+
 function buildSnapshotSummary(snapshot = {}) {
   const entries = Array.isArray(snapshot.entries) ? snapshot.entries : [];
   const stageCounts = {};
   const productCounts = {};
   const sourceCounts = {};
+  const paymentStatusCounts = {};
+  const revenueByCurrency = {};
+  let paidLeadCount = 0;
+  let paidAmount = 0;
   for (const entry of entries) {
     const stage = String(entry.stage || '待跟进').trim() || '待跟进';
     const product = String(entry.productSlug || 'micro-saas').trim() || 'micro-saas';
     const source = String(entry.source || entry.channel || 'manual').trim() || 'manual';
+    const paymentStatus = String(entry.paymentStatus || '').trim();
+    const paymentCurrency = String(entry.paymentCurrency || 'CNY').trim() || 'CNY';
+    const paymentAmount = normalizeMoneyValue(entry.paymentAmount);
     stageCounts[stage] = (stageCounts[stage] || 0) + 1;
     productCounts[product] = (productCounts[product] || 0) + 1;
     sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+    if (paymentStatus) paymentStatusCounts[paymentStatus] = (paymentStatusCounts[paymentStatus] || 0) + 1;
+    if (paymentStatus === 'paid' || stage === '已成交') {
+      paidLeadCount += 1;
+    }
+    if (paymentAmount !== null) {
+      revenueByCurrency[paymentCurrency] = Math.round(((revenueByCurrency[paymentCurrency] || 0) + paymentAmount) * 100) / 100;
+      paidAmount += paymentAmount;
+    }
   }
   const topStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0] || null;
   const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0] || null;
@@ -172,6 +256,10 @@ function buildSnapshotSummary(snapshot = {}) {
     stageCounts,
     productCounts,
     sourceCounts,
+    paymentStatusCounts,
+    paidLeadCount,
+    paidAmount: Math.round(paidAmount * 100) / 100,
+    revenueByCurrency,
     topStage: topStage ? { stage: topStage[0], count: topStage[1] } : null,
     topProduct: topProduct ? { productSlug: topProduct[0], count: topProduct[1] } : null,
     topSource: topSource ? { source: topSource[0], count: topSource[1] } : null
@@ -214,29 +302,47 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    if (!body.lead) {
-      return res.status(400).json({ error: 'Missing lead payload' });
-    }
-    const lead = normalizeLead(body.lead);
     const snapshot = await readSnapshot();
-    const nextEntries = mergeEntries(snapshot.entries, lead);
+
+    let nextEntries = Array.isArray(snapshot.entries) ? snapshot.entries : [];
+    let lead = null;
+    let event = null;
+    let payloadKind = 'lead-capture';
+
+    if (body.event) {
+      const applied = applyLeadEvent(nextEntries, body.event);
+      nextEntries = applied.entries;
+      lead = applied.lead;
+      event = applied.event;
+      payloadKind = 'lead-event';
+    } else if (body.lead) {
+      lead = normalizeLead(body.lead);
+      nextEntries = mergeEntries(nextEntries, lead);
+    } else {
+      return res.status(400).json({ error: 'Missing lead payload or event payload' });
+    }
+
     const nextSnapshot = { updatedAt: new Date().toISOString(), entries: nextEntries };
     await writeSnapshot(nextSnapshot);
+
     const forwardResult = await forwardToWebhook({
-      kind: 'lead-capture',
+      kind: payloadKind,
       source: body.source || 'passive-income-lab-api',
       lead,
+      event,
       context: body.context || {},
-      snapshot: { count: nextEntries.length, entries: nextEntries }
+      snapshot: { count: nextEntries.length, entries: nextEntries, summary: buildSnapshotSummary(nextSnapshot) }
     });
+
     return res.status(200).json({
       ok: true,
       lead,
+      event,
       storage: buildStorageMeta({ webhook: forwardResult }),
       snapshot: { updatedAt: nextSnapshot.updatedAt, count: nextEntries.length, entries: nextEntries },
       summary: buildSnapshotSummary(nextSnapshot)
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message || String(error) });
+    return res.status(error.statusCode || 500).json({ error: error.message || String(error) });
   }
 };

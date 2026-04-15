@@ -373,6 +373,14 @@
 - 目的：让 A/B 经营面板真正支持跨设备连续复盘，而不再被浏览器本地存储割裂。
 - 验证：`node --check /tmp/passive_income_lab_web_check.js` 通过；Node + JSDOM 冒烟验证已确认 JSON 导出与导入去重链路可用。
 
+## 2026-04-15 08:0x (Asia/Shanghai)
+- 这轮直接补上最近 results 里最接近收入闭环的缺口：虽然线索已经能远程采集和多端同步，但“已成交 / 已付款”还只能手工改状态，缺少可被支付页、人工确认或自动化节点回写的最小接口。
+- `api/lead-capture.js` 现已支持 `POST { event: { leadId, status, amount, currency, reference, note } }`：可把既有线索远程回写为付款事件，默认会把 `status=paid` 映射到 `stage=已成交`，并补上 `paymentAmount / paymentCurrency / paymentReference / paymentAt / paymentNote`。
+- `GET /api/lead-capture` 的 `summary` 也已扩展出 `paymentStatusCounts / paidLeadCount / paidAmount / revenueByCurrency`，这样手机端用 cURL 或任意 webhook 中转都能直接看到“目前已确认多少单、累计多少收入”。
+- `scripts/smoke-lead-capture.mjs` 已同步扩展，覆盖本地文件模式与 KV 模式下的“线索保存 → 报价更新 → 付款事件回写 → 汇总收入”链路，避免这块只停留在接口说明层。
+- 目的：把线索闭环从“能收集、能催单”推进到“已付款后能远程回写并沉淀最小收入看板”，更接近真实被动收益产品的经营动作。
+- 验证：`node scripts/smoke-lead-capture.mjs` 通过；`npm run validate` 通过。
+
 ## 2026-03-25 17:0x (Asia/Shanghai)
 - 继续补齐跨设备历史整理链路：`web/index.html` 的 A/B 历史记录区新增“重命名当前实验 / 删除当前实验”按钮。
 - 现在可先按实验名称筛选，再直接把当前批次统一重命名，或仅删除该实验在当前浏览器中的本地历史记录，不影响其他批次。

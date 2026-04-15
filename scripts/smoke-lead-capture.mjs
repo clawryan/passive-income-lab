@@ -48,8 +48,21 @@ if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.snapshot
 }
 
 res = createRes();
+await handler({ method: 'POST', body: { source: 'manual-payment-sync', event: { leadId: 'lead-fixed', status: 'paid', amount: 229, currency: 'CNY', reference: 'gumroad-order-001', note: '手机端确认已付款', nextStep: '发送交付包并索取案例反馈', updatedAt: '2026-04-13T10:00:00.000Z', paymentAt: '2026-04-13T09:59:00.000Z' } } }, res);
+if (res.statusCode !== 200 || res.body.event?.status !== 'paid' || res.body.lead?.stage !== '已成交' || res.body.lead?.paymentAmount !== 229 || res.body.summary?.paidLeadCount !== 1 || res.body.summary?.revenueByCurrency?.CNY !== 229) {
+  throw new Error(`POST 付款事件异常: ${JSON.stringify(res.body)}`);
+}
+
+res = createRes();
 await handler({ method: 'GET' }, res);
-if (res.body.snapshot.count !== 1 || !fs.existsSync(storePath) || res.body.summary?.topStage?.stage !== '已报价' || res.body.summary?.topProduct?.productSlug !== 'micro-saas' || res.body.summary?.topSource?.source !== 'public-inquiry:feishu-dm') {
+if (
+  res.body.snapshot.count !== 1 ||
+  !fs.existsSync(storePath) ||
+  res.body.summary?.topStage?.stage !== '已成交' ||
+  res.body.summary?.topProduct?.productSlug !== 'micro-saas' ||
+  res.body.summary?.topSource?.source !== 'public-inquiry:feishu-dm' ||
+  res.body.summary?.paymentStatusCounts?.paid !== 1
+) {
   throw new Error(`最终 GET / 文件存储异常: ${JSON.stringify(res.body)}`);
 }
 
@@ -95,16 +108,22 @@ if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.storage.
 }
 
 res = createRes();
+await kvHandler({ method: 'POST', body: { event: { leadId: 'lead-kv', status: 'paid', amount: 1999, currency: 'CNY', reference: 'kv-order-1' } } }, res);
+if (res.statusCode !== 200 || res.body.lead?.stage !== '已成交' || res.body.summary?.revenueByCurrency?.CNY !== 1999) {
+  throw new Error(`KV 付款事件异常: ${JSON.stringify(res.body)}`);
+}
+
+res = createRes();
 await kvHandler({ method: 'GET' }, res);
-if (res.body.snapshot.count !== 1 || res.body.snapshot.entries[0].id !== 'lead-kv' || res.body.summary?.topStage?.stage !== '待跟进') {
+if (res.body.snapshot.count !== 1 || res.body.snapshot.entries[0].id !== 'lead-kv' || res.body.summary?.topStage?.stage !== '已成交' || res.body.summary?.paymentStatusCounts?.paid !== 1) {
   throw new Error(`KV 最终 GET 异常: ${JSON.stringify(res.body)}`);
 }
 
 console.log('lead-capture 冒烟通过:', {
   localStorePath: storePath,
   localCount: 1,
-  localStage: '已报价',
-  localTopSource: 'public-inquiry:feishu-dm',
+  localStage: '已成交',
+  localRevenueCny: res.body.summary?.revenueByCurrency?.CNY,
   kvCount: res.body.snapshot.count,
   kvMode: res.body.storage.mode
 });

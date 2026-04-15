@@ -1139,6 +1139,35 @@
 
 ## 2026-03-26 14:00 执行推进（新增成果）
 
+## 2026-04-15 08:0x 晨间推进（新增成果）
+
+### 本轮目标
+- 把线索闭环从“能采集 / 能同步 / 能催单”推进到“已付款后能远程回写并统计最小收入”。
+
+### 新增产出
+- `api/lead-capture.js`
+  - `POST /api/lead-capture` 新增 `event` 载荷支持，可用 `leadId + status=paid + amount + reference` 回写付款事件
+  - 自动把付款事件映射为 `stage=已成交`，并写入 `paymentAmount / paymentCurrency / paymentReference / paymentAt / paymentNote`
+  - `GET /api/lead-capture` 的 `summary` 新增 `paymentStatusCounts / paidLeadCount / paidAmount / revenueByCurrency`
+- `scripts/smoke-lead-capture.mjs`
+  - 新增本地文件模式与 KV 模式下的付款事件回写冒烟断言
+- `README.md`
+- `build-log.md`
+
+### 验证结果
+- `node scripts/smoke-lead-capture.mjs` 通过：已确认 `status=paid` 可把线索更新为 `已成交`，并累计 `revenueByCurrency.CNY`
+- `npm run validate` 通过
+
+### 阻塞
+- 这轮只补了 API 层，尚未在 `web/index.html` 加“远程标记已付款”按钮；当前更适合由支付页 webhook、n8n/Make、或人工 cURL 回写。
+- 仍缺真实支付链接和真实订单流量，暂时无法验证收入数字是否会持续累积。
+- 预算可见性仍不可验证，无法严格确认当日 token/$ 已用额度。
+
+### 下一步
+1. 在 `web/index.html` 给已报价/已成交线索补一个最小“远程回写付款”动作，做到手机端点一下就能回传。
+2. 给 README / outputs 再补一份可直接复制的 cURL / webhook 示例，压缩第一次接支付回写的摩擦。
+3. 若拿到真实支付链接或 webhook，可直接跑一轮“询价 → 报价 → 支付回写 → 收入汇总”真验收。
+
 ### 本轮目标
 - 把 A/B 面板从“只看最低点击阈值”推进到“能估算为了看出目标提升，还值不值得继续补样”。
 
