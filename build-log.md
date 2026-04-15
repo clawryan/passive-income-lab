@@ -1,3 +1,6 @@
+- 这轮没有再扩新 API 字段，而是把已经写进 `web/index.html` 的“远程付款回写”链路补成了真正可交付状态：README 现在明确写出手机端可直接用当前编辑线索回填 `leadId / amount / currency / reference / note`，并一键回写 `status=paid` 到 `/api/lead-capture`。
+- `scripts/smoke-lead-todos.mjs` 已新增对付款回写前端链路的冒烟：会模拟“编辑远程线索 → 自动回填付款表单 → 提交付款事件 → 校验 `leadPaymentStatus / leadCaptureStatus` 与请求载荷”，避免这块功能以后悄悄坏掉却没人发现。
+- 结果：付款回写不再只是埋在页面里的隐藏能力，而是已经进入 README + 自动化验证闭环，更适合下一步拿真实支付 webhook / n8n 做真联调。
 - 这轮没有继续扩 KV 写入逻辑，而是补了一个更接近“真上线验收”的低阻力缺口：`GET /api/lead-capture` 现在除了返回全量 `entries`，还会额外返回 `summary.updatedAt / stageCounts / productCounts / topStage / topProduct`，方便部署后直接用手机或 cURL 判断远程快照是否真的在累积、当前卡在哪个产品/阶段。
 - `api/lead-capture.js` 新增 `buildSnapshotSummary()`，并在 GET / POST 响应里同步带出 `summary` 与 `snapshot.updatedAt`；这样无论是公开询价刚写入，还是电脑端二次确认，都不必每次手看完整快照。
 - `scripts/smoke-lead-capture.mjs` 已扩展为同时断言本地文件模式与 KV 模式下的 `summary.topStage / summary.topProduct`，避免这层摘要只停留在文档里。

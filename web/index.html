@@ -344,6 +344,33 @@
             <button id="sendCurrentLeadCapture" class="ghost">提交当前线索到远程 API</button>
             <button id="pullLeadCaptureSnapshot" class="ghost">拉取远程线索快照</button>
           </div>
+          <div class="card stack">
+            <h3>远程付款回写</h3>
+            <div class="grid g4">
+              <label>线索 ID
+                <input id="leadPaymentLeadId" type="text" placeholder="如：lead-2026-04-15..." />
+              </label>
+              <label>付款金额
+                <input id="leadPaymentAmount" type="number" min="0" step="0.01" placeholder="如：229" />
+              </label>
+              <label>币种
+                <input id="leadPaymentCurrency" type="text" value="CNY" placeholder="CNY" />
+              </label>
+              <label>付款参考号
+                <input id="leadPaymentReference" type="text" placeholder="如：gumroad-order-001" />
+              </label>
+            </div>
+            <div class="grid g2">
+              <label>付款备注
+                <input id="leadPaymentNote" type="text" placeholder="如：手机端确认已收款，准备发交付包" />
+              </label>
+              <div class="grid g2" style="align-items:end">
+                <button id="fillLeadPaymentFromEditor" class="ghost">用当前编辑线索填入</button>
+                <button id="sendLeadPaymentEvent" class="ghost">远程标记已付款</button>
+              </div>
+            </div>
+            <div id="leadPaymentStatus" class="mini muted">适合收到付款后手动回写，或先联调支付 webhook / n8n / Make 再自动回写。</div>
+          </div>
           <div id="leadCaptureStatus" class="mini muted">适合先接 /api/lead-capture 或自建 serverless endpoint；默认仅在你点按钮时发请求。</div>
         </div>
         <div class="card stack">
@@ -2790,6 +2817,7 @@ function editLeadEntry(leadId){
   $('leadNeed').value=entry.need || '';
   $('leadNextStep').value=entry.nextStep || '';
   setLeadEditingState({...entry,id:leadId});
+  fillLeadPaymentFieldsFromEntry(entry);
   $('leadStatus').textContent=`已回填 ${entry.name}，可直接修改后保存。`;
 }
 
@@ -2927,6 +2955,66 @@ function buildLeadCapturePayload(entry){
       capturedAt:new Date().toISOString()
     }
   };
+}
+
+function fillLeadPaymentFieldsFromEntry(entry){
+  if(!entry){
+    $('leadPaymentStatus').textContent='当前没有可回填的线索。';
+    return;
+  }
+  $('leadPaymentLeadId').value=getLeadEntryId(entry);
+  $('leadPaymentAmount').value=entry.paymentAmount ?? '';
+  $('leadPaymentCurrency').value=entry.paymentCurrency || 'CNY';
+  $('leadPaymentReference').value=entry.paymentReference || '';
+  $('leadPaymentNote').value=entry.paymentNote || (entry.stage==='已成交' ? '已成交，待补付款参考号' : '已确认付款，准备发交付包');
+  $('leadPaymentStatus').textContent=`已回填付款回写表单：${entry.name}`;
+}
+
+function fillLeadPaymentFromEditor(){
+  if(!currentLeadEditId){
+    $('leadPaymentStatus').textContent='请先在线索表中点“编辑”，或手动填写线索 ID。';
+    return;
+  }
+  const entry=loadProductLeads().find(item=>getLeadEntryId(item)===currentLeadEditId);
+  fillLeadPaymentFieldsFromEntry(entry);
+}
+
+async function sendLeadPaymentEvent(){
+  const leadId=($('leadPaymentLeadId')?.value || '').trim();
+  if(!leadId){
+    $('leadPaymentStatus').textContent='请先填写线索 ID。';
+    return;
+  }
+  const request=getLeadCaptureRequest('POST',{
+    source:'passive-income-lab-payment-writeback',
+    event:{
+      leadId,
+      status:'paid',
+      amount:$('leadPaymentAmount')?.value,
+      currency:($('leadPaymentCurrency')?.value || 'CNY').trim() || 'CNY',
+      reference:($('leadPaymentReference')?.value || '').trim(),
+      note:($('leadPaymentNote')?.value || '').trim(),
+      nextStep:'已收款，下一步发送交付包、确认反馈与转介绍机会'
+    }
+  });
+  const response=await fetch(request.url,request.options);
+  const data=await response.json();
+  if(!response.ok){
+    throw new Error(data.error || '付款回写失败');
+  }
+  const snapshotEntries=data.snapshot?.entries || [];
+  if(snapshotEntries.length){
+    saveProductLeads(mergeLeadEntries(loadProductLeads(),snapshotEntries));
+    renderLeadBoard();
+  }
+  if(data.lead){
+    fillLeadPaymentFieldsFromEntry(data.lead);
+    if(currentLeadEditId===getLeadEntryId(data.lead)){
+      editLeadEntry(currentLeadEditId);
+    }
+  }
+  $('leadPaymentStatus').textContent=`已回写付款：${data.lead?.name || leadId}｜${data.lead?.paymentCurrency || 'CNY'} ${data.lead?.paymentAmount ?? 0}｜累计已成交 ${data.summary?.paidLeadCount ?? 0} 条`;
+  $('leadCaptureStatus').textContent=`付款回写成功：${data.storage?.mode || 'remote'}｜${Object.entries(data.summary?.revenueByCurrency || {}).map(([currency,amount])=>`${currency} ${amount}`).join('｜') || '暂无累计收入'}`;
 }
 
 async function sendCurrentLeadCapture(){
