@@ -2167,12 +2167,21 @@ function buildLeadTodoWebhookPayload(){
 
 function buildLeadPortfolioWebhookPayload(){
   const report=getLeadPortfolioReport();
+  const sourceHighlights=(report.sources || []).slice(0,5).map((item,index)=>({
+    rank:index+1,
+    source:item.source,
+    count:item.count,
+    pending:item.pending,
+    quoted:item.quoted,
+    won:item.won
+  }));
   return {
     source:'passive-income-lab',
     kind:'lead-portfolio-summary',
     generatedAt:new Date().toISOString(),
     payload:{
       report,
+      sourceHighlights,
       summary:buildLeadPortfolioSummaryText(),
       markdown:buildLeadPortfolioMarkdown()
     }
@@ -2188,12 +2197,20 @@ function buildLeadFeishuCardPayload(kind='lead-followup-todos'){
   const report=webhookPayload.payload?.report || {};
   const items=webhookPayload.payload?.items || [];
   const lines=isPortfolio
-    ? [
-        `总线索：${report.totalLeads || 0}`,
-        `可推进待办：${report.actionableCount || 0}`,
-        `当前最热产品：${report.hottestProduct || '暂无'}`,
-        `最优先线索：${report.priorityLead?.name || '暂无'}`
-      ]
+    ? (()=>{
+        const topSources=(webhookPayload.payload?.sourceHighlights || []).slice(0,3);
+        const sourceLine=topSources.length
+          ? `来源分布：${topSources.map(item=>`${item.rank}. ${item.source}（线索 ${item.count}｜已报价 ${item.quoted}｜已成交 ${item.won}）`).join('；')}`
+          : '来源分布：暂无';
+        return [
+          `总线索：${report.totalLeads || 0}`,
+          `可推进待办：${report.actionableCount || 0}`,
+          report.topProduct ? `当前最热产品：${report.topProduct.productTitle || '暂无'}（线索 ${report.topProduct.total || 0}｜已报价 ${report.topProduct.quoted || 0}｜已成交 ${report.topProduct.won || 0}）` : '当前最热产品：暂无',
+          report.topSource ? `当前最有效来源：${report.topSource.source || '暂无'}（线索 ${report.topSource.count || 0}｜已报价 ${report.topSource.quoted || 0}｜已成交 ${report.topSource.won || 0}）` : '当前最有效来源：暂无',
+          report.topPriorityLead ? `最优先线索：${report.topPriorityLead.leadName || '暂无'}｜${report.topPriorityLead.product || '未分类'}｜${report.topPriorityLead.stage || '待跟进'}｜${report.topPriorityLead.timeBucket || '现在'}` : '最优先线索：暂无',
+          sourceLine
+        ];
+      })()
     : items.slice(0,4).map((item,index)=>`${index+1}. [${item.timeBucket || '现在'}] ${item.productLabel || item.product || '未分类'}｜${item.name || '未命名线索'}｜${item.nextStep || '待确认下一步'}`);
   const lineText=lines.length ? lines.join('\\n') : (isPortfolio ? '当前暂无跨产品线索摘要' : '当前筛选范围内暂无待跟进线索');
   return {
@@ -2434,7 +2451,8 @@ function buildLeadWebhookIntegrationGuide(){
     '4) 字段结构',
     '- 顶层固定包含 source / kind / generatedAt / payload。',
     '- 待办 payload 含 filter / count / items / summary。',
-    '- 总览 payload 含 report / summary / markdown。',
+    '- 总览 payload 含 report / sourceHighlights / summary / markdown。',
+    '- sourceHighlights 默认取前 5 个来源，可直接给飞书卡片、日报机器人或增长看板消费。',
     '',
     '5) 待办 payload 示例',
     JSON.stringify(todoExample,null,2),

@@ -293,11 +293,14 @@ if (todoWebhookPayload.kind !== 'lead-followup-todos' || !todoWebhookPayload.pay
   throw new Error(`待办 Webhook Payload 异常: ${JSON.stringify(todoWebhookPayload)}`);
 }
 
-if (portfolioWebhookPayload.kind !== 'lead-portfolio-summary' || !portfolioWebhookPayload.payload?.summary?.includes('跨产品线索摘要')) {
+if (portfolioWebhookPayload.kind !== 'lead-portfolio-summary' || !portfolioWebhookPayload.payload?.summary?.includes('跨产品线索摘要') || !portfolioWebhookPayload.payload?.sourceHighlights?.length) {
   throw new Error(`总览 Webhook Payload 异常: ${JSON.stringify(portfolioWebhookPayload)}`);
 }
+if (!portfolioWebhookPayload.payload.sourceHighlights.some((item) => item.source === '朋友圈')) {
+  throw new Error(`总览来源归因未进入 Webhook Payload: ${JSON.stringify(portfolioWebhookPayload.payload.sourceHighlights)}`);
+}
 
-if (!webhookGuide.includes('Passive Income Lab 线索 Webhook 接线说明') || !webhookGuide.includes('lead-followup-todos') || !webhookGuide.includes('Cloudflare Worker')) {
+if (!webhookGuide.includes('Passive Income Lab 线索 Webhook 接线说明') || !webhookGuide.includes('lead-followup-todos') || !webhookGuide.includes('Cloudflare Worker') || !webhookGuide.includes('sourceHighlights')) {
   throw new Error(`Webhook 接线说明异常: ${webhookGuide}`);
 }
 
@@ -321,7 +324,7 @@ if (todoFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(todoFeis
   throw new Error(`待办飞书卡片 Payload 异常: ${JSON.stringify(todoFeishuCardPayload)}`);
 }
 
-if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(portfolioFeishuCardPayload).includes('跨产品线索总览')) {
+if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(portfolioFeishuCardPayload).includes('跨产品线索总览') || !JSON.stringify(portfolioFeishuCardPayload).includes('当前最有效来源') || !JSON.stringify(portfolioFeishuCardPayload).includes('来源分布')) {
   throw new Error(`总览飞书卡片 Payload 异常: ${JSON.stringify(portfolioFeishuCardPayload)}`);
 }
 

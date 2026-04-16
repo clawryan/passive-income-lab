@@ -1,3 +1,10 @@
+## 2026-04-16 14:0x (Asia/Shanghai)
+- 沿着今天早上写下的下一步，把“来源归因”真正接进了跨产品总览的外发链路，而不再只停留在页面内看板。
+- `buildLeadPortfolioWebhookPayload()` 现新增 `payload.sourceHighlights`，会附带前 5 个来源的线索 / 待跟进 / 已报价 / 已成交概览，方便 n8n、Worker、飞书机器人直接消费。
+- `buildLeadFeishuCardPayload('lead-portfolio-summary')` 已同步展示“当前最有效来源”与 Top 来源分布，收到卡片时就能直接判断下一轮更该继续推哪个入口。
+- `buildLeadWebhookIntegrationGuide()` 与 `scripts/smoke-lead-todos.mjs` 已同步更新，确保文档和回归断言都覆盖 `sourceHighlights`、总览飞书卡片里的来源明细。
+- 下一步最值得做的是：把 `sourceHighlights` 再补一份按日汇总/日报文案模板，方便直接挂到 cron 或机器人做被动监控。
+
 ## 2026-04-15 20:0x (Asia/Shanghai)
 - 沿着昨早写下的“该补最小远程已付款回写入口”收口，但这次没有再扩 API：前端里已有“远程付款回写”区块，我把它补进 README 与自动化验证，避免它只是藏在 `web/index.html` 里、后续一改又悄悄回退。
 - `scripts/smoke-lead-todos.mjs` 现会真实模拟：编辑一条远程线索 → 自动回填 `leadId / amount / currency / reference / note` → 调用 `sendLeadPaymentEvent()` → 断言请求体里含 `event.status=paid`、`amount=229`、`reference=gumroad-order-001`，并校验页面状态文案已出现累计成交 / 收入提示。
