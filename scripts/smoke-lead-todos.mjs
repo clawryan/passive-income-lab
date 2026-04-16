@@ -222,6 +222,7 @@ const webhookGuide = context.buildLeadWebhookIntegrationGuide();
 const todoFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-followup-todos');
 const portfolioFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-portfolio-summary');
 const sourceDailyDigest = context.buildLeadSourceDailyDigest();
+const sourceDailyWebhookPayload = context.buildLeadSourceDailyWebhookPayload();
 const sourceDailyFeishuCardPayload = context.buildLeadSourceDailyFeishuCardPayload();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
@@ -236,9 +237,11 @@ await context.copyLeadPortfolioWorkerTemplate();
 await context.copyLeadTodoFeishuCardPayload();
 await context.copyLeadPortfolioFeishuCardPayload();
 await context.copyLeadSourceDailyDigest();
+await context.copyLeadSourceDailyWebhookPayload();
 await context.copyLeadSourceDailyFeishuCardPayload();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
+await context.sendLeadSourceDailyWebhook();
 await context.copyQuotedLeadCloserSummary();
 context.exportQuotedLeadCloserMd();
 await context.copyWonLeadUpsellSummary();
@@ -334,6 +337,10 @@ if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(por
 
 if (!sourceDailyDigest.includes('Passive Income Lab 来源日报') || !sourceDailyDigest.includes('当前最有效来源') || !sourceDailyDigest.includes('建议动作')) {
   throw new Error(`来源日报摘要异常: ${sourceDailyDigest}`);
+}
+
+if (sourceDailyWebhookPayload.kind !== 'lead-source-daily-digest' || !sourceDailyWebhookPayload.payload?.summary?.includes('Passive Income Lab 来源日报') || !sourceDailyWebhookPayload.payload?.sourceHighlights?.length || !sourceDailyWebhookPayload.payload?.markdown?.includes('# Passive Income Lab 来源日报')) {
+  throw new Error(`来源日报 Webhook Payload 异常: ${JSON.stringify(sourceDailyWebhookPayload)}`);
 }
 
 if (sourceDailyFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(sourceDailyFeishuCardPayload).includes('来源日报') || !JSON.stringify(sourceDailyFeishuCardPayload).includes('Top 来源明细')) {
@@ -432,7 +439,7 @@ if (!leadWebhookCalls.every((call) => String(call.options?.headers?.Authorizatio
 }
 
 const webhookKinds = leadWebhookCalls.map((call) => JSON.parse(call.options.body).kind);
-if (!webhookKinds.includes('lead-followup-todos') || !webhookKinds.includes('lead-portfolio-summary')) {
+if (!webhookKinds.includes('lead-followup-todos') || !webhookKinds.includes('lead-portfolio-summary') || !webhookKinds.includes('lead-source-daily-digest')) {
   throw new Error(`线索 Webhook kind 异常: ${JSON.stringify(leadWebhookCalls)}`);
 }
 

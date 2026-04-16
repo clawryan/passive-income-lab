@@ -2154,6 +2154,14 @@ async function sendLeadPortfolioWebhook(){
     : '已推送空白跨产品线索总览模板到 Webhook');
 }
 
+async function sendLeadSourceDailyWebhook(){
+  const payload=buildLeadSourceDailyWebhookPayload();
+  const highlightCount=payload.payload?.sourceHighlights?.length || 0;
+  await postLeadWebhook('lead-source-daily-digest',payload.payload,highlightCount
+    ? `已推送来源日报到 Webhook（Top 来源 ${highlightCount} 个）`
+    : '已推送空白来源日报模板到 Webhook');
+}
+
 function buildLeadTodoWebhookPayload(){
   const items=buildLeadTodoItems();
   return {
@@ -2192,17 +2200,17 @@ function buildLeadPortfolioWebhookPayload(){
   };
 }
 
-function buildLeadSourceDailyDigest(){
-  const payload=buildLeadPortfolioWebhookPayload();
-  const report=payload.payload?.report || {};
-  const highlights=(payload.payload?.sourceHighlights || []).slice(0,5);
+function buildLeadSourceDailyWebhookPayload(){
+  const portfolioPayload=buildLeadPortfolioWebhookPayload();
+  const report=portfolioPayload.payload?.report || {};
+  const highlights=(portfolioPayload.payload?.sourceHighlights || []).slice(0,5);
   const topSource=report.topSource || highlights[0] || null;
   const recommendation=topSource
     ? (topSource.quoted > 0 || topSource.won > 0
         ? `优先继续加推 ${topSource.source}，它已经出现${topSource.won > 0 ? '成交' : '报价'}信号。`
         : `先继续补量 ${topSource.source}，它在线索数上领先，但还需要更多报价/成交验证。`)
     : '今天先补首批分发动作，至少跑出 1 个可归因来源。';
-  const lines=[
+  const summaryLines=[
     `Passive Income Lab 来源日报｜${new Date().toLocaleDateString('zh-CN')}`,
     `总线索：${report.totalLeads || 0}｜可推进：${report.actionableCount || 0}`,
     report.topProduct ? `当前最热产品：${report.topProduct.productTitle || '暂无'}（线索 ${report.topProduct.total || 0}｜已报价 ${report.topProduct.quoted || 0}｜已成交 ${report.topProduct.won || 0}）` : '当前最热产品：暂无',
@@ -2212,11 +2220,40 @@ function buildLeadSourceDailyDigest(){
       : 'Top 来源：暂无',
     `建议动作：${recommendation}`
   ];
-  return lines.join('\n');
+  return {
+    source:'passive-income-lab',
+    kind:'lead-source-daily-digest',
+    generatedAt:portfolioPayload.generatedAt,
+    payload:{
+      report,
+      sourceHighlights:highlights,
+      summary:summaryLines.join('\\n'),
+      markdown:[
+        '# Passive Income Lab 来源日报',
+        '',
+        `- 日期：${new Date().toLocaleDateString('zh-CN')}`,
+        `- 总线索：${report.totalLeads || 0}`,
+        `- 可推进：${report.actionableCount || 0}`,
+        report.topProduct ? `- 当前最热产品：${report.topProduct.productTitle || '暂无'}（线索 ${report.topProduct.total || 0}｜已报价 ${report.topProduct.quoted || 0}｜已成交 ${report.topProduct.won || 0}）` : '- 当前最热产品：暂无',
+        topSource ? `- 当前最有效来源：${topSource.source || '暂无'}（线索 ${topSource.count || 0}｜待跟进 ${topSource.pending || 0}｜已报价 ${topSource.quoted || 0}｜已成交 ${topSource.won || 0}）` : '- 当前最有效来源：暂无',
+        '',
+        '## Top 来源',
+        ...(highlights.length ? highlights.map((item)=>`- ${item.rank}. ${item.source}｜线索 ${item.count}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`) : ['- 暂无可用来源数据']),
+        '',
+        '## 建议动作',
+        `- ${recommendation}`
+      ].join('\\n'),
+      recommendation
+    }
+  };
+}
+
+function buildLeadSourceDailyDigest(){
+  return buildLeadSourceDailyWebhookPayload().payload.summary;
 }
 
 function buildLeadSourceDailyFeishuCardPayload(){
-  const payload=buildLeadPortfolioWebhookPayload();
+  const payload=buildLeadSourceDailyWebhookPayload();
   const report=payload.payload?.report || {};
   const highlights=(payload.payload?.sourceHighlights || []).slice(0,3);
   return {
@@ -2231,11 +2268,14 @@ function buildLeadSourceDailyFeishuCardPayload(){
       },
       body:{
         elements:[
-          { tag:'markdown', content:`**总线索**：${report.totalLeads || 0}\n**可推进**：${report.actionableCount || 0}\n**当前最热产品**：${report.topProduct?.productTitle || '暂无'}\n**当前最有效来源**：${report.topSource?.source || '暂无'}` },
+          { tag:'markdown', content:`**总线索**：${report.totalLeads || 0}
+**可推进**：${report.actionableCount || 0}
+**当前最热产品**：${report.topProduct?.productTitle || '暂无'}
+**当前最有效来源**：${report.topSource?.source || '暂无'}` },
           { tag:'hr' },
-          { tag:'markdown', content:buildLeadSourceDailyDigest() },
+          { tag:'markdown', content:payload.payload?.summary || '暂无来源日报摘要' },
           { tag:'hr' },
-          { tag:'markdown', content:`**Top 来源明细**\n${highlights.length ? highlights.map((item)=>`- ${item.rank}. ${item.source}｜线索 ${item.count}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`).join('\n') : '- 暂无可用来源数据'}` }
+          { tag:'markdown', content:`**Top 来源明细**\n${highlights.length ? highlights.map((item)=>`- ${item.rank}. ${item.source}｜线索 ${item.count}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`).join('\\n') : '- 暂无可用来源数据'}` }
         ]
       }
     },
@@ -2314,6 +2354,12 @@ async function copyLeadPortfolioFeishuCardPayload(){
 async function copyLeadSourceDailyDigest(){
   await copyText(buildLeadSourceDailyDigest(),'已复制来源日报摘要');
   $('leadWebhookStatus').textContent='已复制来源日报摘要';
+}
+
+async function copyLeadSourceDailyWebhookPayload(){
+  const payload=JSON.stringify(buildLeadSourceDailyWebhookPayload(),null,2);
+  await copyText(payload,'已复制来源日报 Webhook Payload 示例');
+  $('leadWebhookStatus').textContent='已复制来源日报 Webhook Payload 示例';
 }
 
 async function copyLeadSourceDailyFeishuCardPayload(){
@@ -5061,8 +5107,10 @@ $("saveLeadWebhookConfig").addEventListener('click',persistLeadWebhookConfig);
 $("copyLeadWebhookCurl").addEventListener('click',copyLeadWebhookCurl);
 $("sendLeadTodoWebhook").addEventListener('click',sendLeadTodoWebhook);
 $("sendLeadPortfolioWebhook").addEventListener('click',sendLeadPortfolioWebhook);
+$("sendLeadSourceDailyWebhook").addEventListener('click',sendLeadSourceDailyWebhook);
 $("copyLeadTodoWebhookPayload").addEventListener('click',copyLeadTodoWebhookPayload);
 $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioWebhookPayload);
+$("copyLeadSourceDailyWebhookPayload").addEventListener('click',copyLeadSourceDailyWebhookPayload);
 $("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
 $("copyLeadTodoN8nWorkflow").addEventListener('click',copyLeadTodoN8nWorkflow);
 $("copyLeadPortfolioN8nWorkflow").addEventListener('click',copyLeadPortfolioN8nWorkflow);

@@ -1,3 +1,10 @@
+## 2026-04-16 22:0x (Asia/Shanghai)
+- 沿着今天 14 点写下的下一步，把“来源日报”从可复制文案推进成可直接外发的 Webhook 事件，减少再手工拼机器人输入的步骤。
+- `buildLeadSourceDailyWebhookPayload()` 现会统一产出 `summary / markdown / recommendation / sourceHighlights / report`，这样 cron、n8n、Worker 或飞书机器人都能直接消费同一份结构化日报数据，而不是只拿到纯文本。
+- 首页线索 Webhook 区新增“推送来源日报到 Webhook / 复制来源日报 Webhook Payload 示例”，让手机或电脑端都能沿用既有 Webhook 配置直接发日报。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖来源日报 payload 构造、复制动作与第三类 Webhook 推送，避免后续重构时把日报链路悄悄改坏。
+- 下一步最值得做的是：补一个最小 cron/自动化接线样例（例如来源日报 -> 飞书机器人或邮件），把“能手动推送”继续推进到“可定时被动播报”。
+
 ## 2026-04-16 14:0x (Asia/Shanghai)
 - 沿着今天早上写下的下一步，把“来源归因”真正接进了跨产品总览的外发链路，而不再只停留在页面内看板。
 - `buildLeadPortfolioWebhookPayload()` 现新增 `payload.sourceHighlights`，会附带前 5 个来源的线索 / 待跟进 / 已报价 / 已成交概览，方便 n8n、Worker、飞书机器人直接消费。
