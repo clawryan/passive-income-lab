@@ -2692,6 +2692,18 @@ function getLeadPortfolioReport(){
     if(stage==='待跟进') acc[key].pending+=1;
     return acc;
   },{});
+  const sourceCounts=leads.reduce((acc,entry)=>{
+    const sourceKey=String(entry.source || entry.channel || 'manual').trim() || 'manual';
+    if(!acc[sourceKey]){
+      acc[sourceKey]={source:sourceKey,count:0,pending:0,quoted:0,won:0};
+    }
+    acc[sourceKey].count+=1;
+    const stage=entry.stage || '待跟进';
+    if(stage==='待跟进') acc[sourceKey].pending+=1;
+    if(stage==='已报价') acc[sourceKey].quoted+=1;
+    if(stage==='已成交') acc[sourceKey].won+=1;
+    return acc;
+  },{});
   const topProduct=Object.values(productCounts).sort((a,b)=>{
     const wonDiff=(b.won || 0)-(a.won || 0);
     if(wonDiff!==0) return wonDiff;
@@ -2707,6 +2719,13 @@ function getLeadPortfolioReport(){
     const bucketDiff=(bucketOrder[a.timeBucket] ?? 9)-(bucketOrder[b.timeBucket] ?? 9);
     if(bucketDiff!==0) return bucketDiff;
     return new Date(b.updatedAt || 0)-new Date(a.updatedAt || 0);
+  })[0] || null;
+  const topSource=Object.values(sourceCounts).sort((a,b)=>{
+    const wonDiff=(b.won || 0)-(a.won || 0);
+    if(wonDiff!==0) return wonDiff;
+    const quotedDiff=(b.quoted || 0)-(a.quoted || 0);
+    if(quotedDiff!==0) return quotedDiff;
+    return (b.count || 0)-(a.count || 0);
   })[0] || null;
   const bucketCounts=actionable.reduce((acc,item)=>{
     acc[item.timeBucket]=(acc[item.timeBucket] || 0)+1;
@@ -2736,7 +2755,9 @@ function getLeadPortfolioReport(){
     },
     topProduct,
     topPriorityLead,
+    topSource,
     products:Object.values(productCounts),
+    sources:Object.values(sourceCounts).sort((a,b)=>(b.count || 0)-(a.count || 0)),
     nextAction
   };
 }
@@ -2748,6 +2769,7 @@ function buildLeadPortfolioSummaryText(){
     `可推进 ${report.actionableCount}｜待跟进 ${report.stageCounts.pending}｜已报价 ${report.stageCounts.quoted}｜已成交 ${report.stageCounts.won}`,
     `时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}`,
     report.topProduct ? `当前最热产品：${report.topProduct.productTitle}（线索 ${report.topProduct.total}｜已报价 ${report.topProduct.quoted}｜已成交 ${report.topProduct.won}）` : '当前最热产品：暂无',
+    report.topSource ? `当前最有效来源：${report.topSource.source}（线索 ${report.topSource.count}｜已报价 ${report.topSource.quoted}｜已成交 ${report.topSource.won}）` : '当前最有效来源：暂无',
     report.topPriorityLead ? `最优先线索：${report.topPriorityLead.leadName}｜${report.topPriorityLead.product}｜${report.topPriorityLead.stage}｜${report.topPriorityLead.timeBucket}` : '最优先线索：暂无',
     `下一步：${report.nextAction}`
   ].join('\n');
@@ -2758,6 +2780,9 @@ function buildLeadPortfolioMarkdown(){
   const productLines=report.products.length
     ? report.products.map(item=>`- ${item.productTitle}｜线索 ${item.total}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`).join('\n')
     : '- 暂无产品线索';
+  const sourceLines=(report.sources || []).length
+    ? report.sources.slice(0,5).map(item=>`- ${item.source}｜线索 ${item.count}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`).join('\n')
+    : '- 暂无来源分布';
   const lines=[
     '# Passive Income Lab 跨产品线索总览',
     '',
@@ -2771,10 +2796,14 @@ function buildLeadPortfolioMarkdown(){
     `- 暂不推进：${report.stageCounts.paused}`,
     `- 时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}｜本周 ${report.bucketCounts.thisWeek}`,
     report.topProduct ? `- 当前最热产品：${report.topProduct.productTitle}` : '- 当前最热产品：暂无',
+    report.topSource ? `- 当前最有效来源：${report.topSource.source}` : '- 当前最有效来源：暂无',
     report.topPriorityLead ? `- 最优先线索：${report.topPriorityLead.leadName}｜${report.topPriorityLead.product}｜${report.topPriorityLead.stage}｜${report.topPriorityLead.timeBucket}` : '- 最优先线索：暂无',
     '',
     '## 产品分布',
     productLines,
+    '',
+    '## 来源分布',
+    sourceLines,
     '',
     `## 下一步建议
 - ${report.nextAction}`
@@ -2791,10 +2820,14 @@ function renderLeadPortfolioBoard(){
     return;
   }
   const productCards=(report.products || []).map(item=>`<div style="border:1px solid #243244;border-radius:14px;padding:12px;background:#111827"><div class="mini muted">${item.productTitle}</div><div style="font-size:22px;font-weight:700;margin-top:6px">${item.total}</div><div class="mini muted">线索｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}</div></div>`).join('');
+  const sourceCards=(report.sources || []).slice(0,3).map(item=>`<div style="border:1px solid #243244;border-radius:14px;padding:12px;background:#111827"><div class="mini muted">${item.source}</div><div style="font-size:22px;font-weight:700;margin-top:6px">${item.count}</div><div class="mini muted">来源｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}</div></div>`).join('');
   const priorityLine=report.topPriorityLead
     ? `最优先线索：${report.topPriorityLead.leadName}｜${report.topPriorityLead.product}｜${report.topPriorityLead.stage}｜${report.topPriorityLead.timeBucket}`
     : '最优先线索：暂无';
-  board.innerHTML=`<h3>跨产品线索总览</h3><div class="mini muted">总线索 ${report.totalLeads}｜可推进 ${report.actionableCount}｜时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}</div><div class="grid g2" style="margin-top:12px">${productCards || '<div class="muted">暂无产品分布</div>'}</div><div class="mini" style="margin-top:12px">${report.topProduct ? `当前最热产品：${report.topProduct.productTitle}` : '当前最热产品：暂无'}｜${priorityLine}</div><div class="mini muted" style="margin-top:8px">下一步建议：${report.nextAction}</div>`;
+  const sourceLine=report.topSource
+    ? `当前最有效来源：${report.topSource.source}｜线索 ${report.topSource.count}｜已报价 ${report.topSource.quoted}｜已成交 ${report.topSource.won}`
+    : '当前最有效来源：暂无';
+  board.innerHTML=`<h3>跨产品线索总览</h3><div class="mini muted">总线索 ${report.totalLeads}｜可推进 ${report.actionableCount}｜时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}</div><div class="grid g2" style="margin-top:12px">${productCards || '<div class="muted">暂无产品分布</div>'}</div><div class="mini" style="margin-top:12px">${report.topProduct ? `当前最热产品：${report.topProduct.productTitle}` : '当前最热产品：暂无'}｜${sourceLine}</div><div class="grid g3" style="margin-top:12px">${sourceCards || '<div class="muted">暂无来源分布</div>'}</div><div class="mini" style="margin-top:12px">${priorityLine}</div><div class="mini muted" style="margin-top:8px">下一步建议：${report.nextAction}</div>`;
 }
 
 async function copyLeadPortfolioSummary(){

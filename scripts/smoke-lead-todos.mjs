@@ -265,11 +265,11 @@ if (!ics.includes('BEGIN:VCALENDAR') || !ics.includes('SUMMARY:[现在] 跟进')
   throw new Error(`线索待办 ICS 异常: ${ics}`);
 }
 
-if (!portfolioSummary.includes('跨产品线索摘要｜共 6 条') || !portfolioSummary.includes('当前最热产品：Orion Nexus Quant 研究包')) {
+if (!portfolioSummary.includes('跨产品线索摘要｜共 6 条') || !portfolioSummary.includes('当前最热产品：Orion Nexus Quant 研究包') || !portfolioSummary.includes('当前最有效来源：')) {
   throw new Error(`跨产品线索摘要异常: ${portfolioSummary}`);
 }
 
-if (!portfolioMarkdown.includes('# Passive Income Lab 跨产品线索总览') || !portfolioMarkdown.includes('## 产品分布')) {
+if (!portfolioMarkdown.includes('# Passive Income Lab 跨产品线索总览') || !portfolioMarkdown.includes('## 产品分布') || !portfolioMarkdown.includes('## 来源分布')) {
   throw new Error(`跨产品线索 Markdown 异常: ${portfolioMarkdown}`);
 }
 
@@ -326,7 +326,7 @@ if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(por
 }
 
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;
-if (!portfolioBoardHtml.includes('跨产品线索总览') || !portfolioBoardHtml.includes('最优先线索')) {
+if (!portfolioBoardHtml.includes('跨产品线索总览') || !portfolioBoardHtml.includes('最优先线索') || !portfolioBoardHtml.includes('当前最有效来源')) {
   throw new Error(`跨产品线索总览未成功渲染: ${portfolioBoardHtml}`);
 }
 

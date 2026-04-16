@@ -129,6 +129,13 @@
 
 # Results
 
+## 2026-04-16 08:0x (Asia/Shanghai)
+- 跨产品线索总览现新增 `topSource / sources` 归因汇总，可直接看到当前最有效来源，以及各来源的线索数、已报价数、已成交数。
+- `buildLeadPortfolioSummaryText()` / `buildLeadPortfolioMarkdown()` / `renderLeadPortfolioBoard()` 已同步把“当前最有效来源”与来源分布带到摘要、看板和导出里，手机端无需翻明细就能判断下一轮更该继续推哪个分发入口。
+- `scripts/smoke-lead-todos.mjs` 已覆盖来源归因断言；这一步虽然没扩新 API，却把已有 `src/source` 埋点真正推进成可用的最小增长看板。
+- 下一步最值得做的是：把这份来源归因再接到 Webhook / 飞书卡片里，形成“来源 -> 线索 -> 报价 -> 成交”的日更经营提醒。
+
+
 ## 2026-04-14 20:0x (Asia/Shanghai)
 - `GET /api/lead-capture` 现新增 `summary.updatedAt / stageCounts / productCounts / topStage / topProduct`，部署后可直接用 `curl ... | jq '.summary'` 快速判断远程快照是否真的在累积、当前最卡在哪个产品或阶段。
 - `scripts/smoke-lead-capture.mjs` 已同步覆盖本地文件模式与 KV 模式下的摘要断言，避免这层验收能力只停留在 README 文字里。
