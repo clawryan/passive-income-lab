@@ -408,6 +408,10 @@
             <button id="copyLeadTodoFeishuCardPayload" class="ghost">复制待办飞书卡片 Payload</button>
             <button id="copyLeadPortfolioFeishuCardPayload" class="ghost">复制总览飞书卡片 Payload</button>
           </div>
+          <div class="grid g2">
+            <button id="copyLeadSourceDailyDigest" class="ghost">复制来源日报摘要</button>
+            <button id="copyLeadSourceDailyFeishuCardPayload" class="ghost">复制来源日报飞书卡片 Payload</button>
+          </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
@@ -2188,6 +2192,57 @@ function buildLeadPortfolioWebhookPayload(){
   };
 }
 
+function buildLeadSourceDailyDigest(){
+  const payload=buildLeadPortfolioWebhookPayload();
+  const report=payload.payload?.report || {};
+  const highlights=(payload.payload?.sourceHighlights || []).slice(0,5);
+  const topSource=report.topSource || highlights[0] || null;
+  const recommendation=topSource
+    ? (topSource.quoted > 0 || topSource.won > 0
+        ? `优先继续加推 ${topSource.source}，它已经出现${topSource.won > 0 ? '成交' : '报价'}信号。`
+        : `先继续补量 ${topSource.source}，它在线索数上领先，但还需要更多报价/成交验证。`)
+    : '今天先补首批分发动作，至少跑出 1 个可归因来源。';
+  const lines=[
+    `Passive Income Lab 来源日报｜${new Date().toLocaleDateString('zh-CN')}`,
+    `总线索：${report.totalLeads || 0}｜可推进：${report.actionableCount || 0}`,
+    report.topProduct ? `当前最热产品：${report.topProduct.productTitle || '暂无'}（线索 ${report.topProduct.total || 0}｜已报价 ${report.topProduct.quoted || 0}｜已成交 ${report.topProduct.won || 0}）` : '当前最热产品：暂无',
+    topSource ? `当前最有效来源：${topSource.source || '暂无'}（线索 ${topSource.count || 0}｜待跟进 ${topSource.pending || 0}｜已报价 ${topSource.quoted || 0}｜已成交 ${topSource.won || 0}）` : '当前最有效来源：暂无',
+    highlights.length
+      ? `Top 来源：${highlights.map((item)=>`${item.rank}. ${item.source}（${item.count}/${item.quoted}/${item.won}）`).join('；')}`
+      : 'Top 来源：暂无',
+    `建议动作：${recommendation}`
+  ];
+  return lines.join('\n');
+}
+
+function buildLeadSourceDailyFeishuCardPayload(){
+  const payload=buildLeadPortfolioWebhookPayload();
+  const report=payload.payload?.report || {};
+  const highlights=(payload.payload?.sourceHighlights || []).slice(0,3);
+  return {
+    msg_type:'interactive',
+    card:{
+      schema:'2.0',
+      config:{ wide_screen_mode:true, enable_forward:true },
+      header:{
+        title:{ tag:'plain_text', content:'Passive Income Lab｜来源日报' },
+        template:'turquoise',
+        subtitle:{ tag:'plain_text', content:`增长归因｜${new Date().toLocaleString('zh-CN',{ hour12:false })}` }
+      },
+      body:{
+        elements:[
+          { tag:'markdown', content:`**总线索**：${report.totalLeads || 0}\n**可推进**：${report.actionableCount || 0}\n**当前最热产品**：${report.topProduct?.productTitle || '暂无'}\n**当前最有效来源**：${report.topSource?.source || '暂无'}` },
+          { tag:'hr' },
+          { tag:'markdown', content:buildLeadSourceDailyDigest() },
+          { tag:'hr' },
+          { tag:'markdown', content:`**Top 来源明细**\n${highlights.length ? highlights.map((item)=>`- ${item.rank}. ${item.source}｜线索 ${item.count}｜待跟进 ${item.pending}｜已报价 ${item.quoted}｜已成交 ${item.won}`).join('\n') : '- 暂无可用来源数据'}` }
+        ]
+      }
+    },
+    meta:{ source:'passive-income-lab', kind:'lead-source-daily-digest', generatedAt:payload.generatedAt }
+  };
+}
+
 
 function buildLeadFeishuCardPayload(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
@@ -2254,6 +2309,17 @@ async function copyLeadPortfolioFeishuCardPayload(){
   const payload=JSON.stringify(buildLeadFeishuCardPayload('lead-portfolio-summary'),null,2);
   await copyText(payload,'已复制总览飞书卡片 Payload');
   $('leadWebhookStatus').textContent='已复制总览飞书卡片 Payload';
+}
+
+async function copyLeadSourceDailyDigest(){
+  await copyText(buildLeadSourceDailyDigest(),'已复制来源日报摘要');
+  $('leadWebhookStatus').textContent='已复制来源日报摘要';
+}
+
+async function copyLeadSourceDailyFeishuCardPayload(){
+  const payload=JSON.stringify(buildLeadSourceDailyFeishuCardPayload(),null,2);
+  await copyText(payload,'已复制来源日报飞书卡片 Payload');
+  $('leadWebhookStatus').textContent='已复制来源日报飞书卡片 Payload';
 }
 
 function buildLeadN8nWorkflow(kind='lead-followup-todos'){
@@ -2453,6 +2519,7 @@ function buildLeadWebhookIntegrationGuide(){
     '- 待办 payload 含 filter / count / items / summary。',
     '- 总览 payload 含 report / sourceHighlights / summary / markdown。',
     '- sourceHighlights 默认取前 5 个来源，可直接给飞书卡片、日报机器人或增长看板消费。',
+    '- 页面现可直接复制“来源日报摘要 / 来源日报飞书卡片 Payload”，适合挂到 cron、机器人或人工日报。',
     '',
     '5) 待办 payload 示例',
     JSON.stringify(todoExample,null,2),
@@ -5003,6 +5070,8 @@ $("copyLeadTodoWorkerTemplate").addEventListener('click',copyLeadTodoWorkerTempl
 $("copyLeadPortfolioWorkerTemplate").addEventListener('click',copyLeadPortfolioWorkerTemplate);
 $("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCardPayload);
 $("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
+$("copyLeadSourceDailyDigest").addEventListener('click',copyLeadSourceDailyDigest);
+$("copyLeadSourceDailyFeishuCardPayload").addEventListener('click',copyLeadSourceDailyFeishuCardPayload);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);

@@ -221,6 +221,8 @@ const portfolioWorkerTemplate = context.buildLeadWorkerTemplate('lead-portfolio-
 const webhookGuide = context.buildLeadWebhookIntegrationGuide();
 const todoFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-followup-todos');
 const portfolioFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-portfolio-summary');
+const sourceDailyDigest = context.buildLeadSourceDailyDigest();
+const sourceDailyFeishuCardPayload = context.buildLeadSourceDailyFeishuCardPayload();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
 await context.copyLeadWebhookCurl();
@@ -233,6 +235,8 @@ await context.copyLeadTodoWorkerTemplate();
 await context.copyLeadPortfolioWorkerTemplate();
 await context.copyLeadTodoFeishuCardPayload();
 await context.copyLeadPortfolioFeishuCardPayload();
+await context.copyLeadSourceDailyDigest();
+await context.copyLeadSourceDailyFeishuCardPayload();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
 await context.copyQuotedLeadCloserSummary();
@@ -326,6 +330,18 @@ if (todoFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(todoFeis
 
 if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(portfolioFeishuCardPayload).includes('跨产品线索总览') || !JSON.stringify(portfolioFeishuCardPayload).includes('当前最有效来源') || !JSON.stringify(portfolioFeishuCardPayload).includes('来源分布')) {
   throw new Error(`总览飞书卡片 Payload 异常: ${JSON.stringify(portfolioFeishuCardPayload)}`);
+}
+
+if (!sourceDailyDigest.includes('Passive Income Lab 来源日报') || !sourceDailyDigest.includes('当前最有效来源') || !sourceDailyDigest.includes('建议动作')) {
+  throw new Error(`来源日报摘要异常: ${sourceDailyDigest}`);
+}
+
+if (sourceDailyFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(sourceDailyFeishuCardPayload).includes('来源日报') || !JSON.stringify(sourceDailyFeishuCardPayload).includes('Top 来源明细')) {
+  throw new Error(`来源日报飞书卡片 Payload 异常: ${JSON.stringify(sourceDailyFeishuCardPayload)}`);
+}
+
+if (typeof sourceDailyDigest !== 'string' || !sourceDailyDigest.trim()) {
+  throw new Error(`来源日报摘要未生成有效文本: ${sourceDailyDigest}`);
 }
 
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;
