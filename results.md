@@ -163,6 +163,13 @@
 
 # Results
 
+## 2026-04-17 20:00 (Asia/Shanghai)
+- 新增 `api/cron/lead-source-daily.js`，把已有 `lead-source-daily` 生成逻辑推进成仓库内可直接被定时器调用的 cron 入口：会读取 `lead-capture` 快照、生成真实 `lead-source-daily-digest`，并在已配置 `LEAD_SOURCE_DAILY_WEBHOOK_URL` 时自动转发。
+- `vercel.json` 已内置 `/api/cron/lead-source-daily` 的 `0 1 * * *` 调度（UTC 01:00 = Asia/Shanghai 09:00），不再只是文档里说“可以挂 cron”，而是仓库本身已经带最小调度配置。
+- 新增 `scripts/smoke-lead-source-daily-cron.mjs` 并纳入 `npm run validate`，已覆盖两条关键路径：未配置 webhook 时返回 `webhook.skipped=true`；已配置时成功转发并保留 `lead-source-daily-digest` payload。
+- `outputs/lead-source-daily-scheduler-examples.md` 也已从手写样例 payload 改成直接调用 `/api/lead-source-daily` 与 `/api/cron/lead-source-daily` 的真实验收文档，首次上线和排错阻力更低。
+- 下一步最值得做的是：拿一个真实 `LEAD_SOURCE_DAILY_WEBHOOK_URL` 跑一次线上真验收，把返回样例与接收端日志沉淀到 `outputs/`，这样这条链路就从“可部署”变成“已验收”。
+
 ## 2026-04-16 08:0x (Asia/Shanghai)
 - 跨产品线索总览现新增 `topSource / sources` 归因汇总，可直接看到当前最有效来源，以及各来源的线索数、已报价数、已成交数。
 - `buildLeadPortfolioSummaryText()` / `buildLeadPortfolioMarkdown()` / `renderLeadPortfolioBoard()` 已同步把“当前最有效来源”与来源分布带到摘要、看板和导出里，手机端无需翻明细就能判断下一轮更该继续推哪个分发入口。

@@ -1,5 +1,11 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/web/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/lead-source-daily",
+      "schedule": "0 1 * * *"
+    }
   ]
 }

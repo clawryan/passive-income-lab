@@ -1,3 +1,7 @@
+- 这轮没有再停留在“来源日报 API 已能手动调用”，而是把它推进成仓库内可直接定时跑的最小 cron 入口：新增 `api/cron/lead-source-daily.js`，会直接读取 `lead-capture` 快照、生成真实 `lead-source-daily-digest`，并转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`。
+- `vercel.json` 已内置 `/api/cron/lead-source-daily` 的 `0 1 * * *` 调度（Asia/Shanghai 09:00），`outputs/lead-source-daily-scheduler-examples.md` 也从“手写样例 payload”更新成“直接调用仓库真实 API / cron 入口”的照抄文档。
+- 新增 `scripts/smoke-lead-source-daily-cron.mjs`，并把它并入 `npm run validate`；现在不仅能校验来源日报 API 本身，还能回归 `cron -> 生成 payload -> webhook 转发/跳过` 这条链路。
+- 结果：来源日报终于从“有模板、有 API”推进到“仓库自带定时入口 + 验证脚本”，离真正的被动播报更近一步。
 - 这轮没有再扩新 API 字段，而是把已经写进 `web/index.html` 的“远程付款回写”链路补成了真正可交付状态：README 现在明确写出手机端可直接用当前编辑线索回填 `leadId / amount / currency / reference / note`，并一键回写 `status=paid` 到 `/api/lead-capture`。
 - `scripts/smoke-lead-todos.mjs` 已新增对付款回写前端链路的冒烟：会模拟“编辑远程线索 → 自动回填付款表单 → 提交付款事件 → 校验 `leadPaymentStatus / leadCaptureStatus` 与请求载荷”，避免这块功能以后悄悄坏掉却没人发现。
 - 结果：付款回写不再只是埋在页面里的隐藏能力，而是已经进入 README + 自动化验证闭环，更适合下一步拿真实支付 webhook / n8n 做真联调。
