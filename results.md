@@ -1,3 +1,9 @@
+## 2026-04-17 17:00 (Asia/Shanghai)
+- 新增 `api/lead-source-daily.js`，可直接基于 `lead-capture` 快照生成真实 `lead-source-daily-digest` payload；`GET` 返回摘要/Markdown/来源高亮，`POST` 可选直接转发到 webhook，终于把“来源日报模板”补成了可被调度器直接调用的 API。
+- 新增 `scripts/smoke-lead-source-daily.mjs`，并把它纳入 `npm run validate`；现在不仅能验证页面里那套来源日报按钮，还能验证后端 API 确实会产出 `topSource / recommendation / markdown` 并可转发出去。
+- 这一步比继续补更多自动化说明文档更接近真实被动收益经营：下一步只需要把现有 scheduler 样例里的 URL 换成 `/api/lead-source-daily`，就能开始稳定跑“来源归因日报 -> webhook/飞书”的真实链路。
+- 下一步最值得做的是：把 `outputs/lead-source-daily-scheduler-examples.md` 的示例 URL 改成这条新 API，并补一条 Vercel/本地真实 dry-run cURL 验收结果。
+
 ## 2026-04-17 14:00 (Asia/Shanghai)
 - 沿着今天早上写下的下一步，把“来源日报”从“可复制自动化模板”继续推进到“可直接挂定时器的最小调度样例”。
 - 新增 `outputs/lead-source-daily-scheduler-examples.md`，提供 **最小 cURL 模板**、**本地 cron**、**GitHub Actions**、**Vercel Cron** 三种定时触发路径；其中 GitHub Actions / Vercel Cron 都明确给出 Asia/Shanghai 09:00 对应的 UTC 调度写法，减少首次配置时的时区摩擦。

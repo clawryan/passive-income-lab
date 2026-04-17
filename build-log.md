@@ -142,6 +142,13 @@
 
 # Build Log
 
+## 2026-04-17 17:00 (Asia/Shanghai)
+- 这轮没有继续堆更多“如何定时”的样例，而是把来源日报真正补成仓库内可直接触发的 serverless 入口：新增 `api/lead-source-daily.js`，直接读取 `/api/lead-capture` 同源快照并生成真实 `lead-source-daily-digest` payload。
+- `GET /api/lead-source-daily` 现在会返回 `summary / markdown / recommendation / sourceHighlights / report`；`POST /api/lead-source-daily` 则可在配置 `LEAD_SOURCE_DAILY_WEBHOOK_URL`（或复用 `LEAD_CAPTURE_WEBHOOK_URL`）时直接转发日报，未配置时也可先 `dryRun` 验收。
+- 新增 `scripts/smoke-lead-source-daily.mjs`，会先写入 3 条演示线索，再断言来源日报的 `topSource / summary / markdown` 和 webhook 转发都可用；`package.json` 的 `validate` 也已纳入这条回归。
+- `README.md` 已同步补上 API 与验证说明。
+- 结果：来源日报从“能复制模板 / 能照着挂定时器”推进到“仓库内已有真实日报 API，可直接被 cron、Vercel Cron、GitHub Actions 或外部 webhook 调用”，更接近真正被动播报。
+
 ## 2026-04-17 14:00 (Asia/Shanghai)
 - 这轮继续沿着上午写下的下一步推进，没有再扩页面按钮，而是把“来源日报自动化模板”补成可直接照着挂定时器的样例层。
 - 新增 `outputs/lead-source-daily-scheduler-examples.md`，集中给出 **最小 cURL 模板**、**本地/macOS/Linux cron 样例**、**GitHub Actions 定时样例**、**Vercel Cron 样例**，并明确各自适合场景、所需环境变量与验收方式。

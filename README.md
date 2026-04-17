@@ -42,6 +42,7 @@
 - **来源归因已进入 Webhook / 飞书卡片**：跨产品总览 Webhook payload 现额外带 `sourceHighlights`（前 5 个来源的线索 / 报价 / 成交概览），总览飞书卡片也会直接展示“当前最有效来源 + Top 来源分布”，方便把来源→线索→成交变化接到日报机器人或增长提醒。
 - **来源日报自动化模板已补齐**：线索 Webhook 区现除可一键推送“来源日报”到既有 Webhook 外，也可直接复制来源日报 Webhook Payload / 飞书卡片 Payload / n8n Workflow JSON / Cloudflare Worker 模板；日报会基于当前跨产品线索与 `sourceHighlights` 自动生成“总线索 / 可推进 / 当前最热产品 / 当前最有效来源 / Top 来源 / 建议动作”，更适合直接挂 cron、机器人或增长播报。仓库内另有 `outputs/lead-source-daily-automation-guide.md` 留档。
 - **来源日报定时触发样例已补齐**：新增 `outputs/lead-source-daily-scheduler-examples.md`，收口本地 cron、GitHub Actions、Vercel Cron 三种最小定时样例，以及可直接复用的 `curl` 模板，方便把“已能生成日报 payload”再推进到“可稳定定时推送”。
+- **来源日报 API 已补齐**：新增 `api/lead-source-daily.js`，可直接读取 `lead-capture` 快照生成真实 `lead-source-daily-digest` payload；`GET` 返回摘要/Markdown/来源高亮，`POST` 可选直接转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`（未配置时也可 `dryRun` 验收），更适合挂到 Vercel Cron / GitHub Actions / 本地 cron。
 - **来源日报可直接导出留档**：线索 Webhook 区现补齐“导出来源日报 Markdown / JSON”按钮，并把原本已实现但未露出的“推送来源日报到 Webhook / 复制来源日报 Webhook Payload 示例”显式放到界面上，方便把当前来源归因快照直接发给协作者、沉淀为日报附件或接入自动化。
 - **成交案例摘要 / Markdown 导出**：线索区现可把所有“已成交”线索聚合成可复制的案例摘要，或导出成 Markdown 案例集，方便继续发朋友圈、私聊背书、补落地页社会证明，而不必手动翻线索记录。
 - **已报价催单 / 复购转介绍素材包**：线索区现可把“已报价”线索整理成一键复制或导出的催单摘要，把“已成交”线索整理成复购 / 转介绍跟进包，方便直接在飞书 / 微信私聊里推进成交和二次变现。
@@ -88,7 +89,8 @@
 - `npm run smoke:product-ops`：载入产品经营演示样本并验证看板渲染、摘要构建与 JSON 导出链路
 - `npm run smoke:lead-todos`：载入演示线索并验证“当前筛选跟进待办”摘要、Webhook 与远程采集入口链路
 - `npm run smoke:lead-capture`：验证 `/api/lead-capture` 的 GET / POST、快照合并与本地文件存储
-- `npm run validate`：串联执行以上六步
+- `npm run smoke:lead-source-daily`：验证 `/api/lead-source-daily` 的日报聚合与可选 webhook 转发
+- `npm run validate`：串联执行以上七步
 
 ### Vercel 部署
 仓库已包含最小 `vercel.json`，部署后根路径会自动指向 `web/index.html`。

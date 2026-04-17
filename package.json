@@ -11,6 +11,7 @@
     "smoke:product-ops": "node scripts/smoke-product-ops.mjs",
     "smoke:lead-todos": "node scripts/smoke-lead-todos.mjs",
     "smoke:lead-capture": "node scripts/smoke-lead-capture.mjs",
-    "validate": "npm run check:web && npm run smoke:ab && npm run smoke:ab-history && npm run smoke:product-ops && npm run smoke:lead-todos && npm run smoke:lead-capture"
+    "smoke:lead-source-daily": "node scripts/smoke-lead-source-daily.mjs",
+    "validate": "npm run check:web && npm run smoke:ab && npm run smoke:ab-history && npm run smoke:product-ops && npm run smoke:lead-todos && npm run smoke:lead-capture && npm run smoke:lead-source-daily"
   }
 }

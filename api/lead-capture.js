@@ -281,7 +281,7 @@ async function forwardToWebhook(payload) {
   return { forwarded: true, ok: response.ok, status: response.status, url };
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     const snapshot = await readSnapshot();
     return res.status(200).json({
@@ -346,3 +346,10 @@ module.exports = async function handler(req, res) {
     return res.status(error.statusCode || 500).json({ error: error.message || String(error) });
   }
 };
+
+module.exports = handler;
+module.exports.readSnapshot = readSnapshot;
+module.exports.writeSnapshot = writeSnapshot;
+module.exports.buildSnapshotSummary = buildSnapshotSummary;
+module.exports.normalizeLead = normalizeLead;
+module.exports.applyLeadEvent = applyLeadEvent;
