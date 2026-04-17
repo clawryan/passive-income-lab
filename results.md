@@ -1,3 +1,10 @@
+## 2026-04-17 08:00 (Asia/Shanghai)
+- 沿着昨晚写下的下一步，把“来源日报”从可手动推送，推进到了可直接接自动化模板。
+- `buildLeadN8nWorkflow('lead-source-daily-digest')` 与 `buildLeadWorkerTemplate('lead-source-daily-digest')` 已补齐；首页线索 Webhook 区也新增“复制来源日报 n8n Workflow JSON / Cloudflare Worker 模板”。
+- 新增 `outputs/lead-source-daily-automation-guide.md`，把“来源日报 -> n8n / Worker -> 飞书机器人”的最短接法、payload 结构、dry-run 验收与当前限制留档，减少从页面能力到定时播报之间的理解摩擦。
+- `scripts/smoke-lead-todos.mjs` 已覆盖来源日报 workflow / Worker / 接线说明断言；这一步虽然没有新增长报表，但把现有来源归因链路推进到了更接近被动收益运营的自动播报层。
+- 下一步最值得做的是：补一个最小“真实定时触发样例”（例如仓库内 cron cURL 模板或 Vercel / GitHub Actions 调度示例），把模板继续推进到可直接定时跑。
+
 ## 2026-04-16 22:0x (Asia/Shanghai)
 - 沿着今天 14 点写下的下一步，把“来源日报”从可复制文案推进成可直接外发的 Webhook 事件，减少再手工拼机器人输入的步骤。
 - `buildLeadSourceDailyWebhookPayload()` 现会统一产出 `summary / markdown / recommendation / sourceHighlights / report`，这样 cron、n8n、Worker 或飞书机器人都能直接消费同一份结构化日报数据，而不是只拿到纯文本。

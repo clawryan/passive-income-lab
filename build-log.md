@@ -142,6 +142,13 @@
 
 # Build Log
 
+## 2026-04-17 08:00 (Asia/Shanghai)
+- 这轮沿着昨晚 results 里写下的最低阻力下一步推进，没有再扩本地报表，而是把“来源日报”真正补成可直接接自动化的模板层。
+- `web/index.html` 在线索 Webhook 区新增 2 个动作：**复制来源日报 n8n Workflow JSON**、**复制来源日报 Cloudflare Worker 模板**；现有 `buildLeadN8nWorkflow()` / `buildLeadWorkerTemplate()` 也已扩展支持 `lead-source-daily-digest`。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖来源日报 workflow / Worker 模板 / 接线说明断言，确保这条链路不是只多了按钮。
+- 新增 `outputs/lead-source-daily-automation-guide.md`，把“来源日报 -> n8n / Worker -> 飞书机器人”的最短接线步骤、payload 结构与 dry-run 验收收口成可直接照着做的说明。
+- 结果：来源日报从“可手动推送”推进到“可直接复制自动化模板”，离被动播报更近一步。
+
 ## 2026-04-16 08:0x (Asia/Shanghai)
 - 这轮优先补了一个更贴近真实分发验证、同时阻力很低的缺口：公开询价与远程快照虽然已经保留 `source / channel`，但跨产品总览还看不出“哪个来源更值得继续推”，导致渠道实验仍要手工翻单条线索。
 - `web/index.html` 的 `getLeadPortfolioReport()` 现已新增 `sources / topSource` 聚合，会按 `entry.source -> entry.channel -> manual` 汇总来源分布，并统计各来源的线索数、待跟进、已报价、已成交。

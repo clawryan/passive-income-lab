@@ -412,6 +412,10 @@
             <button id="copyLeadSourceDailyDigest" class="ghost">复制来源日报摘要</button>
             <button id="copyLeadSourceDailyFeishuCardPayload" class="ghost">复制来源日报飞书卡片 Payload</button>
           </div>
+          <div class="grid g2">
+            <button id="copyLeadSourceDailyN8nWorkflow" class="ghost">复制来源日报 n8n Workflow JSON</button>
+            <button id="copyLeadSourceDailyWorkerTemplate" class="ghost">复制来源日报 Cloudflare Worker 模板</button>
+          </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
@@ -2368,12 +2372,28 @@ async function copyLeadSourceDailyFeishuCardPayload(){
   $('leadWebhookStatus').textContent='已复制来源日报飞书卡片 Payload';
 }
 
+async function copyLeadSourceDailyN8nWorkflow(){
+  const payload=JSON.stringify(buildLeadN8nWorkflow('lead-source-daily-digest'),null,2);
+  await copyText(payload,'已复制来源日报 n8n Workflow JSON');
+  $('leadWebhookStatus').textContent='已复制来源日报 n8n Workflow JSON';
+}
+
+async function copyLeadSourceDailyWorkerTemplate(){
+  await copyText(buildLeadWorkerTemplate('lead-source-daily-digest'),'已复制来源日报 Cloudflare Worker 模板');
+  $('leadWebhookStatus').textContent='已复制来源日报 Cloudflare Worker 模板';
+}
+
 function buildLeadN8nWorkflow(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
-  const pathSegment=isPortfolio ? 'lead-portfolio-summary' : 'lead-followup-todos';
-  const title=isPortfolio ? 'Passive Income Lab｜跨产品总览 -> 飞书' : 'Passive Income Lab｜跟进待办 -> 飞书';
-  const examplePayload=isPortfolio ? buildLeadPortfolioWebhookPayload() : buildLeadTodoWebhookPayload();
-  const exampleText=isPortfolio ? '跨产品线索总览' : '跟进待办';
+  const isSourceDaily=kind==='lead-source-daily-digest';
+  const pathSegment=isPortfolio ? 'lead-portfolio-summary' : (isSourceDaily ? 'lead-source-daily-digest' : 'lead-followup-todos');
+  const title=isPortfolio
+    ? 'Passive Income Lab｜跨产品总览 -> 飞书'
+    : (isSourceDaily ? 'Passive Income Lab｜来源日报 -> 飞书' : 'Passive Income Lab｜跟进待办 -> 飞书');
+  const examplePayload=isPortfolio
+    ? buildLeadPortfolioWebhookPayload()
+    : (isSourceDaily ? buildLeadSourceDailyWebhookPayload() : buildLeadTodoWebhookPayload());
+  const exampleText=isPortfolio ? '跨产品线索总览' : (isSourceDaily ? '来源日报' : '跟进待办');
   return {
     name:title,
     nodes:[
@@ -2455,10 +2475,15 @@ function buildLeadN8nWorkflow(kind='lead-followup-todos'){
 
 function buildLeadWorkerTemplate(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
-  const examplePayload=isPortfolio ? buildLeadPortfolioWebhookPayload() : buildLeadTodoWebhookPayload();
+  const isSourceDaily=kind==='lead-source-daily-digest';
+  const examplePayload=isPortfolio
+    ? buildLeadPortfolioWebhookPayload()
+    : (isSourceDaily ? buildLeadSourceDailyWebhookPayload() : buildLeadTodoWebhookPayload());
   const summaryExpr=isPortfolio
     ? "String(payload.summary || payload.markdown || 'Passive Income Lab 跨产品总览')"
-    : "String(payload.summary || payload.markdown || 'Passive Income Lab 跟进待办')";
+    : (isSourceDaily
+        ? "String(payload.summary || payload.markdown || 'Passive Income Lab 来源日报')"
+        : "String(payload.summary || payload.markdown || 'Passive Income Lab 跟进待办')");
   return [
     "export default {",
     "  async fetch(request, env) {",
@@ -2551,12 +2576,12 @@ function buildLeadWebhookIntegrationGuide(){
     '',
     '2) n8n Webhook 节点建议',
     '- Webhook 节点 Method 设为 POST，Response 可先返回 200 JSON。',
-    '- 后续 IF/Switch 节点按 body.kind 路由：lead-followup-todos / lead-portfolio-summary。',
+    '- 后续 IF/Switch 节点按 body.kind 路由：lead-followup-todos / lead-portfolio-summary / lead-source-daily-digest。',
     '- 发飞书消息时，可直接使用 body.payload.summary；若要发长文，可改用 body.payload.markdown。',
-    '- 页面已支持直接复制两份 n8n workflow JSON：待办流 / 总览流；导入后只需替换 Feishu 机器人地址。',
+    '- 页面已支持直接复制三份 n8n workflow JSON：待办流 / 总览流 / 来源日报流；导入后只需替换 Feishu 机器人地址。',
     '',
     '3) Cloudflare Worker 中转建议',
-    '- 页面已支持直接复制两份 Worker 模板：待办流 / 总览流。',
+    '- 页面已支持直接复制三份 Worker 模板：待办流 / 总览流 / 来源日报流。',
     '- 模板默认放开 CORS，并可用 RELAY_TOKEN 校验 Authorization。',
     '- 只配置 RELAY_TOKEN 时可先 dry-run 回显消息；再补 FEISHU_BOT_WEBHOOK 即可真正转发到飞书。',
     '',
@@ -2565,7 +2590,8 @@ function buildLeadWebhookIntegrationGuide(){
     '- 待办 payload 含 filter / count / items / summary。',
     '- 总览 payload 含 report / sourceHighlights / summary / markdown。',
     '- sourceHighlights 默认取前 5 个来源，可直接给飞书卡片、日报机器人或增长看板消费。',
-    '- 页面现可直接复制“来源日报摘要 / 来源日报飞书卡片 Payload”，适合挂到 cron、机器人或人工日报。',
+    '- 来源日报 payload 含 summary / markdown / recommendation / sourceHighlights / report。',
+    '- 页面现可直接复制“来源日报摘要 / 来源日报飞书卡片 Payload / n8n Workflow / Worker 模板”，适合挂到 cron、机器人或人工日报。',
     '',
     '5) 待办 payload 示例',
     JSON.stringify(todoExample,null,2),
@@ -2576,10 +2602,12 @@ function buildLeadWebhookIntegrationGuide(){
     '7) n8n workflow JSON（页面内可直接复制）',
     '- copyLeadTodoN8nWorkflow：把线索待办推到 Feishu Bot。',
     '- copyLeadPortfolioN8nWorkflow：把跨产品总览推到 Feishu Bot。',
+    '- copyLeadSourceDailyN8nWorkflow：把来源日报推到 Feishu Bot。',
     '',
     '8) Cloudflare Worker 模板（页面内可直接复制）',
     '- copyLeadTodoWorkerTemplate：复制待办中转模板。',
     '- copyLeadPortfolioWorkerTemplate：复制总览中转模板。',
+    '- copyLeadSourceDailyWorkerTemplate：复制来源日报中转模板。',
     '',
     '9) 飞书卡片消息 Payload（页面内可直接复制）',
     '- copyLeadTodoFeishuCardPayload：复制待办 interactive card JSON。',
@@ -5114,8 +5142,10 @@ $("copyLeadSourceDailyWebhookPayload").addEventListener('click',copyLeadSourceDa
 $("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
 $("copyLeadTodoN8nWorkflow").addEventListener('click',copyLeadTodoN8nWorkflow);
 $("copyLeadPortfolioN8nWorkflow").addEventListener('click',copyLeadPortfolioN8nWorkflow);
+$("copyLeadSourceDailyN8nWorkflow").addEventListener('click',copyLeadSourceDailyN8nWorkflow);
 $("copyLeadTodoWorkerTemplate").addEventListener('click',copyLeadTodoWorkerTemplate);
 $("copyLeadPortfolioWorkerTemplate").addEventListener('click',copyLeadPortfolioWorkerTemplate);
+$("copyLeadSourceDailyWorkerTemplate").addEventListener('click',copyLeadSourceDailyWorkerTemplate);
 $("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCardPayload);
 $("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
 $("copyLeadSourceDailyDigest").addEventListener('click',copyLeadSourceDailyDigest);
