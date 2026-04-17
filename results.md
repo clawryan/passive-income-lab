@@ -1,3 +1,10 @@
+## 2026-04-17 14:00 (Asia/Shanghai)
+- 沿着今天早上写下的下一步，把“来源日报”从“可复制自动化模板”继续推进到“可直接挂定时器的最小调度样例”。
+- 新增 `outputs/lead-source-daily-scheduler-examples.md`，提供 **最小 cURL 模板**、**本地 cron**、**GitHub Actions**、**Vercel Cron** 三种定时触发路径；其中 GitHub Actions / Vercel Cron 都明确给出 Asia/Shanghai 09:00 对应的 UTC 调度写法，减少首次配置时的时区摩擦。
+- `README.md` 已同步挂出这份样例入口；现在从仓库首页就能直接找到“如何把来源日报每天定时推给 Worker / n8n / 飞书机器人”的照抄模板。
+- 这一步虽然没有再加新功能面板，但把现有来源日报链路推进到了更接近真正被动播报的部署层，适合作为下一步真实接飞书机器人前的低风险收口。
+- 下一步最值得做的是：把样例 payload 换成一条真正从当前线索数据构造的 serverless cron 入口（例如 `/api/cron/lead-source-daily`），这样就不只是在发模板，而是在仓库内直接生成并发送真实日报。
+
 ## 2026-04-17 08:00 (Asia/Shanghai)
 - 沿着昨晚写下的下一步，把“来源日报”从可手动推送，推进到了可直接接自动化模板。
 - `buildLeadN8nWorkflow('lead-source-daily-digest')` 与 `buildLeadWorkerTemplate('lead-source-daily-digest')` 已补齐；首页线索 Webhook 区也新增“复制来源日报 n8n Workflow JSON / Cloudflare Worker 模板”。

@@ -142,6 +142,12 @@
 
 # Build Log
 
+## 2026-04-17 14:00 (Asia/Shanghai)
+- 这轮继续沿着上午写下的下一步推进，没有再扩页面按钮，而是把“来源日报自动化模板”补成可直接照着挂定时器的样例层。
+- 新增 `outputs/lead-source-daily-scheduler-examples.md`，集中给出 **最小 cURL 模板**、**本地/macOS/Linux cron 样例**、**GitHub Actions 定时样例**、**Vercel Cron 样例**，并明确各自适合场景、所需环境变量与验收方式。
+- `README.md` 已同步补充“来源日报定时触发样例已补齐”，让仓库入口页就能看到这份调度样例，不必翻历史记录才知道怎么把日报挂到定时器。
+- 结果：来源日报从“可复制自动化模板”继续推进到“可直接照抄最小调度配置”，更接近真正每天被动播报。
+
 ## 2026-04-17 08:00 (Asia/Shanghai)
 - 这轮沿着昨晚 results 里写下的最低阻力下一步推进，没有再扩本地报表，而是把“来源日报”真正补成可直接接自动化的模板层。
 - `web/index.html` 在线索 Webhook 区新增 2 个动作：**复制来源日报 n8n Workflow JSON**、**复制来源日报 Cloudflare Worker 模板**；现有 `buildLeadN8nWorkflow()` / `buildLeadWorkerTemplate()` 也已扩展支持 `lead-source-daily-digest`。
