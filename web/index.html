@@ -409,12 +409,20 @@
             <button id="copyLeadPortfolioFeishuCardPayload" class="ghost">复制总览飞书卡片 Payload</button>
           </div>
           <div class="grid g2">
+            <button id="sendLeadSourceDailyWebhook" class="ghost">推送来源日报到 Webhook</button>
+            <button id="copyLeadSourceDailyWebhookPayload" class="ghost">复制来源日报 Webhook Payload 示例</button>
+          </div>
+          <div class="grid g2">
             <button id="copyLeadSourceDailyDigest" class="ghost">复制来源日报摘要</button>
             <button id="copyLeadSourceDailyFeishuCardPayload" class="ghost">复制来源日报飞书卡片 Payload</button>
           </div>
           <div class="grid g2">
             <button id="copyLeadSourceDailyN8nWorkflow" class="ghost">复制来源日报 n8n Workflow JSON</button>
             <button id="copyLeadSourceDailyWorkerTemplate" class="ghost">复制来源日报 Cloudflare Worker 模板</button>
+          </div>
+          <div class="grid g2">
+            <button id="exportLeadSourceDailyMd" class="ghost">导出来源日报 Markdown</button>
+            <button id="exportLeadSourceDailyJson" class="ghost">导出来源日报 JSON</button>
           </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
@@ -2254,6 +2262,20 @@ function buildLeadSourceDailyWebhookPayload(){
 
 function buildLeadSourceDailyDigest(){
   return buildLeadSourceDailyWebhookPayload().payload.summary;
+}
+
+function exportLeadSourceDailyMarkdown(){
+  const payload=buildLeadSourceDailyWebhookPayload();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`lead-source-daily-digest-${ts}.md`,payload.payload?.markdown || `# Passive Income Lab 来源日报\n\n暂无可导出的来源日报。`,'text/markdown;charset=utf-8');
+  $('leadWebhookStatus').textContent='已导出来源日报 Markdown';
+}
+
+function exportLeadSourceDailyJson(){
+  const payload=buildLeadSourceDailyWebhookPayload();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`lead-source-daily-digest-${ts}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+  $('leadWebhookStatus').textContent='已导出来源日报 JSON';
 }
 
 function buildLeadSourceDailyFeishuCardPayload(){
@@ -5150,6 +5172,8 @@ $("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCa
 $("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
 $("copyLeadSourceDailyDigest").addEventListener('click',copyLeadSourceDailyDigest);
 $("copyLeadSourceDailyFeishuCardPayload").addEventListener('click',copyLeadSourceDailyFeishuCardPayload);
+$("exportLeadSourceDailyMd").addEventListener('click',exportLeadSourceDailyMarkdown);
+$("exportLeadSourceDailyJson").addEventListener('click',exportLeadSourceDailyJson);
 $("copyLeadTodoSummary").addEventListener('click',copyLeadTodoSummary);
 $("shareLeadTodoSummary").addEventListener('click',shareLeadTodoSummary);
 $("exportLeadTodoJson").addEventListener('click',exportLeadTodoJson);

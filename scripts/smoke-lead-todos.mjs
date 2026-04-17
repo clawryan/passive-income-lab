@@ -243,6 +243,8 @@ await context.copyLeadPortfolioFeishuCardPayload();
 await context.copyLeadSourceDailyDigest();
 await context.copyLeadSourceDailyWebhookPayload();
 await context.copyLeadSourceDailyFeishuCardPayload();
+context.exportLeadSourceDailyMarkdown();
+context.exportLeadSourceDailyJson();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
 await context.sendLeadSourceDailyWebhook();
@@ -404,6 +406,14 @@ if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && 
 
 if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.md'))) {
   throw new Error(`未触发跨产品线索 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-source-daily-digest-') && name.endsWith('.md'))) {
+  throw new Error(`未触发来源日报 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-source-daily-digest-') && name.endsWith('.json'))) {
+  throw new Error(`未触发来源日报 JSON 导出: ${JSON.stringify(downloads)}`);
 }
 
 const leadCaptureCalls = fetchCalls.filter((call) => String(call.url).includes('/api/lead-capture'));

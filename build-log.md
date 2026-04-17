@@ -484,3 +484,9 @@
 - `buildLeadWebhookIntegrationGuide()` 已同步加入 Worker 接法说明；`scripts/smoke-lead-todos.mjs` 现会校验两份 Worker 模板包含 `env.FEISHU_BOT_WEBHOOK` 与对应 `kind`，避免只多了按钮。
 - 新增 `outputs/lead-webhook-worker-template.md`，把上线步骤、环境变量和 dry-run 验收方法留档。
 - 目的：把“浏览器能发 payload”推进到“更容易真接上可公开部署的 webhook relay”，减少为了联通飞书机器人还得临时写中转脚本的阻力。
+
+## 2026-04-17 11:0x (Asia/Shanghai)
+- 这轮没有再加新报表，而是补了一个更接近实际分发/复盘动作的 UI 缺口：来源日报相关能力原本已经有 payload、飞书卡片、n8n 与 Worker 模板，但页面上缺少“推送来源日报到 Webhook / 复制来源日报 Webhook Payload 示例”按钮，也无法直接导出日报文件。
+- `web/index.html` 现已把这两个已有动作显式补到线索 Webhook 区，并新增“导出来源日报 Markdown / JSON”按钮，直接复用现有 `buildLeadSourceDailyWebhookPayload()` 产出的 `summary / markdown / report / sourceHighlights`。
+- 目的：把“来源日报能生成”推进到“来源日报能直接发、能留档、能被协作者接走”，减少每次还要手工复制多段文本或临时翻 DevTools 的摩擦。
+- 验证：`npm run validate` 通过；`scripts/smoke-lead-todos.mjs` 已新增来源日报 Markdown / JSON 导出断言，确认下载文件名与内容链路都存在。
