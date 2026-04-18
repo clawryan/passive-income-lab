@@ -3,6 +3,7 @@
 - 新增 `scripts/smoke-lead-source-daily.mjs`，并把它纳入 `npm run validate`；现在不仅能验证页面里那套来源日报按钮，还能验证后端 API 确实会产出 `topSource / recommendation / markdown` 并可转发出去。
 - 这一步比继续补更多自动化说明文档更接近真实被动收益经营：下一步只需要把现有 scheduler 样例里的 URL 换成 `/api/lead-source-daily`，就能开始稳定跑“来源归因日报 -> webhook/飞书”的真实链路。
 - 下一步最值得做的是：把 `outputs/lead-source-daily-scheduler-examples.md` 的示例 URL 改成这条新 API，并补一条 Vercel/本地真实 dry-run cURL 验收结果。
+- 补上 `shareLeadSourceDailyDigest()` 与页面按钮后，来源日报不再只能复制/导出，也能直接调用手机浏览器原生分享面板发到飞书/微信；不支持时自动回退为复制摘要，更贴近真实“日报发出去”的动作。
 
 ## 2026-04-17 14:00 (Asia/Shanghai)
 - 沿着今天早上写下的下一步，把“来源日报”从“可复制自动化模板”继续推进到“可直接挂定时器的最小调度样例”。

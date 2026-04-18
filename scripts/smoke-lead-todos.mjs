@@ -45,6 +45,7 @@ const storage = new Map();
 const downloads = [];
 const fetchCalls = [];
 const paymentEvents = [];
+const shareCalls = [];
 const remoteLeadSnapshot = [
   {
     id: 'remote-lead-1',
@@ -101,7 +102,7 @@ const context = {
   navigator: {
     onLine: true,
     clipboard: { async writeText() {} },
-    share: async () => {},
+    share: async (payload) => { shareCalls.push(payload); },
     canShare: () => true,
     serviceWorker: {
       async register() { return { active: { postMessage() {} } }; },
@@ -241,6 +242,7 @@ await context.copyLeadSourceDailyWorkerTemplate();
 await context.copyLeadTodoFeishuCardPayload();
 await context.copyLeadPortfolioFeishuCardPayload();
 await context.copyLeadSourceDailyDigest();
+await context.shareLeadSourceDailyDigest();
 await context.copyLeadSourceDailyWebhookPayload();
 await context.copyLeadSourceDailyFeishuCardPayload();
 context.exportLeadSourceDailyMarkdown();
@@ -363,6 +365,14 @@ if (sourceDailyFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(s
 
 if (typeof sourceDailyDigest !== 'string' || !sourceDailyDigest.trim()) {
   throw new Error(`来源日报摘要未生成有效文本: ${sourceDailyDigest}`);
+}
+
+if (shareCalls.length < 3) {
+  throw new Error(`原生分享调用次数不足: ${JSON.stringify(shareCalls)}`);
+}
+
+if (!shareCalls.some((payload) => String(payload?.title || '').includes('来源日报')) || !shareCalls.some((payload) => String(payload?.title || '').includes('跟进待办')) || !shareCalls.some((payload) => String(payload?.title || '').includes('跨产品线索摘要'))) {
+  throw new Error(`原生分享载荷异常: ${JSON.stringify(shareCalls)}`);
 }
 
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;

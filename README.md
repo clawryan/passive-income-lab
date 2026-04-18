@@ -44,7 +44,7 @@
 - **来源日报定时触发样例已补齐**：新增 `outputs/lead-source-daily-scheduler-examples.md`，收口本地 cron、GitHub Actions、Vercel Cron 三种最小定时样例，以及可直接复用的 `curl` 模板，方便把“已能生成日报 payload”再推进到“可稳定定时推送”。
 - **来源日报 API 已补齐**：新增 `api/lead-source-daily.js`，可直接读取 `lead-capture` 快照生成真实 `lead-source-daily-digest` payload；`GET` 返回摘要/Markdown/来源高亮，`POST` 可选直接转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`（未配置时也可 `dryRun` 验收），更适合挂到 Vercel Cron / GitHub Actions / 本地 cron。
 - **来源日报 cron 入口已补齐**：新增 `api/cron/lead-source-daily.js`，可直接作为定时器入口读取快照、生成真实日报并转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`；仓库内 `vercel.json` 也已内置 `0 1 * * *`（Asia/Shanghai 09:00）定时配置。
-- **来源日报可直接导出留档**：线索 Webhook 区现补齐“导出来源日报 Markdown / JSON”按钮，并把原本已实现但未露出的“推送来源日报到 Webhook / 复制来源日报 Webhook Payload 示例”显式放到界面上，方便把当前来源归因快照直接发给协作者、沉淀为日报附件或接入自动化。
+- **来源日报可直接分享 / 导出留档**：线索 Webhook 区现补齐“手机原生分享来源日报摘要 / 导出来源日报 Markdown / JSON”按钮，并把原本已实现但未露出的“推送来源日报到 Webhook / 复制来源日报 Webhook Payload 示例”显式放到界面上，方便把当前来源归因快照直接发给协作者、沉淀为日报附件或接入自动化。
 - **成交案例摘要 / Markdown 导出**：线索区现可把所有“已成交”线索聚合成可复制的案例摘要，或导出成 Markdown 案例集，方便继续发朋友圈、私聊背书、补落地页社会证明，而不必手动翻线索记录。
 - **已报价催单 / 复购转介绍素材包**：线索区现可把“已报价”线索整理成一键复制或导出的催单摘要，把“已成交”线索整理成复购 / 转介绍跟进包，方便直接在飞书 / 微信私聊里推进成交和二次变现。
 - **跨产品线索总览可直接复制 / 分享 / 导出**：线索区现新增跨产品总览，可汇总全部产品的总线索、可推进待办、时间桶、当前最热产品、当前最有效来源与最优先线索，并支持一键复制摘要、手机原生分享，以及导出 Markdown / JSON，减少多产品并行时再手工判断“今天先跟谁”、哪个分发来源更值得继续推。

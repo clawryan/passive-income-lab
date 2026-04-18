@@ -414,7 +414,11 @@
           </div>
           <div class="grid g2">
             <button id="copyLeadSourceDailyDigest" class="ghost">复制来源日报摘要</button>
+            <button id="shareLeadSourceDailyDigest" class="ghost">手机原生分享来源日报摘要</button>
+          </div>
+          <div class="grid g2">
             <button id="copyLeadSourceDailyFeishuCardPayload" class="ghost">复制来源日报飞书卡片 Payload</button>
+            <span></span>
           </div>
           <div class="grid g2">
             <button id="copyLeadSourceDailyN8nWorkflow" class="ghost">复制来源日报 n8n Workflow JSON</button>
@@ -2380,6 +2384,18 @@ async function copyLeadPortfolioFeishuCardPayload(){
 async function copyLeadSourceDailyDigest(){
   await copyText(buildLeadSourceDailyDigest(),'已复制来源日报摘要');
   $('leadWebhookStatus').textContent='已复制来源日报摘要';
+}
+
+async function shareLeadSourceDailyDigest(){
+  const text=buildLeadSourceDailyDigest();
+  if(!String(text || '').trim()){
+    $('leadWebhookStatus').textContent='当前暂无可分享的来源日报摘要';
+    return;
+  }
+  await shareText({
+    title:`Passive Income Lab 来源日报（${new Date().toLocaleDateString('zh-CN')})`,
+    text
+  },'已调起系统分享来源日报摘要',()=>copyText(text,'当前浏览器不支持原生分享，已复制来源日报摘要'),'leadWebhookStatus');
 }
 
 async function copyLeadSourceDailyWebhookPayload(){
@@ -5171,6 +5187,7 @@ $("copyLeadSourceDailyWorkerTemplate").addEventListener('click',copyLeadSourceDa
 $("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCardPayload);
 $("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
 $("copyLeadSourceDailyDigest").addEventListener('click',copyLeadSourceDailyDigest);
+$("shareLeadSourceDailyDigest").addEventListener('click',shareLeadSourceDailyDigest);
 $("copyLeadSourceDailyFeishuCardPayload").addEventListener('click',copyLeadSourceDailyFeishuCardPayload);
 $("exportLeadSourceDailyMd").addEventListener('click',exportLeadSourceDailyMarkdown);
 $("exportLeadSourceDailyJson").addEventListener('click',exportLeadSourceDailyJson);
