@@ -91,6 +91,8 @@
 - 能看到 `kind=lead-source-daily-digest`
 - `payload.summary` 含“Passive Income Lab 来源日报”
 - `payload.sourceHighlights` 至少有 1 个来源时，消息里能看到 Top 来源
+- `GET /api/lead-source-daily` 或 `GET /api/cron/lead-source-daily` 时，响应里能看到 `latest/history`
+- 若已配置 `KV_REST_API_URL + KV_REST_API_TOKEN`，`historyStorage.mode` 应显示为 `vercel-kv`，说明日报历史可跨设备持久化验收
 - 飞书收到消息后，能直接判断：
   - 当前最有效来源
   - 当前最热产品

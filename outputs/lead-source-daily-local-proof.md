@@ -1,9 +1,9 @@
 # Passive Income Lab 来源日报本地验收证明
 
-- 生成时间：2026-04-19T00:03:04.918Z
+- 生成时间：2026-04-19T03:00:44.466Z
 - 种子线索：3 条
-- 本地线索快照路径：/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-source-proof-nwXGEs/leads.json
-- 本地日报历史路径：/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-source-proof-nwXGEs/daily-history.json
+- 本地线索快照路径：/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-source-proof-1HjKCd/leads.json
+- 本地日报历史路径：/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-source-proof-1HjKCd/daily-history.json
 
 ## 验收结论
 - GET /api/lead-source-daily：总线索 3，Top 来源 public-inquiry:feishu-dm，首次读取 historyCount=0

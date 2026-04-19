@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const originalEnv = {
   LEAD_CAPTURE_LOCAL_PATH: process.env.LEAD_CAPTURE_LOCAL_PATH,
+  LEAD_SOURCE_DAILY_LOCAL_PATH: process.env.LEAD_SOURCE_DAILY_LOCAL_PATH,
   LEAD_SOURCE_DAILY_WEBHOOK_URL: process.env.LEAD_SOURCE_DAILY_WEBHOOK_URL,
   LEAD_SOURCE_DAILY_WEBHOOK_AUTH: process.env.LEAD_SOURCE_DAILY_WEBHOOK_AUTH,
   LEAD_CAPTURE_WEBHOOK_URL: process.env.LEAD_CAPTURE_WEBHOOK_URL,
@@ -12,7 +13,9 @@ const originalEnv = {
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pil-lead-source-daily-'));
 const storePath = path.join(tempDir, 'leads.json');
+const historyPath = path.join(tempDir, 'daily-history.json');
 process.env.LEAD_CAPTURE_LOCAL_PATH = storePath;
+process.env.LEAD_SOURCE_DAILY_LOCAL_PATH = historyPath;
 delete process.env.LEAD_SOURCE_DAILY_WEBHOOK_URL;
 delete process.env.LEAD_SOURCE_DAILY_WEBHOOK_AUTH;
 delete process.env.LEAD_CAPTURE_WEBHOOK_URL;
@@ -54,7 +57,12 @@ if (
   res.body.payload?.report?.totalLeads !== 3 ||
   res.body.payload?.report?.topSource?.source !== 'public-inquiry:feishu-dm' ||
   !String(res.body.payload?.summary || '').includes('当前最有效来源：public-inquiry:feishu-dm') ||
-  !String(res.body.payload?.markdown || '').includes('## Top 来源')
+  !String(res.body.payload?.markdown || '').includes('## Top 来源') ||
+  !Array.isArray(res.body.history) ||
+  res.body.history.length !== 0 ||
+  res.body.latest !== null ||
+  res.body.historyStorage?.mode !== 'local-file' ||
+  res.body.historyStorage?.durable !== false
 ) {
   throw new Error(`GET 来源日报异常: ${JSON.stringify(res.body)}`);
 }
@@ -72,14 +80,23 @@ globalThis.fetch = async (url, options = {}) => {
 
 res = createRes();
 await leadSourceDailyHandler({ method: 'POST', body: {} }, res);
-if (res.statusCode !== 200 || res.body.webhook?.ok !== true || forwardedPayload?.kind !== 'lead-source-daily-digest') {
+if (
+  res.statusCode !== 200 ||
+  res.body.webhook?.ok !== true ||
+  forwardedPayload?.kind !== 'lead-source-daily-digest' ||
+  res.body.latest?.trigger !== 'manual-post' ||
+  !Array.isArray(res.body.history) ||
+  res.body.history.length !== 1 ||
+  res.body.history[0]?.topSource?.source !== 'public-inquiry:feishu-dm'
+) {
   throw new Error(`POST 转发异常: ${JSON.stringify(res.body)}`);
 }
 
 console.log('lead-source-daily 冒烟通过:', {
   totalLeads: res.body.payload.report.totalLeads,
   topSource: res.body.payload.report.topSource?.source,
-  forwardedUrl: res.body.webhook?.url
+  forwardedUrl: res.body.webhook?.url,
+  historyCount: res.body.history.length
 });
 
 Object.entries(originalEnv).forEach(([key, value]) => {

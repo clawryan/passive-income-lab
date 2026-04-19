@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const originalEnv = {
   LEAD_CAPTURE_LOCAL_PATH: process.env.LEAD_CAPTURE_LOCAL_PATH,
+  LEAD_SOURCE_DAILY_LOCAL_PATH: process.env.LEAD_SOURCE_DAILY_LOCAL_PATH,
   LEAD_SOURCE_DAILY_WEBHOOK_URL: process.env.LEAD_SOURCE_DAILY_WEBHOOK_URL,
   LEAD_SOURCE_DAILY_WEBHOOK_AUTH: process.env.LEAD_SOURCE_DAILY_WEBHOOK_AUTH,
   LEAD_CAPTURE_WEBHOOK_URL: process.env.LEAD_CAPTURE_WEBHOOK_URL,
@@ -12,7 +13,9 @@ const originalEnv = {
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pil-lead-source-daily-cron-'));
 const storePath = path.join(tempDir, 'leads.json');
+const historyPath = path.join(tempDir, 'daily-history.json');
 process.env.LEAD_CAPTURE_LOCAL_PATH = storePath;
+process.env.LEAD_SOURCE_DAILY_LOCAL_PATH = historyPath;
 delete process.env.LEAD_SOURCE_DAILY_WEBHOOK_URL;
 delete process.env.LEAD_SOURCE_DAILY_WEBHOOK_AUTH;
 delete process.env.LEAD_CAPTURE_WEBHOOK_URL;
@@ -53,7 +56,10 @@ if (
   res.body.triggeredBy !== 'cron-get' ||
   res.body.webhook?.skipped !== true ||
   res.body.kind !== 'lead-source-daily-digest' ||
-  res.body.payload?.report?.totalLeads !== 2
+  res.body.payload?.report?.totalLeads !== 2 ||
+  res.body.latest?.trigger !== 'cron-get' ||
+  !Array.isArray(res.body.history) ||
+  res.body.history.length !== 1
 ) {
   throw new Error(`GET cron 来源日报异常: ${JSON.stringify(res.body)}`);
 }
@@ -76,7 +82,10 @@ if (
   res.body.triggeredBy !== 'cron-post' ||
   res.body.webhook?.ok !== true ||
   res.body.webhook?.status !== 202 ||
-  forwardedPayload?.kind !== 'lead-source-daily-digest'
+  forwardedPayload?.kind !== 'lead-source-daily-digest' ||
+  res.body.latest?.trigger !== 'cron-post' ||
+  !Array.isArray(res.body.history) ||
+  res.body.history.length < 1
 ) {
   throw new Error(`POST cron 转发异常: ${JSON.stringify(res.body)}`);
 }
@@ -85,7 +94,8 @@ console.log('lead-source-daily cron 冒烟通过:', {
   totalLeads: res.body.payload.report.totalLeads,
   topSource: res.body.payload.report.topSource?.source,
   forwardedUrl: res.body.webhook?.url,
-  forwardedStatus: res.body.webhook?.status
+  forwardedStatus: res.body.webhook?.status,
+  historyCount: res.body.history.length
 });
 
 Object.entries(originalEnv).forEach(([key, value]) => {

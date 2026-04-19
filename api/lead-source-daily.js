@@ -1,4 +1,120 @@
+const fs = require('node:fs');
+const path = require('node:path');
 const { readSnapshot, buildSnapshotSummary } = require('./lead-capture');
+
+const MAX_DAILY_HISTORY = 7;
+
+function getLocalHistoryPath() {
+  return process.env.LEAD_SOURCE_DAILY_LOCAL_PATH || '/tmp/passive-income-lab-lead-source-daily.json';
+}
+
+function getKvRestUrl() {
+  return process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+}
+
+function getKvRestToken() {
+  return process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+}
+
+function getHistoryKvKey() {
+  return process.env.LEAD_SOURCE_DAILY_KV_KEY || 'passive-income-lab:lead-source-daily:history';
+}
+
+function hasKvStore() {
+  return Boolean(getKvRestUrl() && getKvRestToken());
+}
+
+function buildHistoryStorageMeta() {
+  if (hasKvStore()) {
+    return {
+      mode: 'vercel-kv',
+      durable: true,
+      provider: 'vercel-kv-rest',
+      key: getHistoryKvKey(),
+      note: '来源日报历史已写入托管 KV，适合部署后跨设备确认 cron 是否真的跑过。'
+    };
+  }
+
+  return {
+    mode: 'local-file',
+    durable: false,
+    path: getLocalHistoryPath(),
+    note: '来源日报历史当前仅保存在本地文件，适合本机调试；若要部署后持久化，建议配置 KV_REST_API_URL / KV_REST_API_TOKEN。'
+  };
+}
+
+async function kvRequest(command, ...args) {
+  const encodedArgs = args.map((item) => encodeURIComponent(String(item))).join('/');
+  const url = `${getKvRestUrl().replace(/\/$/, '')}/${command}${encodedArgs ? `/${encodedArgs}` : ''}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getKvRestToken()}`
+    }
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error || `KV request failed: ${response.status}`);
+  }
+  return payload.result;
+}
+
+async function readHistoryStore() {
+  if (hasKvStore()) {
+    const result = await kvRequest('get', getHistoryKvKey());
+    if (!result) return { latest: null, history: [] };
+    try {
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+      return parsed && typeof parsed === 'object' ? parsed : { latest: null, history: [] };
+    } catch (_error) {
+      return { latest: null, history: [] };
+    }
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(getLocalHistoryPath(), 'utf8'));
+  } catch (_error) {
+    return { latest: null, history: [] };
+  }
+}
+
+async function writeHistoryStore(store) {
+  if (hasKvStore()) {
+    await kvRequest('set', getHistoryKvKey(), JSON.stringify(store));
+    return;
+  }
+
+  fs.mkdirSync(path.dirname(getLocalHistoryPath()), { recursive: true });
+  fs.writeFileSync(getLocalHistoryPath(), JSON.stringify(store, null, 2));
+}
+
+function buildHistoryEntry(payload, webhook = null, trigger = 'manual-post') {
+  const report = payload?.payload?.report || {};
+  return {
+    generatedAt: payload.generatedAt,
+    kind: payload.kind,
+    trigger,
+    totalLeads: report.totalLeads || 0,
+    actionableCount: report.actionableCount || 0,
+    overdueCount: report.overdueCount || 0,
+    topProduct: report.topProduct || null,
+    topSource: report.topSource || null,
+    recommendation: payload?.payload?.recommendation || '',
+    summary: payload?.payload?.summary || '',
+    webhook: webhook || { forwarded: false, skipped: true }
+  };
+}
+
+async function saveDailyHistory(payload, webhook = null, trigger = 'manual-post') {
+  const entry = buildHistoryEntry(payload, webhook, trigger);
+  const current = await readHistoryStore();
+  const history = [entry, ...(Array.isArray(current.history) ? current.history : [])]
+    .filter((item, index, list) => list.findIndex((candidate) => candidate.generatedAt === item.generatedAt) === index)
+    .slice(0, MAX_DAILY_HISTORY);
+  const next = { latest: entry, history };
+  await writeHistoryStore(next);
+  return next;
+}
 
 function normalizeProductTitle(slug) {
   if (slug === 'orion-nexus') return 'Orion Nexus Quant 研究包';
@@ -154,13 +270,28 @@ module.exports = async function handler(req, res) {
     const payload = buildLeadSourceDailyPayload(snapshot);
 
     if (req.method === 'GET') {
-      return res.status(200).json({ ok: true, ...payload });
+      const historyStore = await readHistoryStore();
+      return res.status(200).json({
+        ok: true,
+        ...payload,
+        latest: historyStore.latest || null,
+        history: historyStore.history || [],
+        historyStorage: buildHistoryStorageMeta()
+      });
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const dryRun = body.dryRun === true || body.forward === false;
     const forwardResult = dryRun ? { forwarded: false, dryRun: true } : await forwardDailyPayload(payload);
-    return res.status(200).json({ ok: true, ...payload, webhook: forwardResult });
+    const historyStore = await saveDailyHistory(payload, forwardResult, dryRun ? 'manual-dry-run' : 'manual-post');
+    return res.status(200).json({
+      ok: true,
+      ...payload,
+      webhook: forwardResult,
+      latest: historyStore.latest || null,
+      history: historyStore.history || [],
+      historyStorage: buildHistoryStorageMeta()
+    });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ error: error.message || String(error) });
   }
@@ -169,3 +300,7 @@ module.exports = async function handler(req, res) {
 module.exports.buildPortfolioReport = buildPortfolioReport;
 module.exports.buildLeadSourceDailyPayload = buildLeadSourceDailyPayload;
 module.exports.forwardDailyPayload = forwardDailyPayload;
+module.exports.readHistoryStore = readHistoryStore;
+module.exports.saveDailyHistory = saveDailyHistory;
+module.exports.buildHistoryEntry = buildHistoryEntry;
+module.exports.buildHistoryStorageMeta = buildHistoryStorageMeta;

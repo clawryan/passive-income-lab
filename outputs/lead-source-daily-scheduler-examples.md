@@ -26,26 +26,26 @@ LEAD_SOURCE_DAILY_WEBHOOK_AUTH=Bearer replace-me
 
 ## 1. 手动 dry-run / 真调用验收
 
-### 1.1 先看真实日报 JSON
+### 1.1 先看真实日报 JSON + 最近运行留档
 
 本地开发：
 
 ```bash
-curl -sS "http://127.0.0.1:3000/api/lead-source-daily" | jq '{kind, topSource: .payload.report.topSource, recommendation: .payload.recommendation}'
+curl -sS "http://127.0.0.1:3000/api/lead-source-daily" | jq '{kind, topSource: .payload.report.topSource, recommendation: .payload.recommendation, latest, historyCount: (.history | length), historyStorage}'
 ```
 
 Vercel 线上：
 
 ```bash
-curl -sS "https://your-project.vercel.app/api/lead-source-daily" | jq '{kind, topSource: .payload.report.topSource, recommendation: .payload.recommendation}'
+curl -sS "https://your-project.vercel.app/api/lead-source-daily" | jq '{kind, topSource: .payload.report.topSource, recommendation: .payload.recommendation, latest, historyCount: (.history | length), historyStorage}'
 ```
 
 ### 1.2 手动触发 cron 入口（无副作用预检）
 
-如果还没配 webhook，先用 cron 入口确认它能生成真实 payload：
+如果还没配 webhook，先用 cron 入口确认它能生成真实 payload，并顺手检查 `latest/history` 是否开始留档：
 
 ```bash
-curl -sS "https://your-project.vercel.app/api/cron/lead-source-daily" | jq '{ok, triggeredBy, kind, webhook, totalLeads: .payload.report.totalLeads}'
+curl -sS "https://your-project.vercel.app/api/cron/lead-source-daily" | jq '{ok, triggeredBy, kind, webhook, totalLeads: .payload.report.totalLeads, latest, historyCount: (.history | length), historyStorage}'
 ```
 
 预期会看到：
@@ -53,19 +53,23 @@ curl -sS "https://your-project.vercel.app/api/cron/lead-source-daily" | jq '{ok,
 - `triggeredBy="cron-get"`
 - `kind="lead-source-daily-digest"`
 - 未配 webhook 时 `webhook.skipped=true`
+- `latest.trigger="cron-get"`
+- `historyCount>=1`
 
 ### 1.3 手动真触发一次外发
 
 当 `LEAD_SOURCE_DAILY_WEBHOOK_URL` 已配置后：
 
 ```bash
-curl -sS -X POST "https://your-project.vercel.app/api/cron/lead-source-daily" | jq '{ok, triggeredBy, webhook, topSource: .payload.report.topSource}'
+curl -sS -X POST "https://your-project.vercel.app/api/cron/lead-source-daily" | jq '{ok, triggeredBy, webhook, topSource: .payload.report.topSource, latest, historyCount: (.history | length)}'
 ```
 
 预期会看到：
 - `triggeredBy="cron-post"`
 - `webhook.forwarded=true`
 - `webhook.status` 为接收端返回的 HTTP 状态码
+- `latest.trigger="cron-post"`
+- `historyCount` 比预检时继续增长
 
 ---
 
