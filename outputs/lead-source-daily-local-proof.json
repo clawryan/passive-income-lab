@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-04-19T00:03:04.918Z",
+  "seedLeads": [
+    {
+      "id": "proof-lead-1",
+      "productSlug": "micro-saas",
+      "source": "public-inquiry:feishu-dm",
+      "stage": "待跟进"
+    },
+    {
+      "id": "proof-lead-2",
+      "productSlug": "micro-saas",
+      "source": "public-inquiry:feishu-dm",
+      "stage": "已报价"
+    },
+    {
+      "id": "proof-lead-3",
+      "productSlug": "orion-nexus",
+      "source": "public-inquiry:wechat-group",
+      "stage": "已成交"
+    }
+  ],
+  "checks": {
+    "getBefore": {
+      "totalLeads": 3,
+      "topSource": "public-inquiry:feishu-dm",
+      "historyCount": 0,
+      "historyStorage": {
+        "mode": "local-file",
+        "durable": false,
+        "path": "/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-source-proof-nwXGEs/daily-history.json",
+        "note": "来源日报历史当前仅保存在本地文件，适合本机调试；若要部署后持久化，建议配置 KV_REST_API_URL / KV_REST_API_TOKEN。"
+      }
+    },
+    "dryRun": {
+      "trigger": "manual-dry-run",
+      "historyCount": 1,
+      "forwarded": false,
+      "dryRun": true
+    },
+    "manualPost": {
+      "trigger": "manual-post",
+      "historyCount": 1,
+      "topSource": "public-inquiry:feishu-dm",
+      "webhook": {
+        "forwarded": true,
+        "ok": true,
+        "status": 202,
+        "url": "https://example.com/proof-webhook"
+      }
+    },
+    "cronPost": {
+      "trigger": "cron-post",
+      "historyCount": 1,
+      "topSource": "public-inquiry:feishu-dm",
+      "webhook": {
+        "forwarded": true,
+        "ok": true,
+        "status": 202,
+        "url": "https://example.com/proof-webhook"
+      }
+    }
+  },
+  "forwardedPayloadPreview": {
+    "kind": "lead-source-daily-digest",
+    "generatedAt": "2026-04-19T00:03:04.917Z",
+    "recommendation": "优先继续加推 public-inquiry:feishu-dm，它已经出现报价信号。",
+    "summary": "Passive Income Lab 来源日报｜2026/4/19\n总线索：3｜可推进：2｜超72h未推进：0\n当前最热产品：Micro-SaaS 冷启动提示词包（线索 2｜已报价 1｜已成交 0）\n当前最有效来源：public-inquiry:feishu-dm（线索 2｜待跟进 1｜已报价 1｜已成交 0）\nTop 来源：1. public-inquiry:feishu-dm（2/1/0）；2. public-inquiry:wechat-group（1/0/1）\n建议动作：优先继续加推 public-inquiry:feishu-dm，它已经出现报价信号。"
+  },
+  "artifactPaths": {
+    "markdown": "outputs/lead-source-daily-local-proof.md",
+    "json": "outputs/lead-source-daily-local-proof.json"
+  }
+}

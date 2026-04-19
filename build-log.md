@@ -1,3 +1,7 @@
+- 这轮没有继续扩新的日报字段，而是补了一个更接近“真实可运营”的低阻力缺口：`api/lead-source-daily.js` 与 `api/cron/lead-source-daily.js` 现在会把每次生成/发送的日报自动写入最近 7 次 `latest/history` 留档，方便直接确认 cron 是否真的跑过、上一次推送看到的是什么。
+- 新增本地文件 / KV 兼容的日报历史存储逻辑；`GET /api/lead-source-daily` 会返回 `latest/history`，`POST /api/lead-source-daily` 与 cron 触发则会在转发后同步落档，并记录 `trigger`、`topSource`、`recommendation` 与 webhook 结果。
+- 对应 `scripts/smoke-lead-source-daily.mjs` 与 `scripts/smoke-lead-source-daily-cron.mjs` 已扩展断言：不仅校验摘要和 webhook 转发，还会确认历史条目真的写入、最近一次触发来源正确。
+- 结果：来源日报不再只是“理论上能定时推送”，而是已经自带最小运行痕迹，后续做线上真验收时更容易判断问题卡在“没触发”还是“已触发但接收端没收”。
 - 这轮没有再停留在“来源日报 API 已能手动调用”，而是把它推进成仓库内可直接定时跑的最小 cron 入口：新增 `api/cron/lead-source-daily.js`，会直接读取 `lead-capture` 快照、生成真实 `lead-source-daily-digest`，并转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`。
 - `vercel.json` 已内置 `/api/cron/lead-source-daily` 的 `0 1 * * *` 调度（Asia/Shanghai 09:00），`outputs/lead-source-daily-scheduler-examples.md` 也从“手写样例 payload”更新成“直接调用仓库真实 API / cron 入口”的照抄文档。
 - 新增 `scripts/smoke-lead-source-daily-cron.mjs`，并把它并入 `npm run validate`；现在不仅能校验来源日报 API 本身，还能回归 `cron -> 生成 payload -> webhook 转发/跳过` 这条链路。
@@ -145,6 +149,12 @@
 - 结果：首页现在不只是告诉访客“能买什么”，还支持立刻进入“复制文案去问价 / 分享报价 / 载入演示验证”这三种成交前动作，更接近真实变现闭环。
 
 # Build Log
+
+## 2026-04-19 08:00 (Asia/Shanghai)
+- 这轮没有再扩新日报字段，而是补了一个更接近“可交付验收”的低阻力缺口：新增 `scripts/generate-lead-source-daily-proof.mjs`，会自动种入演示线索，顺序执行 `GET /api/lead-source-daily`、`POST dryRun`、手动 webhook 转发、`POST /api/cron/lead-source-daily`，并把结果固化成 `outputs/lead-source-daily-local-proof.md` 与 `outputs/lead-source-daily-local-proof.json`。
+- `package.json` 新增 `npm run proof:lead-source-daily`，方便以后每次改来源日报逻辑后都快速再生成一份可分享的“latest/history 确实在增长”的本地证据，而不只是看终端日志。
+- `README.md` 已同步补充 proof 脚本入口与用途说明。
+- 结果：来源日报链路现在不只“能跑 / 能留档”，还多了一份可重复生成的本地验收产物，后续要做线上真验收时更容易对照“本地预期 vs 部署环境返回”。
 
 ## 2026-04-17 17:00 (Asia/Shanghai)
 - 这轮没有继续堆更多“如何定时”的样例，而是把来源日报真正补成仓库内可直接触发的 serverless 入口：新增 `api/lead-source-daily.js`，直接读取 `/api/lead-capture` 同源快照并生成真实 `lead-source-daily-digest` payload。

@@ -164,6 +164,17 @@
 
 # Results
 
+## 2026-04-19 08:00 (Asia/Shanghai)
+- 新增 `scripts/generate-lead-source-daily-proof.mjs` 与 `npm run proof:lead-source-daily`，现在可自动种入演示线索并串行跑 `GET /api/lead-source-daily`、`POST dryRun`、手动 webhook 转发、`POST /api/cron/lead-source-daily`，把来源日报的关键返回固化成 `outputs/lead-source-daily-local-proof.md` 与 `outputs/lead-source-daily-local-proof.json`。
+- 这一步的价值不在于再多一个按钮，而在于补了一份可重复生成、可直接转发给自己/协作者的“验收证据”：里面会明确写出 `historyStorage.mode`、`latest.trigger`、手动推送与 cron 推送后的 `historyCount`，更容易确认 latest/history 机制没有回退。
+- 下一步最值得做的是：拿真实 `LEAD_SOURCE_DAILY_WEBHOOK_URL` 跑一次线上 proof，并把接收端日志与 `/api/lead-source-daily` 返回一起沉淀到 `outputs/`，让这条链路从“本地可证明”推进到“线上已实测”。
+
+## 2026-04-18 17:00 (Asia/Shanghai)
+- `api/lead-source-daily.js` 现已补齐最近 7 次日报留档：`GET` 会直接返回 `latest/history`，`POST` 在转发或 dry-run 后也会把本次来源日报摘要、Top 来源、建议动作与 webhook 结果落档，方便快速确认“最近一次日报到底有没有真的跑”。
+- `api/cron/lead-source-daily.js` 现在每次 cron 触发也会同步写入同一份日报历史；这样即使接收端 webhook 没消息，也能先从 API 返回里的 `latest.trigger / webhook / history` 判断是“没触发”还是“已触发但外部没收”。
+- `scripts/smoke-lead-source-daily.mjs` 与 `scripts/smoke-lead-source-daily-cron.mjs` 已扩展为断言历史条目写入成功；本轮验证结果包含 `historyCount: 1`（手动 POST）与 `historyCount: 2`（cron GET+POST），说明留档链路已真正跑通。
+- 下一步最值得做的是：拿真实 `LEAD_SOURCE_DAILY_WEBHOOK_URL` 做一次线上验收，把 `latest/history` 返回与接收端日志一起沉淀到 `outputs/`，让这条增长播报链路从“可调试”推进到“已实测”。
+
 ## 2026-04-17 20:00 (Asia/Shanghai)
 - 新增 `api/cron/lead-source-daily.js`，把已有 `lead-source-daily` 生成逻辑推进成仓库内可直接被定时器调用的 cron 入口：会读取 `lead-capture` 快照、生成真实 `lead-source-daily-digest`，并在已配置 `LEAD_SOURCE_DAILY_WEBHOOK_URL` 时自动转发。
 - `vercel.json` 已内置 `/api/cron/lead-source-daily` 的 `0 1 * * *` 调度（UTC 01:00 = Asia/Shanghai 09:00），不再只是文档里说“可以挂 cron”，而是仓库本身已经带最小调度配置。
