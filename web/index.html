@@ -2027,6 +2027,8 @@ function exportAbHistory(format){
 
 const PRODUCT_LEADS_KEY='passive-income-lab.productLeads.v1';
 const LEAD_WEBHOOK_CONFIG_KEY='passive-income-lab.leadWebhookConfig.v1';
+const LEAD_SOURCE_DAILY_HISTORY_KEY='passive-income-lab.leadSourceDailyHistory.v1';
+const LEAD_SOURCE_DAILY_HISTORY_LIMIT=7;
 const LEAD_CAPTURE_CONFIG_KEY='passive-income-lab.leadCaptureConfig.v1';
 let currentLeadEditId='';
 
@@ -2172,6 +2174,7 @@ async function sendLeadPortfolioWebhook(){
 
 async function sendLeadSourceDailyWebhook(){
   const payload=buildLeadSourceDailyWebhookPayload();
+  persistLeadSourceDailyPayload(payload);
   const highlightCount=payload.payload?.sourceHighlights?.length || 0;
   await postLeadWebhook('lead-source-daily-digest',payload.payload,highlightCount
     ? `已推送来源日报到 Webhook（Top 来源 ${highlightCount} 个）`
@@ -2216,19 +2219,101 @@ function buildLeadPortfolioWebhookPayload(){
   };
 }
 
-function buildLeadSourceDailyWebhookPayload(){
+function readLeadSourceDailyHistory(){
+  try{
+    const raw=localStorage.getItem(LEAD_SOURCE_DAILY_HISTORY_KEY);
+    const parsed=raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(_e){
+    return [];
+  }
+}
+
+function writeLeadSourceDailyHistory(items){
+  localStorage.setItem(LEAD_SOURCE_DAILY_HISTORY_KEY,JSON.stringify((items || []).slice(0,LEAD_SOURCE_DAILY_HISTORY_LIMIT)));
+}
+
+function formatLeadSourceDailyDelta(value){
+  if(!value) return '持平';
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function buildLeadSourceDailyTrend(report,previousEntry=null){
+  if(!previousEntry){
+    return {
+      hasPrevious:false,
+      previousGeneratedAt:null,
+      totalLeadsDelta:null,
+      actionableDelta:null,
+      overdueDelta:null,
+      previousTopSource:null,
+      topSourceChanged:false,
+      summary:'较上次：暂无可对比历史',
+      recommendationHint:'先连续记录 2 次来源日报，再根据增减变化决定加推还是止损。'
+    };
+  }
+  const totalLeadsDelta=(report.totalLeads || 0)-(previousEntry.totalLeads || 0);
+  const actionableDelta=(report.actionableCount || 0)-(previousEntry.actionableCount || 0);
+  const overdueDelta=((report.bucketCounts?.next72h || 0)+(report.bucketCounts?.now || 0))-((previousEntry.overdueCount) || 0);
+  const previousTopSource=previousEntry.topSource?.source || previousEntry.topSource || null;
+  const currentTopSource=report.topSource?.source || null;
+  const topSourceChanged=Boolean(currentTopSource && previousTopSource && currentTopSource!==previousTopSource);
+  const recommendationHint=overdueDelta > 0
+    ? '超期待跟进在线增加，先清现在/72h待办，再继续加推新来源。'
+    : totalLeadsDelta > 0
+      ? '线索仍在增长，优先复用本轮有效来源和话术。'
+      : '新增线索停滞，先换分发入口或话术，再继续投入。';
+  return {
+    hasPrevious:true,
+    previousGeneratedAt:previousEntry.generatedAt || null,
+    totalLeadsDelta,
+    actionableDelta,
+    overdueDelta,
+    previousTopSource,
+    topSourceChanged,
+    summary:`较上次：总线索 ${formatLeadSourceDailyDelta(totalLeadsDelta)}｜可推进 ${formatLeadSourceDailyDelta(actionableDelta)}｜超期待办 ${formatLeadSourceDailyDelta(overdueDelta)}${topSourceChanged ? `｜Top 来源由 ${previousTopSource} 切到 ${currentTopSource}` : ''}`,
+    recommendationHint
+  };
+}
+
+function buildLeadSourceDailyHistoryEntry(payload){
+  const report=payload?.payload?.report || {};
+  const trend=payload?.payload?.trend || {};
+  return {
+    generatedAt:payload.generatedAt || new Date().toISOString(),
+    totalLeads:report.totalLeads || 0,
+    actionableCount:report.actionableCount || 0,
+    overdueCount:(report.bucketCounts?.next72h || 0)+(report.bucketCounts?.now || 0),
+    topSource:report.topSource ? { source:report.topSource.source || null } : null,
+    trendSummary:trend.summary || null
+  };
+}
+
+function persistLeadSourceDailyPayload(payload){
+  const history=readLeadSourceDailyHistory();
+  const entry=buildLeadSourceDailyHistoryEntry(payload);
+  const deduped=[entry,...history.filter(item=>item.generatedAt!==entry.generatedAt)].slice(0,LEAD_SOURCE_DAILY_HISTORY_LIMIT);
+  writeLeadSourceDailyHistory(deduped);
+  return deduped;
+}
+
+function buildLeadSourceDailyWebhookPayload(options={}){
   const portfolioPayload=buildLeadPortfolioWebhookPayload();
   const report=portfolioPayload.payload?.report || {};
   const highlights=(portfolioPayload.payload?.sourceHighlights || []).slice(0,5);
   const topSource=report.topSource || highlights[0] || null;
+  const history=readLeadSourceDailyHistory();
+  const previousEntry=options.previousEntry===undefined ? (history[0] || null) : options.previousEntry;
+  const trend=buildLeadSourceDailyTrend(report,previousEntry);
   const recommendation=topSource
     ? (topSource.quoted > 0 || topSource.won > 0
-        ? `优先继续加推 ${topSource.source}，它已经出现${topSource.won > 0 ? '成交' : '报价'}信号。`
-        : `先继续补量 ${topSource.source}，它在线索数上领先，但还需要更多报价/成交验证。`)
+        ? `优先继续加推 ${topSource.source}，它已经出现${topSource.won > 0 ? '成交' : '报价'}信号。${trend.recommendationHint ? ` ${trend.recommendationHint}` : ''}`
+        : `先继续补量 ${topSource.source}，它在线索数上领先，但还需要更多报价/成交验证。${trend.recommendationHint ? ` ${trend.recommendationHint}` : ''}`)
     : '今天先补首批分发动作，至少跑出 1 个可归因来源。';
   const summaryLines=[
     `Passive Income Lab 来源日报｜${new Date().toLocaleDateString('zh-CN')}`,
     `总线索：${report.totalLeads || 0}｜可推进：${report.actionableCount || 0}`,
+    trend.summary,
     report.topProduct ? `当前最热产品：${report.topProduct.productTitle || '暂无'}（线索 ${report.topProduct.total || 0}｜已报价 ${report.topProduct.quoted || 0}｜已成交 ${report.topProduct.won || 0}）` : '当前最热产品：暂无',
     topSource ? `当前最有效来源：${topSource.source || '暂无'}（线索 ${topSource.count || 0}｜待跟进 ${topSource.pending || 0}｜已报价 ${topSource.quoted || 0}｜已成交 ${topSource.won || 0}）` : '当前最有效来源：暂无',
     highlights.length
@@ -2242,6 +2327,7 @@ function buildLeadSourceDailyWebhookPayload(){
     generatedAt:portfolioPayload.generatedAt,
     payload:{
       report,
+      trend,
       sourceHighlights:highlights,
       summary:summaryLines.join('\\n'),
       markdown:[
@@ -2250,6 +2336,7 @@ function buildLeadSourceDailyWebhookPayload(){
         `- 日期：${new Date().toLocaleDateString('zh-CN')}`,
         `- 总线索：${report.totalLeads || 0}`,
         `- 可推进：${report.actionableCount || 0}`,
+        `- ${trend.summary}`,
         report.topProduct ? `- 当前最热产品：${report.topProduct.productTitle || '暂无'}（线索 ${report.topProduct.total || 0}｜已报价 ${report.topProduct.quoted || 0}｜已成交 ${report.topProduct.won || 0}）` : '- 当前最热产品：暂无',
         topSource ? `- 当前最有效来源：${topSource.source || '暂无'}（线索 ${topSource.count || 0}｜待跟进 ${topSource.pending || 0}｜已报价 ${topSource.quoted || 0}｜已成交 ${topSource.won || 0}）` : '- 当前最有效来源：暂无',
         '',
@@ -2259,7 +2346,8 @@ function buildLeadSourceDailyWebhookPayload(){
         '## 建议动作',
         `- ${recommendation}`
       ].join('\\n'),
-      recommendation
+      recommendation,
+      historyPreview:history.slice(0,LEAD_SOURCE_DAILY_HISTORY_LIMIT)
     }
   };
 }
@@ -2270,6 +2358,7 @@ function buildLeadSourceDailyDigest(){
 
 function exportLeadSourceDailyMarkdown(){
   const payload=buildLeadSourceDailyWebhookPayload();
+  persistLeadSourceDailyPayload(payload);
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
   downloadFile(`lead-source-daily-digest-${ts}.md`,payload.payload?.markdown || `# Passive Income Lab 来源日报\n\n暂无可导出的来源日报。`,'text/markdown;charset=utf-8');
   $('leadWebhookStatus').textContent='已导出来源日报 Markdown';
@@ -2277,6 +2366,7 @@ function exportLeadSourceDailyMarkdown(){
 
 function exportLeadSourceDailyJson(){
   const payload=buildLeadSourceDailyWebhookPayload();
+  persistLeadSourceDailyPayload(payload);
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
   downloadFile(`lead-source-daily-digest-${ts}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
   $('leadWebhookStatus').textContent='已导出来源日报 JSON';
@@ -2300,6 +2390,7 @@ function buildLeadSourceDailyFeishuCardPayload(){
         elements:[
           { tag:'markdown', content:`**总线索**：${report.totalLeads || 0}
 **可推进**：${report.actionableCount || 0}
+**较上次**：${payload.payload?.trend?.summary || '暂无可对比历史'}
 **当前最热产品**：${report.topProduct?.productTitle || '暂无'}
 **当前最有效来源**：${report.topSource?.source || '暂无'}` },
           { tag:'hr' },
@@ -2382,12 +2473,16 @@ async function copyLeadPortfolioFeishuCardPayload(){
 }
 
 async function copyLeadSourceDailyDigest(){
-  await copyText(buildLeadSourceDailyDigest(),'已复制来源日报摘要');
+  const payload=buildLeadSourceDailyWebhookPayload();
+  persistLeadSourceDailyPayload(payload);
+  await copyText(payload.payload?.summary || '暂无来源日报摘要','已复制来源日报摘要');
   $('leadWebhookStatus').textContent='已复制来源日报摘要';
 }
 
 async function shareLeadSourceDailyDigest(){
-  const text=buildLeadSourceDailyDigest();
+  const payload=buildLeadSourceDailyWebhookPayload();
+  persistLeadSourceDailyPayload(payload);
+  const text=payload.payload?.summary || '';
   if(!String(text || '').trim()){
     $('leadWebhookStatus').textContent='当前暂无可分享的来源日报摘要';
     return;
@@ -2399,13 +2494,17 @@ async function shareLeadSourceDailyDigest(){
 }
 
 async function copyLeadSourceDailyWebhookPayload(){
-  const payload=JSON.stringify(buildLeadSourceDailyWebhookPayload(),null,2);
+  const payloadObject=buildLeadSourceDailyWebhookPayload();
+  persistLeadSourceDailyPayload(payloadObject);
+  const payload=JSON.stringify(payloadObject,null,2);
   await copyText(payload,'已复制来源日报 Webhook Payload 示例');
   $('leadWebhookStatus').textContent='已复制来源日报 Webhook Payload 示例';
 }
 
 async function copyLeadSourceDailyFeishuCardPayload(){
-  const payload=JSON.stringify(buildLeadSourceDailyFeishuCardPayload(),null,2);
+  const cardPayload=buildLeadSourceDailyFeishuCardPayload();
+  persistLeadSourceDailyPayload(buildLeadSourceDailyWebhookPayload());
+  const payload=JSON.stringify(cardPayload,null,2);
   await copyText(payload,'已复制来源日报飞书卡片 Payload');
   $('leadWebhookStatus').textContent='已复制来源日报飞书卡片 Payload';
 }

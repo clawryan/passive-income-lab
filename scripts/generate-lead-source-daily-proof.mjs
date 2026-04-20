@@ -102,6 +102,16 @@ globalThis.fetch = async (url, options = {}) => {
 };
 
 const manualPost = await call(leadSourceDailyHandler, { method: 'POST', body: {} });
+const trendLead = {
+  id: 'proof-lead-4',
+  name: '小红书新增线索 D',
+  productSlug: 'orion-nexus',
+  source: 'public-inquiry:xhs',
+  stage: '待跟进',
+  updatedAt: '2026-04-18T03:00:00.000Z'
+};
+await call(leadCaptureHandler, { method: 'POST', body: { lead: trendLead } });
+const getAfterTrend = await call(leadSourceDailyHandler, { method: 'GET' });
 const cronPost = await call(cronHandler, { method: 'POST', body: {} });
 
 const proofJson = {

@@ -227,6 +227,23 @@ const portfolioFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-port
 const sourceDailyDigest = context.buildLeadSourceDailyDigest();
 const sourceDailyWebhookPayload = context.buildLeadSourceDailyWebhookPayload();
 const sourceDailyFeishuCardPayload = context.buildLeadSourceDailyFeishuCardPayload();
+context.persistLeadSourceDailyPayload(sourceDailyWebhookPayload);
+const trendLeads = context.loadProductLeads();
+trendLeads.unshift({
+  id: 'trend-lead-1',
+  name: '趋势新增线索',
+  productSlug: 'micro-saas',
+  source: '知乎',
+  stage: '待跟进',
+  priority: '中',
+  need: '想看交付样例',
+  nextStep: '今天补报价说明',
+  createdAt: '2026-04-19T09:00:00.000Z',
+  updatedAt: '2026-04-19T09:00:00.000Z'
+});
+context.saveProductLeads(trendLeads);
+const sourceDailyTrendPayload = context.buildLeadSourceDailyWebhookPayload();
+const leadSourceDailyHistory = context.readLeadSourceDailyHistory();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
 await context.copyLeadWebhookCurl();
@@ -351,15 +368,23 @@ if (portfolioFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(por
   throw new Error(`总览飞书卡片 Payload 异常: ${JSON.stringify(portfolioFeishuCardPayload)}`);
 }
 
-if (!sourceDailyDigest.includes('Passive Income Lab 来源日报') || !sourceDailyDigest.includes('当前最有效来源') || !sourceDailyDigest.includes('建议动作')) {
+if (!sourceDailyDigest.includes('Passive Income Lab 来源日报') || !sourceDailyDigest.includes('当前最有效来源') || !sourceDailyDigest.includes('建议动作') || !sourceDailyDigest.includes('较上次：暂无可对比历史')) {
   throw new Error(`来源日报摘要异常: ${sourceDailyDigest}`);
 }
 
-if (sourceDailyWebhookPayload.kind !== 'lead-source-daily-digest' || !sourceDailyWebhookPayload.payload?.summary?.includes('Passive Income Lab 来源日报') || !sourceDailyWebhookPayload.payload?.sourceHighlights?.length || !sourceDailyWebhookPayload.payload?.markdown?.includes('# Passive Income Lab 来源日报')) {
+if (sourceDailyWebhookPayload.kind !== 'lead-source-daily-digest' || !sourceDailyWebhookPayload.payload?.summary?.includes('Passive Income Lab 来源日报') || !sourceDailyWebhookPayload.payload?.sourceHighlights?.length || !sourceDailyWebhookPayload.payload?.markdown?.includes('# Passive Income Lab 来源日报') || !sourceDailyWebhookPayload.payload?.trend || sourceDailyWebhookPayload.payload?.trend?.hasPrevious !== false) {
   throw new Error(`来源日报 Webhook Payload 异常: ${JSON.stringify(sourceDailyWebhookPayload)}`);
 }
 
-if (sourceDailyFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(sourceDailyFeishuCardPayload).includes('来源日报') || !JSON.stringify(sourceDailyFeishuCardPayload).includes('Top 来源明细')) {
+if (!sourceDailyTrendPayload.payload?.trend?.hasPrevious || sourceDailyTrendPayload.payload?.trend?.totalLeadsDelta !== 1 || sourceDailyTrendPayload.payload?.trend?.actionableDelta !== 1 || !String(sourceDailyTrendPayload.payload?.summary || '').includes('较上次：总线索 +1｜可推进 +1')) {
+  throw new Error(`来源日报趋势对比异常: ${JSON.stringify(sourceDailyTrendPayload)}`);
+}
+
+if (!Array.isArray(leadSourceDailyHistory) || !leadSourceDailyHistory.length || leadSourceDailyHistory[0]?.totalLeads !== sourceDailyWebhookPayload.payload?.report?.totalLeads) {
+  throw new Error(`来源日报历史未成功落盘: ${JSON.stringify(leadSourceDailyHistory)}`);
+}
+
+if (sourceDailyFeishuCardPayload.msg_type !== 'interactive' || !JSON.stringify(sourceDailyFeishuCardPayload).includes('来源日报') || !JSON.stringify(sourceDailyFeishuCardPayload).includes('Top 来源明细') || !JSON.stringify(sourceDailyFeishuCardPayload).includes('较上次')) {
   throw new Error(`来源日报飞书卡片 Payload 异常: ${JSON.stringify(sourceDailyFeishuCardPayload)}`);
 }
 

@@ -92,10 +92,29 @@ if (
   throw new Error(`POST 转发异常: ${JSON.stringify(res.body)}`);
 }
 
+const lead4 = { id: 'lead-4', name: 'D', productSlug: 'orion-nexus', source: 'public-inquiry:xhs', stage: '待跟进', updatedAt: '2026-04-17T03:00:00.000Z' };
+let seedRes = createRes();
+await leadCaptureHandler({ method: 'POST', body: { lead: lead4 } }, seedRes);
+if (seedRes.statusCode !== 200) throw new Error(`seed lead 4 failed: ${JSON.stringify(seedRes.body)}`);
+
+res = createRes();
+await leadSourceDailyHandler({ method: 'GET' }, res);
+if (
+  res.statusCode !== 200 ||
+  res.body.payload?.report?.totalLeads !== 4 ||
+  res.body.payload?.trend?.hasPrevious !== true ||
+  res.body.payload?.trend?.totalLeadsDelta !== 1 ||
+  res.body.payload?.trend?.actionableDelta !== 1 ||
+  !String(res.body.payload?.summary || '').includes('较上次：总线索 +1｜可推进 +1')
+) {
+  throw new Error(`GET 趋势对比异常: ${JSON.stringify(res.body)}`);
+}
+
 console.log('lead-source-daily 冒烟通过:', {
   totalLeads: res.body.payload.report.totalLeads,
   topSource: res.body.payload.report.topSource?.source,
-  forwardedUrl: res.body.webhook?.url,
+  trend: res.body.payload.trend?.summary,
+  forwardedUrl: forwardedPayload ? 'https://example.com/webhook' : null,
   historyCount: res.body.history.length
 });
 

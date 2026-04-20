@@ -90,10 +90,31 @@ if (
   throw new Error(`POST cron 转发异常: ${JSON.stringify(res.body)}`);
 }
 
+const lead3 = { id: 'cron-lead-3', name: 'C', productSlug: 'orion-nexus', source: 'public-inquiry:xhs', stage: '待跟进', updatedAt: '2026-04-17T02:00:00.000Z' };
+let seedRes = createRes();
+await leadCaptureHandler({ method: 'POST', body: { lead: lead3 } }, seedRes);
+if (seedRes.statusCode !== 200) throw new Error(`seed lead 3 failed: ${JSON.stringify(seedRes.body)}`);
+
+res = createRes();
+await cronHandler({ method: 'GET', headers: { 'x-vercel-cron': '1' } }, res);
+if (
+  res.statusCode !== 200 ||
+  res.body.triggeredBy !== 'cron-get' ||
+  res.body.payload?.report?.totalLeads !== 3 ||
+  res.body.payload?.trend?.hasPrevious !== true ||
+  res.body.payload?.trend?.totalLeadsDelta !== 1 ||
+  res.body.payload?.trend?.actionableDelta !== 1 ||
+  res.body.payload?.trend?.previousTopSource !== 'public-inquiry:xhs' ||
+  !String(res.body.payload?.summary || '').includes('较上次：总线索 +1｜可推进 +1')
+) {
+  throw new Error(`GET cron 趋势对比异常: ${JSON.stringify(res.body)}`);
+}
+
 console.log('lead-source-daily cron 冒烟通过:', {
   totalLeads: res.body.payload.report.totalLeads,
   topSource: res.body.payload.report.topSource?.source,
-  forwardedUrl: res.body.webhook?.url,
+  trend: res.body.payload.trend?.summary,
+  forwardedUrl: forwardedPayload ? 'https://example.com/cron-webhook' : null,
   forwardedStatus: res.body.webhook?.status,
   historyCount: res.body.history.length
 });

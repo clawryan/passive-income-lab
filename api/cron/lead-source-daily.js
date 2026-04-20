@@ -1,5 +1,5 @@
 const { readSnapshot } = require('../lead-capture');
-const { buildLeadSourceDailyPayload, forwardDailyPayload, saveDailyHistory, buildHistoryStorageMeta } = require('../lead-source-daily');
+const { buildLeadSourceDailyPayload, forwardDailyPayload, saveDailyHistory, buildHistoryStorageMeta, readHistoryStore } = require('../lead-source-daily');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -8,7 +8,8 @@ module.exports = async function handler(req, res) {
 
   try {
     const snapshot = await readSnapshot();
-    const payload = buildLeadSourceDailyPayload(snapshot);
+    const previousHistoryStore = await readHistoryStore();
+    const payload = buildLeadSourceDailyPayload(snapshot, { previousEntry: previousHistoryStore.latest || null });
     const forwardResult = await forwardDailyPayload(payload);
     const webhook = forwardResult || { forwarded: false, skipped: true, reason: 'LEAD_SOURCE_DAILY_WEBHOOK_URL is not configured' };
     const historyStore = await saveDailyHistory(payload, webhook, req.method === 'GET' ? 'cron-get' : 'cron-post');

@@ -189,7 +189,52 @@ function buildPortfolioReport(snapshot = {}) {
   };
 }
 
-function buildLeadSourceDailyPayload(snapshot = {}) {
+function formatDelta(value = 0) {
+  if (!value) return '持平';
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function buildTrend(report, previousEntry = null) {
+  if (!previousEntry) {
+    return {
+      hasPrevious: false,
+      previousGeneratedAt: null,
+      totalLeadsDelta: null,
+      actionableDelta: null,
+      overdueDelta: null,
+      topSourceChanged: false,
+      previousTopSource: null,
+      summary: '较上次：暂无可对比历史',
+      recommendationHint: '先连续跑满 2 次日报，再根据增减变化决定加推还是止损。'
+    };
+  }
+
+  const totalLeadsDelta = (report.totalLeads || 0) - (previousEntry.totalLeads || 0);
+  const actionableDelta = (report.actionableCount || 0) - (previousEntry.actionableCount || 0);
+  const overdueDelta = (report.overdueCount || 0) - (previousEntry.overdueCount || 0);
+  const previousTopSource = previousEntry.topSource?.source || previousEntry.topSource || null;
+  const currentTopSource = report.topSource?.source || null;
+  const topSourceChanged = Boolean(currentTopSource && previousTopSource && currentTopSource !== previousTopSource);
+  const recommendationHint = overdueDelta > 0
+    ? '超期待跟进在线增加，先清超72h线索，再继续加推新来源。'
+    : totalLeadsDelta > 0
+      ? '线索仍在增长，优先复用本轮有效来源和话术。'
+      : '新增线索停滞，先换分发入口或话术，再继续投入。';
+
+  return {
+    hasPrevious: true,
+    previousGeneratedAt: previousEntry.generatedAt || null,
+    totalLeadsDelta,
+    actionableDelta,
+    overdueDelta,
+    topSourceChanged,
+    previousTopSource,
+    summary: `较上次：总线索 ${formatDelta(totalLeadsDelta)}｜可推进 ${formatDelta(actionableDelta)}｜超72h未推进 ${formatDelta(overdueDelta)}${topSourceChanged ? `｜Top 来源由 ${previousTopSource} 切到 ${currentTopSource}` : ''}`,
+    recommendationHint
+  };
+}
+
+function buildLeadSourceDailyPayload(snapshot = {}, options = {}) {
   const report = buildPortfolioReport(snapshot);
   const sourceHighlights = report.sources.slice(0, 5).map((item, index) => ({
     rank: index + 1,
@@ -201,14 +246,16 @@ function buildLeadSourceDailyPayload(snapshot = {}) {
     lastUpdatedAt: item.lastUpdatedAt
   }));
   const topSource = report.topSource || sourceHighlights[0] || null;
+  const trend = buildTrend(report, options.previousEntry || null);
   const recommendation = topSource
     ? (topSource.quoted > 0 || topSource.won > 0
-        ? `优先继续加推 ${topSource.source}，它已经出现${topSource.won > 0 ? '成交' : '报价'}信号。`
-        : `先继续补量 ${topSource.source}，它在线索数上领先，但还需要更多报价/成交验证。`)
+        ? `优先继续加推 ${topSource.source}，它已经出现${topSource.won > 0 ? '成交' : '报价'}信号。${trend.recommendationHint ? ` ${trend.recommendationHint}` : ''}`
+        : `先继续补量 ${topSource.source}，它在线索数上领先，但还需要更多报价/成交验证。${trend.recommendationHint ? ` ${trend.recommendationHint}` : ''}`)
     : '今天先补首批分发动作，至少跑出 1 个可归因来源。';
   const summaryLines = [
     `Passive Income Lab 来源日报｜${new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
     `总线索：${report.totalLeads || 0}｜可推进：${report.actionableCount || 0}｜超72h未推进：${report.overdueCount || 0}`,
+    trend.summary,
     report.topProduct ? `当前最热产品：${report.topProduct.productTitle}（线索 ${report.topProduct.total}｜已报价 ${report.topProduct.quoted}｜已成交 ${report.topProduct.won}）` : '当前最热产品：暂无',
     topSource ? `当前最有效来源：${topSource.source}（线索 ${topSource.count || 0}｜待跟进 ${topSource.pending || 0}｜已报价 ${topSource.quoted || 0}｜已成交 ${topSource.won || 0}）` : '当前最有效来源：暂无',
     sourceHighlights.length
@@ -223,6 +270,7 @@ function buildLeadSourceDailyPayload(snapshot = {}) {
     generatedAt: report.generatedAt,
     payload: {
       report,
+      trend,
       sourceHighlights,
       recommendation,
       summary: summaryLines.join('\n'),
@@ -233,6 +281,7 @@ function buildLeadSourceDailyPayload(snapshot = {}) {
         `- 总线索：${report.totalLeads || 0}`,
         `- 可推进：${report.actionableCount || 0}`,
         `- 超72h未推进：${report.overdueCount || 0}`,
+        `- ${trend.summary}`,
         report.topProduct ? `- 当前最热产品：${report.topProduct.productTitle}（线索 ${report.topProduct.total}｜已报价 ${report.topProduct.quoted}｜已成交 ${report.topProduct.won}）` : '- 当前最热产品：暂无',
         topSource ? `- 当前最有效来源：${topSource.source}（线索 ${topSource.count || 0}｜待跟进 ${topSource.pending || 0}｜已报价 ${topSource.quoted || 0}｜已成交 ${topSource.won || 0}）` : '- 当前最有效来源：暂无',
         '',
@@ -267,10 +316,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const snapshot = await readSnapshot();
-    const payload = buildLeadSourceDailyPayload(snapshot);
+    const historyStore = await readHistoryStore();
+    const payload = buildLeadSourceDailyPayload(snapshot, { previousEntry: historyStore.latest || null });
 
     if (req.method === 'GET') {
-      const historyStore = await readHistoryStore();
       return res.status(200).json({
         ok: true,
         ...payload,
@@ -283,13 +332,13 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const dryRun = body.dryRun === true || body.forward === false;
     const forwardResult = dryRun ? { forwarded: false, dryRun: true } : await forwardDailyPayload(payload);
-    const historyStore = await saveDailyHistory(payload, forwardResult, dryRun ? 'manual-dry-run' : 'manual-post');
+    const nextHistoryStore = await saveDailyHistory(payload, forwardResult, dryRun ? 'manual-dry-run' : 'manual-post');
     return res.status(200).json({
       ok: true,
       ...payload,
       webhook: forwardResult,
-      latest: historyStore.latest || null,
-      history: historyStore.history || [],
+      latest: nextHistoryStore.latest || null,
+      history: nextHistoryStore.history || [],
       historyStorage: buildHistoryStorageMeta()
     });
   } catch (error) {
