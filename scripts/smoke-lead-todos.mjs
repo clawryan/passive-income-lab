@@ -194,6 +194,8 @@ const inquiryOutreachPack = context.buildInquiryOutreachPack('microSaas');
 const inquiryOutreachMarkdown = context.buildInquiryOutreachMarkdown('microSaas');
 const inquiryExperimentPlan = context.buildInquiryExperimentPlan('microSaas');
 const inquiryExperimentPlanText = context.buildInquiryExperimentPlanText('microSaas');
+const inquiryCadencePlan = context.buildInquiryCadencePlan('microSaas');
+const inquiryCadencePlanText = context.buildInquiryCadencePlanText('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -259,6 +261,8 @@ await context.copyInquiryOutreachPack();
 context.exportInquiryOutreachMarkdown();
 await context.copyInquiryExperimentPlan();
 context.exportInquiryExperimentJson();
+await context.copyInquiryCadencePlan();
+context.exportInquiryCadenceJson();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -340,6 +344,14 @@ if (inquiryExperimentPlan.totalChannels !== 3 || inquiryExperimentPlan.plan[0]?.
 
 if (!inquiryExperimentPlanText.includes('渠道实验清单') || !inquiryExperimentPlanText.includes('今日动作：') || !inquiryExperimentPlanText.includes('执行提醒：')) {
   throw new Error(`渠道实验文本异常: ${inquiryExperimentPlanText}`);
+}
+
+if (inquiryCadencePlan.totalChannels !== 3 || inquiryCadencePlan.days.length !== 7 || inquiryCadencePlan.primaryChannels.length < 1 || !inquiryCadencePlan.dailyReviewTemplate?.length) {
+  throw new Error(`7 天分发节奏 JSON 异常: ${JSON.stringify(inquiryCadencePlan)}`);
+}
+
+if (!inquiryCadencePlanText.includes('7 天渠道分发节奏') || !inquiryCadencePlanText.includes('Day 1｜') || !inquiryCadencePlanText.includes('每日复盘模板：')) {
+  throw new Error(`7 天分发节奏文本异常: ${inquiryCadencePlanText}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {
@@ -462,6 +474,10 @@ if (!downloadNames.some((name) => name.startsWith('inquiry-outreach-pack-') && n
 
 if (!downloadNames.some((name) => name.startsWith('inquiry-experiment-plan-') && name.endsWith('.json'))) {
   throw new Error(`未触发渠道实验 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('inquiry-cadence-plan-') && name.endsWith('.json'))) {
+  throw new Error(`未触发 7 天分发节奏 JSON 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {

@@ -155,6 +155,10 @@
               <button id="copyInquiryExperimentPlan" class="ghost">复制渠道实验清单</button>
               <button id="exportInquiryExperimentJson" class="ghost">导出渠道实验 JSON</button>
             </div>
+            <div class="grid g2">
+              <button id="copyInquiryCadencePlan" class="ghost">复制 7 天分发节奏</button>
+              <button id="exportInquiryCadenceJson" class="ghost">导出 7 天节奏 JSON</button>
+            </div>
           </div>
         </div>
         <div class="grid g2">
@@ -5029,6 +5033,169 @@ function buildInquiryExperimentPlanText(key){
   ].join('\n');
 }
 
+function buildInquiryCadencePlan(key){
+  const experimentPlan=buildInquiryExperimentPlan(key);
+  if(!experimentPlan.totalChannels){
+    return {
+      generatedAt:new Date().toISOString(),
+      productSlug:experimentPlan.productSlug,
+      productTitle:experimentPlan.productTitle,
+      totalChannels:0,
+      days:[],
+      dailyReviewTemplate:['暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。']
+    };
+  }
+  const primaryChannels=experimentPlan.plan.slice(0,Math.min(experimentPlan.plan.length,3));
+  const backlogChannels=experimentPlan.plan.slice(primaryChannels.length);
+  const days=[
+    {
+      day:1,
+      title:'启动 2-3 个主渠道',
+      objective:'先验证入口、文案和追踪参数都能正常工作，不急着铺太多。',
+      actions:[
+        ...primaryChannels.map((item,index)=>`发出 ${item.sourceTag}（${item.channelLabel}）首条分发，使用第 ${index+1} 条追踪询价链接。`),
+        '记录每条分发的发送时间、渠道位置和使用的文案版本。'
+      ],
+      review:['有没有至少 1 个渠道出现点击、回复或留资？','是否存在链接打不开、来源标签缺失、文案明显不顺的情况？']
+    },
+    {
+      day:2,
+      title:'24h 首轮复盘',
+      objective:'先看哪个入口有最小反馈，再决定是否继续推同类渠道。',
+      actions:[
+        '查看来源日报 / 线索快照，确认 Top 来源与可推进待办是否出现。',
+        '把无反馈渠道的开头一句和 CTA 改成更具体的收益承诺或交付样例。'
+      ],
+      review:['哪条渠道拿到第一条点击 / 留资？','无反馈渠道更像是渠道不对，还是文案不够像真实邀约？']
+    },
+    {
+      day:3,
+      title:'保留赢家，补 1 个新变体',
+      objective:'围绕已经有反馈的入口轻迭代，不要同时改太多变量。',
+      actions:[
+        '把前 24h 最有反馈的 1-2 个渠道继续推一轮。',
+        backlogChannels.length
+          ? `从候补渠道补 1 个新入口试跑：${backlogChannels[0].sourceTag}。`
+          : '若没有候补渠道，就只保留赢家渠道并替换 1 版开头文案。'
+      ],
+      review:['赢家渠道的反馈是点击多，还是留资更像真实购买意向？','新增变体有没有比昨天更快拿到首个信号？']
+    },
+    {
+      day:4,
+      title:'开始跟进已留资线索',
+      objective:'不要只看点击，把已有线索推进到“已发送资料 / 已报价”。',
+      actions:[
+        '对已留资线索发送统一资料包、FAQ 或报价摘要。',
+        '把需要人工跟进的线索推进到“已发送资料”或“已报价”状态。'
+      ],
+      review:['今天新增了多少可推进待办？','已留资线索卡在资料解释、报价，还是支付入口不清晰？']
+    },
+    {
+      day:5,
+      title:'放大有效来源',
+      objective:'开始把精力向当前最有效来源集中，而不是平均分配。',
+      actions:[
+        '优先复投当前最有效来源，并沿用最近 48h 反馈最好的开头和 CTA。',
+        '把无反馈渠道暂时降级，避免继续稀释时间和判断。'
+      ],
+      review:['最有效来源是否同时带来了点击和更高质量的留资？','是否出现值得单独做产品页 / 单独报价的细分场景？']
+    },
+    {
+      day:6,
+      title:'做一轮成交前推进',
+      objective:'把高意向线索向成交再推进一步，逼近真实收入验证。',
+      actions:[
+        '对已报价线索发送催单 / 补充说明 / 交付边界文本。',
+        '对已成交线索准备复购 / 转介绍素材，验证是否出现二次变现信号。'
+      ],
+      review:['高意向线索的主要阻力是价格、信任，还是交付边界？','是否需要补真实支付链接、案例或演示材料？']
+    },
+    {
+      day:7,
+      title:'周复盘与下周决策',
+      objective:'把这周实验收口成可继续执行的结论，而不是只停留在感觉。',
+      actions:[
+        '导出来源日报、线索总览和渠道实验清单，对比本周最有效来源与最热产品。',
+        '决定下周只保留 1-2 个高反馈来源，并写下要继续放大的文案角度。'
+      ],
+      review:['本周最值得继续推的来源是什么？','下周要继续放大的，是渠道、文案还是产品定位？']
+    }
+  ];
+  const dailyReviewTemplate=[
+    '今天新发了哪些渠道？各用了哪条追踪链接 / 文案版本？',
+    '今天新增了多少点击、留资、已发送资料、已报价、已成交？',
+    '当前最有效来源是谁？它比昨天是变好、持平还是变差？',
+    '今天最该改的，是开头一句、CTA、价格锚点还是交付说明？',
+    '明天只保留哪 1-2 个动作继续放大？'
+  ];
+  return {
+    generatedAt:new Date().toISOString(),
+    productSlug:experimentPlan.productSlug,
+    productTitle:experimentPlan.productTitle,
+    price:experimentPlan.price,
+    landingLink:experimentPlan.landingLink,
+    totalChannels:experimentPlan.totalChannels,
+    primaryChannels:primaryChannels.map(item=>({
+      sourceTag:item.sourceTag,
+      channelLabel:item.channelLabel,
+      inquiryLink:item.inquiryLink
+    })),
+    backlogChannels:backlogChannels.map(item=>({
+      sourceTag:item.sourceTag,
+      channelLabel:item.channelLabel,
+      inquiryLink:item.inquiryLink
+    })),
+    days,
+    dailyReviewTemplate
+  };
+}
+
+function buildInquiryCadencePlanText(key){
+  const cadence=buildInquiryCadencePlan(key);
+  if(!cadence.totalChannels){
+    return `${cadence.productTitle}｜7 天渠道分发节奏\n暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。`;
+  }
+  return [
+    `${cadence.productTitle}｜7 天渠道分发节奏`,
+    `共 ${cadence.totalChannels} 个渠道｜价格：${cadence.price}`,
+    `单产品页：${cadence.landingLink}`,
+    `优先渠道：${cadence.primaryChannels.map(item=>item.sourceTag).join(' / ')}`,
+    cadence.backlogChannels.length ? `候补渠道：${cadence.backlogChannels.map(item=>item.sourceTag).join(' / ')}` : '候补渠道：暂无，先把已有渠道跑透。',
+    '',
+    ...cadence.days.flatMap(day=>[
+      `Day ${day.day}｜${day.title}`,
+      `目标：${day.objective}`,
+      '动作：',
+      ...day.actions.map((line,index)=>`- ${line}`),
+      '复盘：',
+      ...day.review.map((line,index)=>`- ${line}`),
+      ''
+    ]),
+    '每日复盘模板：',
+    ...cadence.dailyReviewTemplate.map((line,index)=>`${index+1}. ${line}`)
+  ].join('\n').trim();
+}
+
+async function copyInquiryCadencePlan(){
+  const offer=getSelectedProduct();
+  const text=buildInquiryCadencePlanText(offer.key);
+  await copyText(text,'已复制 7 天渠道分发节奏');
+  const payload=buildInquiryCadencePlan(offer.key);
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=payload.totalChannels
+    ? `已复制 ${offer.title} 7 天分发节奏（${payload.totalChannels} 个渠道）。`
+    : '暂无可复制的 7 天分发节奏，请先填写批量来源标签。';
+}
+
+function exportInquiryCadenceJson(){
+  const offer=getSelectedProduct();
+  const payload=buildInquiryCadencePlan(offer.key);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`inquiry-cadence-plan-${offer.slug}-${ts}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=payload.totalChannels
+    ? `已导出 ${offer.title} 7 天分发节奏 JSON（${payload.totalChannels} 个渠道）。`
+    : '已导出空白 7 天分发节奏 JSON 模板。';
+}
+
 async function copyInquiryExperimentPlan(){
   const offer=getSelectedProduct();
   const text=buildInquiryExperimentPlanText(offer.key);
@@ -5511,6 +5678,8 @@ $("copyInquiryOutreachPack").addEventListener('click',copyInquiryOutreachPack);
 $("exportInquiryOutreachMarkdown").addEventListener('click',exportInquiryOutreachMarkdown);
 $("copyInquiryExperimentPlan").addEventListener('click',copyInquiryExperimentPlan);
 $("exportInquiryExperimentJson").addEventListener('click',exportInquiryExperimentJson);
+$("copyInquiryCadencePlan").addEventListener('click',copyInquiryCadencePlan);
+$("exportInquiryCadenceJson").addEventListener('click',exportInquiryCadenceJson);
 $("submitPublicInquiry").addEventListener('click',()=>submitPublicInquiry().catch((error)=>{$('publicInquiryStatus').textContent='公开询价提交失败：'+error.message;}));
 $("loadPublicInquiryTemplate").addEventListener('click',loadPublicInquiryTemplate);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
