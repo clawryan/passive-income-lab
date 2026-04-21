@@ -190,6 +190,8 @@ context.loadProductOpsDemo();
 context.document.getElementById('publicInquirySourceBatch').value = 'feishu-dm\nwechat-group\nxhs-post';
 const inquiryBatchLinks = context.buildInquiryBatchLinks('microSaas', context.document.getElementById('publicInquirySourceBatch').value);
 const inquiryBatchSummary = context.buildInquiryBatchLinksSummary('microSaas');
+const inquiryOutreachPack = context.buildInquiryOutreachPack('microSaas');
+const inquiryOutreachMarkdown = context.buildInquiryOutreachMarkdown('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -251,6 +253,8 @@ await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
 await context.copyInquiryBatchLinks();
 context.exportInquiryBatchJson();
+await context.copyInquiryOutreachPack();
+context.exportInquiryOutreachMarkdown();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -316,6 +320,14 @@ if (inquiryBatchLinks.length !== 3 || inquiryBatchLinks[0]?.sourceTag !== 'feish
 
 if (!inquiryBatchSummary.includes('渠道追踪询价链接包') || !inquiryBatchSummary.includes('feishu-dm') || !inquiryBatchSummary.includes('wechat-group') || !inquiryBatchSummary.includes('xhs-post')) {
   throw new Error(`渠道追踪链接摘要异常: ${inquiryBatchSummary}`);
+}
+
+if (!inquiryOutreachPack.includes('渠道分发文案包') || !inquiryOutreachPack.includes('飞书私聊') || !inquiryOutreachPack.includes('建议 CTA')) {
+  throw new Error(`分发文案包异常: ${inquiryOutreachPack}`);
+}
+
+if (!inquiryOutreachMarkdown.includes('# Micro-SaaS 冷启动提示词包 渠道分发文案包') || !inquiryOutreachMarkdown.includes('```text') || !inquiryOutreachMarkdown.includes('xhs-post')) {
+  throw new Error(`分发文案 Markdown 异常: ${inquiryOutreachMarkdown}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {

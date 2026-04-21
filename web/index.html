@@ -147,6 +147,10 @@
               <button id="copyInquiryBatchLinks" class="ghost">复制渠道追踪链接包</button>
               <button id="exportInquiryBatchJson" class="ghost">导出渠道追踪链接 JSON</button>
             </div>
+            <div class="grid g2">
+              <button id="copyInquiryOutreachPack" class="ghost">复制分发文案包</button>
+              <button id="exportInquiryOutreachMarkdown" class="ghost">导出分发文案 Markdown</button>
+            </div>
           </div>
         </div>
         <div class="grid g2">
@@ -4858,6 +4862,107 @@ function buildInquiryBatchLinksSummary(key){
   ].join('\n');
 }
 
+function getInquiryChannelLabel(sourceTag=''){
+  const normalized=String(sourceTag || '').trim().toLowerCase();
+  if(!normalized) return '泛渠道';
+  if(normalized.includes('feishu')) return '飞书私聊';
+  if(normalized.includes('wechat') || normalized.includes('weixin')) return '微信群 / 微信私聊';
+  if(normalized.includes('xhs') || normalized.includes('xiaohongshu') || normalized.includes('rednote')) return '小红书';
+  if(normalized.includes('zhihu')) return '知乎';
+  if(normalized.includes('douyin') || normalized.includes('tiktok')) return '抖音';
+  if(normalized.includes('telegram')) return 'Telegram';
+  return '泛渠道';
+}
+
+function buildInquiryOutreachMessage(item){
+  const offer=PRODUCT_OFFERS[item?.productSlug==='orion-nexus' ? 'orion' : 'microSaas'];
+  if(!offer || !item) return '';
+  const channelLabel=getInquiryChannelLabel(item.sourceTag);
+  const opening=channelLabel==='飞书私聊'
+    ? '我做了一个可直接在手机上填写的询价页，想请你帮我看下是否对你现在的业务更有帮助。'
+    : channelLabel==='微信群 / 微信私聊'
+      ? '这边做了一个可直接在手机上留资的询价页，如果你最近在看这类方案，可以直接点进去留需求。'
+      : channelLabel==='小红书'
+        ? '整理了一个适合手机直接填写的询价入口，想看具体交付和价格的话可以直接打开。'
+        : `整理了一个 ${offer.title} 的最小询价入口，感兴趣可直接打开填写需求。`;
+  return [
+    `【${channelLabel}｜${item.sourceTag}】`,
+    opening,
+    `${offer.title}｜${offer.price}`,
+    `适合：${offer.audience}`,
+    `交付：${offer.deliverables}`,
+    `询价链接：${item.inquiryLink}`,
+    `单产品说明：${item.landingLink}`,
+    '建议 CTA：如果你想先确认是否适合你，直接在表单里留需求/预算，我会按你的场景回。'
+  ].join('\n');
+}
+
+function buildInquiryOutreachPack(key){
+  const offer=PRODUCT_OFFERS[key];
+  const items=buildInquiryBatchLinks(key,$('publicInquirySourceBatch')?.value || '');
+  if(!offer) return '暂无可用产品';
+  if(!items.length){
+    return `${offer.title}｜分发文案包\n暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。`;
+  }
+  return [
+    `${offer.title}｜渠道分发文案包`,
+    `共 ${items.length} 条｜价格：${offer.price}`,
+    `适合：${offer.audience}`,
+    `交付：${offer.deliverables}`,
+    '',
+    ...items.flatMap((item,index)=>[
+      `--- ${index+1} / ${items.length} ---`,
+      buildInquiryOutreachMessage(item),
+      ''
+    ])
+  ].join('\n').trim();
+}
+
+function buildInquiryOutreachMarkdown(key){
+  const offer=PRODUCT_OFFERS[key];
+  const items=buildInquiryBatchLinks(key,$('publicInquirySourceBatch')?.value || '');
+  if(!offer) return '# 暂无可用产品';
+  return [
+    `# ${offer.title} 渠道分发文案包`,
+    '',
+    `- 价格：${offer.price}`,
+    `- 适合：${offer.audience}`,
+    `- 交付：${offer.deliverables}`,
+    `- 单产品页：${buildProductLandingLink(key)}`,
+    '',
+    items.length ? '## 渠道文案' : '## 渠道文案\n\n暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。',
+    ...items.flatMap((item,index)=>[
+      '',
+      `### ${index+1}. ${item.sourceTag}（${getInquiryChannelLabel(item.sourceTag)}）`,
+      '',
+      '```text',
+      buildInquiryOutreachMessage(item),
+      '```'
+    ])
+  ].join('\n').trim();
+}
+
+async function copyInquiryOutreachPack(){
+  const offer=getSelectedProduct();
+  const text=buildInquiryOutreachPack(offer.key);
+  await copyText(text,'已复制分发文案包');
+  const count=buildInquiryBatchLinks(offer.key,$('publicInquirySourceBatch')?.value || '').length;
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=count
+    ? `已复制 ${offer.title} 分发文案包（${count} 条）。`
+    : '暂无可复制的分发文案，请先填写批量来源标签。';
+}
+
+function exportInquiryOutreachMarkdown(){
+  const offer=getSelectedProduct();
+  const markdown=buildInquiryOutreachMarkdown(offer.key);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`inquiry-outreach-pack-${offer.slug}-${ts}.md`,markdown,'text/markdown;charset=utf-8');
+  const count=buildInquiryBatchLinks(offer.key,$('publicInquirySourceBatch')?.value || '').length;
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=count
+    ? `已导出 ${offer.title} 分发文案 Markdown（${count} 条）。`
+    : '已导出空白分发文案 Markdown 模板。';
+}
+
 async function copyInquiryBatchLinks(){
   const offer=getSelectedProduct();
   const text=buildInquiryBatchLinksSummary(offer.key);
@@ -5316,6 +5421,8 @@ $("copySelectedInquiryLink").addEventListener('click',copySelectedInquiryLink);
 $("openSelectedInquiryView").addEventListener('click',openSelectedInquiryView);
 $("copyInquiryBatchLinks").addEventListener('click',copyInquiryBatchLinks);
 $("exportInquiryBatchJson").addEventListener('click',exportInquiryBatchJson);
+$("copyInquiryOutreachPack").addEventListener('click',copyInquiryOutreachPack);
+$("exportInquiryOutreachMarkdown").addEventListener('click',exportInquiryOutreachMarkdown);
 $("submitPublicInquiry").addEventListener('click',()=>submitPublicInquiry().catch((error)=>{$('publicInquiryStatus').textContent='公开询价提交失败：'+error.message;}));
 $("loadPublicInquiryTemplate").addEventListener('click',loadPublicInquiryTemplate);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
