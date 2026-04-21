@@ -1,3 +1,9 @@
+## 2026-04-21 22:00 (Asia/Shanghai)
+- 公开询价区继续把“7 天渠道分发节奏”往可执行闭环推进：新增 **导出 7 天节奏 ICS**，可把 Day 1~Day 7 的分发与复盘提醒直接导入手机 / 电脑日历。
+- 新增 `getInquiryCadenceReminderAt()` / `buildInquiryCadenceIcs()` / `exportInquiryCadenceIcs()`，每一天会生成独立日历事件，默认 09:00 提醒，并附带当天目标、动作、复盘问题、优先渠道 / 候补渠道与单产品页链接。
+- `scripts/smoke-lead-todos.mjs` 已同步补上 ICS 内容结构与导出文件名断言，确认这条链路不是只在 UI 上多了一个按钮。
+- 下一步最值得做的是：把这份 7 天节奏继续接成 Todoist / 远程 webhook，或补“已执行 / 已复盘”状态，避免提醒发出后仍停留在手工记忆。
+
 ## 2026-04-21 17:00 (Asia/Shanghai)
 - 公开询价区新增 **7 天渠道分发节奏 / 每日复盘模板**：现在除了批量追踪链接、分发文案和“当天实验清单”，还能按当前来源标签一键展开 Day 1~Day 7 的执行节奏。
 - 新增 `buildInquiryCadencePlan()` / `buildInquiryCadencePlanText()`，并补上 **复制 7 天分发节奏**、**导出 7 天节奏 JSON** 两个动作；节奏里会自动区分优先渠道 / 候补渠道，并给出每天的目标、动作和复盘问题。

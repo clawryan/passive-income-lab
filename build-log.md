@@ -1,3 +1,7 @@
+- 这轮继续沿着“7 天渠道分发节奏”补最小可执行闭环，而不是再多写一层说明文档：`web/index.html` 的公开询价区新增 **导出 7 天节奏 ICS**，可把 Day 1~Day 7 的分发与复盘节奏直接扔进手机 / 电脑日历。
+- 新增 `getInquiryCadenceReminderAt()`、`buildInquiryCadenceIcs()`、`exportInquiryCadenceIcs()`；每一天都会生成独立日历事件，默认早上 09:00 提醒、提前 30 分钟弹窗，并在事件描述里带上当天目标、动作、复盘问题、优先渠道 / 候补渠道以及单产品页链接。
+- `scripts/smoke-lead-todos.mjs` 已同步扩展：不仅校验 7 天节奏 JSON / 文本，还会断言 ICS 内容中存在 `VCALENDAR / VALARM / URL`，并确认 `.ics` 下载文件名真的被触发，避免以后只剩一个看起来能点的按钮。
+- 结果：渠道实验不再只停留在“复制文本 / 导出 JSON”，而是更接近真实被手机日历持续提醒的一周执行计划。
 - 这轮没有继续扩新的日报字段，而是补了一个更接近“真实可运营”的低阻力缺口：`api/lead-source-daily.js` 与 `api/cron/lead-source-daily.js` 现在会把每次生成/发送的日报自动写入最近 7 次 `latest/history` 留档，方便直接确认 cron 是否真的跑过、上一次推送看到的是什么。
 - 新增本地文件 / KV 兼容的日报历史存储逻辑；`GET /api/lead-source-daily` 会返回 `latest/history`，`POST /api/lead-source-daily` 与 cron 触发则会在转发后同步落档，并记录 `trigger`、`topSource`、`recommendation` 与 webhook 结果。
 - 对应 `scripts/smoke-lead-source-daily.mjs` 与 `scripts/smoke-lead-source-daily-cron.mjs` 已扩展断言：不仅校验摘要和 webhook 转发，还会确认历史条目真的写入、最近一次触发来源正确。

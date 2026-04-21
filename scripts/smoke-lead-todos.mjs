@@ -196,6 +196,7 @@ const inquiryExperimentPlan = context.buildInquiryExperimentPlan('microSaas');
 const inquiryExperimentPlanText = context.buildInquiryExperimentPlanText('microSaas');
 const inquiryCadencePlan = context.buildInquiryCadencePlan('microSaas');
 const inquiryCadencePlanText = context.buildInquiryCadencePlanText('microSaas');
+const inquiryCadenceIcs = context.buildInquiryCadenceIcs('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -263,6 +264,7 @@ await context.copyInquiryExperimentPlan();
 context.exportInquiryExperimentJson();
 await context.copyInquiryCadencePlan();
 context.exportInquiryCadenceJson();
+context.exportInquiryCadenceIcs();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -352,6 +354,10 @@ if (inquiryCadencePlan.totalChannels !== 3 || inquiryCadencePlan.days.length !==
 
 if (!inquiryCadencePlanText.includes('7 天渠道分发节奏') || !inquiryCadencePlanText.includes('Day 1｜') || !inquiryCadencePlanText.includes('每日复盘模板：')) {
   throw new Error(`7 天分发节奏文本异常: ${inquiryCadencePlanText}`);
+}
+
+if (!inquiryCadenceIcs.includes('BEGIN:VCALENDAR') || !inquiryCadenceIcs.includes('SUMMARY:Micro-SaaS 冷启动提示词包｜Day 1 启动 2-3 个主渠道') || !inquiryCadenceIcs.includes('BEGIN:VALARM') || !inquiryCadenceIcs.includes('URL:https://example.com/web/?product=micro-saas')) {
+  throw new Error(`7 天分发节奏 ICS 异常: ${inquiryCadenceIcs}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {
@@ -478,6 +484,10 @@ if (!downloadNames.some((name) => name.startsWith('inquiry-experiment-plan-') &&
 
 if (!downloadNames.some((name) => name.startsWith('inquiry-cadence-plan-') && name.endsWith('.json'))) {
   throw new Error(`未触发 7 天分发节奏 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('inquiry-cadence-plan-') && name.endsWith('.ics'))) {
+  throw new Error(`未触发 7 天分发节奏 ICS 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {

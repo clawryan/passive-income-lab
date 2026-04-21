@@ -159,6 +159,10 @@
               <button id="copyInquiryCadencePlan" class="ghost">复制 7 天分发节奏</button>
               <button id="exportInquiryCadenceJson" class="ghost">导出 7 天节奏 JSON</button>
             </div>
+            <div class="grid g2">
+              <button id="exportInquiryCadenceIcs" class="ghost">导出 7 天节奏 ICS</button>
+              <div class="mini muted" style="display:flex;align-items:center">可直接导入手机/电脑日历，连续 7 天按节奏提醒自己复盘与分发。</div>
+            </div>
           </div>
         </div>
         <div class="grid g2">
@@ -5176,6 +5180,71 @@ function buildInquiryCadencePlanText(key){
   ].join('\n').trim();
 }
 
+function getInquiryCadenceReminderAt(dayNumber,baseDate=new Date()){
+  const reminderAt=new Date(baseDate);
+  reminderAt.setHours(9,0,0,0);
+  reminderAt.setDate(reminderAt.getDate()+Math.max(0,Number(dayNumber || 1)-1));
+  return reminderAt;
+}
+
+function buildInquiryCadenceIcs(key){
+  const cadence=buildInquiryCadencePlan(key);
+  const now=new Date();
+  const stamp=formatIcsDateTime(now);
+  const lines=[
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Passive Income Lab//Inquiry Cadence//CN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${escapeIcsText(`${cadence.productTitle} 7 天分发节奏`)}`,
+    'X-WR-TIMEZONE:Asia/Shanghai'
+  ];
+  if(!cadence.totalChannels){
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:inquiry-cadence-empty-${stamp}@passive-income-lab`);
+    lines.push(`DTSTAMP:${stamp}`);
+    lines.push(`DTSTART:${stamp}`);
+    lines.push(`DTEND:${formatIcsDateTime(new Date(now.getTime()+30*60*1000))}`);
+    lines.push(`SUMMARY:${escapeIcsText(`${cadence.productTitle}｜暂无 7 天分发节奏`)}`);
+    lines.push(`DESCRIPTION:${escapeIcsText('暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。')}`);
+    lines.push('END:VEVENT');
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+  cadence.days.forEach((day)=>{
+    const startAt=getInquiryCadenceReminderAt(day.day,now);
+    const endAt=new Date(startAt.getTime()+30*60*1000);
+    const description=[
+      `目标：${day.objective}`,
+      '动作：',
+      ...day.actions.map(line=>`- ${line}`),
+      '复盘：',
+      ...day.review.map(line=>`- ${line}`),
+      '',
+      `优先渠道：${cadence.primaryChannels.map(item=>item.sourceTag).join(' / ') || '暂无'}`,
+      cadence.backlogChannels.length ? `候补渠道：${cadence.backlogChannels.map(item=>item.sourceTag).join(' / ')}` : '候补渠道：暂无',
+      `单产品页：${cadence.landingLink}`
+    ].join('\n');
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:inquiry-cadence-day-${day.day}-${formatIcsDateTime(startAt)}@passive-income-lab`);
+    lines.push(`DTSTAMP:${stamp}`);
+    lines.push(`DTSTART:${formatIcsDateTime(startAt)}`);
+    lines.push(`DTEND:${formatIcsDateTime(endAt)}`);
+    lines.push(`SUMMARY:${escapeIcsText(`${cadence.productTitle}｜Day ${day.day} ${day.title}`)}`);
+    lines.push(`DESCRIPTION:${escapeIcsText(description)}`);
+    lines.push(`URL:${escapeIcsText(cadence.landingLink)}`);
+    lines.push('BEGIN:VALARM');
+    lines.push('ACTION:DISPLAY');
+    lines.push(`DESCRIPTION:${escapeIcsText(`${cadence.productTitle} Day ${day.day} 分发提醒`)}`);
+    lines.push('TRIGGER:-PT30M');
+    lines.push('END:VALARM');
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
 async function copyInquiryCadencePlan(){
   const offer=getSelectedProduct();
   const text=buildInquiryCadencePlanText(offer.key);
@@ -5194,6 +5263,17 @@ function exportInquiryCadenceJson(){
   if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=payload.totalChannels
     ? `已导出 ${offer.title} 7 天分发节奏 JSON（${payload.totalChannels} 个渠道）。`
     : '已导出空白 7 天分发节奏 JSON 模板。';
+}
+
+function exportInquiryCadenceIcs(){
+  const offer=getSelectedProduct();
+  const payload=buildInquiryCadencePlan(offer.key);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  const ics=buildInquiryCadenceIcs(offer.key);
+  downloadFile(`inquiry-cadence-plan-${offer.slug}-${ts}.ics`,ics,'text/calendar;charset=utf-8');
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=payload.totalChannels
+    ? `已导出 ${offer.title} 7 天分发节奏 ICS（${payload.totalChannels} 天）。`
+    : '已导出空白 7 天分发节奏 ICS 模板。';
 }
 
 async function copyInquiryExperimentPlan(){
@@ -5680,6 +5760,7 @@ $("copyInquiryExperimentPlan").addEventListener('click',copyInquiryExperimentPla
 $("exportInquiryExperimentJson").addEventListener('click',exportInquiryExperimentJson);
 $("copyInquiryCadencePlan").addEventListener('click',copyInquiryCadencePlan);
 $("exportInquiryCadenceJson").addEventListener('click',exportInquiryCadenceJson);
+$("exportInquiryCadenceIcs").addEventListener('click',exportInquiryCadenceIcs);
 $("submitPublicInquiry").addEventListener('click',()=>submitPublicInquiry().catch((error)=>{$('publicInquiryStatus').textContent='公开询价提交失败：'+error.message;}));
 $("loadPublicInquiryTemplate").addEventListener('click',loadPublicInquiryTemplate);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
