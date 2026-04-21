@@ -192,6 +192,8 @@ const inquiryBatchLinks = context.buildInquiryBatchLinks('microSaas', context.do
 const inquiryBatchSummary = context.buildInquiryBatchLinksSummary('microSaas');
 const inquiryOutreachPack = context.buildInquiryOutreachPack('microSaas');
 const inquiryOutreachMarkdown = context.buildInquiryOutreachMarkdown('microSaas');
+const inquiryExperimentPlan = context.buildInquiryExperimentPlan('microSaas');
+const inquiryExperimentPlanText = context.buildInquiryExperimentPlanText('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -255,6 +257,8 @@ await context.copyInquiryBatchLinks();
 context.exportInquiryBatchJson();
 await context.copyInquiryOutreachPack();
 context.exportInquiryOutreachMarkdown();
+await context.copyInquiryExperimentPlan();
+context.exportInquiryExperimentJson();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -328,6 +332,14 @@ if (!inquiryOutreachPack.includes('渠道分发文案包') || !inquiryOutreachPa
 
 if (!inquiryOutreachMarkdown.includes('# Micro-SaaS 冷启动提示词包 渠道分发文案包') || !inquiryOutreachMarkdown.includes('```text') || !inquiryOutreachMarkdown.includes('xhs-post')) {
   throw new Error(`分发文案 Markdown 异常: ${inquiryOutreachMarkdown}`);
+}
+
+if (inquiryExperimentPlan.totalChannels !== 3 || inquiryExperimentPlan.plan[0]?.sourceTag !== 'feishu-dm' || !inquiryExperimentPlan.checklist?.length) {
+  throw new Error(`渠道实验 JSON 异常: ${JSON.stringify(inquiryExperimentPlan)}`);
+}
+
+if (!inquiryExperimentPlanText.includes('渠道实验清单') || !inquiryExperimentPlanText.includes('今日动作：') || !inquiryExperimentPlanText.includes('执行提醒：')) {
+  throw new Error(`渠道实验文本异常: ${inquiryExperimentPlanText}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {
@@ -442,6 +454,14 @@ if (!items.some((item) => ['已超期', '即将超期', '节奏正常'].includes
 const downloadNames = downloads.map((item) => item.download);
 if (!downloadNames.some((name) => name.startsWith('inquiry-link-batch-') && name.endsWith('.json'))) {
   throw new Error(`未触发渠道追踪链接 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('inquiry-outreach-pack-') && name.endsWith('.md'))) {
+  throw new Error(`未触发分发文案 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('inquiry-experiment-plan-') && name.endsWith('.json'))) {
+  throw new Error(`未触发渠道实验 JSON 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {

@@ -1,3 +1,9 @@
+## 2026-04-21 14:00 (Asia/Shanghai)
+- 公开询价区新增 **渠道实验清单**：现在除了批量生成追踪询价链接和分发文案，还能按当前来源标签一键生成“今日先发哪些渠道 / 每条看什么成功信号 / 24h 后怎么跟进 / 无反馈先改什么”的执行清单。
+- 新增 `buildInquiryExperimentPlan()` / `buildInquiryExperimentPlanText()`，并补上 **复制渠道实验清单**、**导出渠道实验 JSON** 两个动作；这样手机端或协作者不必再把链接包和文案包手工整理成执行列表。
+- `scripts/smoke-lead-todos.mjs` 已同步回归校验渠道实验 JSON、文本清单和导出文件名，确认这条链路不是只停留在 UI 按钮层。
+- 下一步最值得做的是：把这份渠道实验清单再补成“7 天渠道分发节奏 / 每日复盘模板”或直接接到 Todoist / 日历提醒，让外发实验更容易持续跑而不是只做一天。
+
 ## 2026-04-21 08:00 (Asia/Shanghai)
 - 这轮没有继续堆更多日报模板，而是补了一个更贴近真实获客执行的低阻力入口：`web/index.html` 的公开询价区现在支持批量输入来源标签（如 `feishu-dm / wechat-group / xhs-post`），并一键复制或导出对应的**渠道追踪询价链接包**。
 - 新增 `parseInquirySourceBatch()`、`buildInquiryBatchLinks()`、`buildInquiryBatchLinksSummary()`、`copyInquiryBatchLinks()`、`exportInquiryBatchJson()`；现在可以把同一产品快速分发到多个渠道，并保持每条询价链接都带独立 `src` 参数，后续来源日报才有更细的归因颗粒度。

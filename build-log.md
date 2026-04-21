@@ -150,6 +150,13 @@
 
 # Build Log
 
+## 2026-04-21 14:00 (Asia/Shanghai)
+- 这轮没有继续堆新的来源日报模板，而是顺着上午已经补好的“渠道追踪链接包 + 分发文案包”再往前推一步，补了一个更贴近真实执行的低阻力缺口：**渠道实验清单**。
+- `web/index.html` 的公开询价区新增 2 个动作：**复制渠道实验清单**、**导出渠道实验 JSON**；会基于当前批量来源标签，自动整理出每个渠道的追踪询价链接、渠道类型、成功信号与 24h 后的默认跟进动作。
+- 新增 `buildInquiryExperimentPlan()` / `buildInquiryExperimentPlanText()` / `copyInquiryExperimentPlan()` / `exportInquiryExperimentJson()`，把“链接 + 文案”进一步收口成“今天先发哪些渠道、之后看什么信号、没反馈先改什么”的执行清单。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖这条链路，断言渠道实验 JSON 结构、文本清单内容与下载文件名，避免它只是新加了两个按钮。
+- 结果：公开询价入口现在不只会生成链接和话术，还能直接产出最小增长实验清单，更适合在手机端照着发、24h 后再按来源日报复盘。
+
 ## 2026-04-19 08:00 (Asia/Shanghai)
 - 这轮没有再扩新日报字段，而是补了一个更接近“可交付验收”的低阻力缺口：新增 `scripts/generate-lead-source-daily-proof.mjs`，会自动种入演示线索，顺序执行 `GET /api/lead-source-daily`、`POST dryRun`、手动 webhook 转发、`POST /api/cron/lead-source-daily`，并把结果固化成 `outputs/lead-source-daily-local-proof.md` 与 `outputs/lead-source-daily-local-proof.json`。
 - `package.json` 新增 `npm run proof:lead-source-daily`，方便以后每次改来源日报逻辑后都快速再生成一份可分享的“latest/history 确实在增长”的本地证据，而不只是看终端日志。

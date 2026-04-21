@@ -151,6 +151,10 @@
               <button id="copyInquiryOutreachPack" class="ghost">复制分发文案包</button>
               <button id="exportInquiryOutreachMarkdown" class="ghost">导出分发文案 Markdown</button>
             </div>
+            <div class="grid g2">
+              <button id="copyInquiryExperimentPlan" class="ghost">复制渠道实验清单</button>
+              <button id="exportInquiryExperimentJson" class="ghost">导出渠道实验 JSON</button>
+            </div>
           </div>
         </div>
         <div class="grid g2">
@@ -4963,6 +4967,88 @@ function exportInquiryOutreachMarkdown(){
     : '已导出空白分发文案 Markdown 模板。';
 }
 
+function buildInquiryExperimentPlan(key){
+  const offer=PRODUCT_OFFERS[key];
+  const items=buildInquiryBatchLinks(key,$('publicInquirySourceBatch')?.value || '');
+  if(!offer){
+    return {
+      productSlug:'',
+      productTitle:'暂无可用产品',
+      totalChannels:0,
+      plan:[],
+      checklist:['暂无可用产品']
+    };
+  }
+  const plan=items.map((item,index)=>({
+    rank:index+1,
+    sourceTag:item.sourceTag,
+    channelLabel:getInquiryChannelLabel(item.sourceTag),
+    inquiryLink:item.inquiryLink,
+    landingLink:item.landingLink,
+    outreachMessage:buildInquiryOutreachMessage(item),
+    successSignal:index===0
+      ? '今天先拿到第 1 条有效询价 / 回复，确认入口不是死的。'
+      : '至少拿到 1 次点击或 1 条带来源标签的留资，便于进入来源日报。',
+    followupAction:'若 24h 内无点击/留资，优先改开头一句和 CTA，而不是继续堆新渠道。'
+  }));
+  const checklist=[
+    `先发 ${Math.min(plan.length,3) || 1} 个渠道，避免一次铺太散后无法判断来源。`,
+    '每个渠道只保留 1 条主文案 + 1 条追踪询价链接，先看是否有人点开或留资。',
+    '24h 后查看来源日报，优先继续推有点击/留资的来源。',
+    '若 72h 仍无有效询价，先改文案开头或报价锚点，再决定是否换产品。'
+  ];
+  return {
+    generatedAt:new Date().toISOString(),
+    productSlug:offer.slug,
+    productTitle:offer.title,
+    price:offer.price,
+    audience:offer.audience,
+    deliverables:offer.deliverables,
+    landingLink:buildProductLandingLink(key),
+    totalChannels:plan.length,
+    plan,
+    checklist
+  };
+}
+
+function buildInquiryExperimentPlanText(key){
+  const plan=buildInquiryExperimentPlan(key);
+  if(!plan.totalChannels){
+    return `${plan.productTitle}｜渠道实验清单\n暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。`;
+  }
+  return [
+    `${plan.productTitle}｜渠道实验清单`,
+    `共 ${plan.totalChannels} 个渠道｜价格：${plan.price}`,
+    `单产品页：${plan.landingLink}`,
+    '',
+    '今日动作：',
+    ...plan.plan.map(item=>`${item.rank}. ${item.sourceTag}（${item.channelLabel}）\n- 追踪询价：${item.inquiryLink}\n- 成功信号：${item.successSignal}\n- 跟进动作：${item.followupAction}`),
+    '',
+    '执行提醒：',
+    ...plan.checklist.map((line,index)=>`${index+1}. ${line}`)
+  ].join('\n');
+}
+
+async function copyInquiryExperimentPlan(){
+  const offer=getSelectedProduct();
+  const text=buildInquiryExperimentPlanText(offer.key);
+  await copyText(text,'已复制渠道实验清单');
+  const count=buildInquiryBatchLinks(offer.key,$('publicInquirySourceBatch')?.value || '').length;
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=count
+    ? `已复制 ${offer.title} 渠道实验清单（${count} 条）。`
+    : '暂无可复制的渠道实验清单，请先填写批量来源标签。';
+}
+
+function exportInquiryExperimentJson(){
+  const offer=getSelectedProduct();
+  const payload=buildInquiryExperimentPlan(offer.key);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`inquiry-experiment-plan-${offer.slug}-${ts}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=payload.totalChannels
+    ? `已导出 ${offer.title} 渠道实验 JSON（${payload.totalChannels} 条）。`
+    : '已导出空白渠道实验 JSON 模板。';
+}
+
 async function copyInquiryBatchLinks(){
   const offer=getSelectedProduct();
   const text=buildInquiryBatchLinksSummary(offer.key);
@@ -5423,6 +5509,8 @@ $("copyInquiryBatchLinks").addEventListener('click',copyInquiryBatchLinks);
 $("exportInquiryBatchJson").addEventListener('click',exportInquiryBatchJson);
 $("copyInquiryOutreachPack").addEventListener('click',copyInquiryOutreachPack);
 $("exportInquiryOutreachMarkdown").addEventListener('click',exportInquiryOutreachMarkdown);
+$("copyInquiryExperimentPlan").addEventListener('click',copyInquiryExperimentPlan);
+$("exportInquiryExperimentJson").addEventListener('click',exportInquiryExperimentJson);
 $("submitPublicInquiry").addEventListener('click',()=>submitPublicInquiry().catch((error)=>{$('publicInquiryStatus').textContent='公开询价提交失败：'+error.message;}));
 $("loadPublicInquiryTemplate").addEventListener('click',loadPublicInquiryTemplate);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
