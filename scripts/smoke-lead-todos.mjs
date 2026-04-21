@@ -187,6 +187,9 @@ vm.createContext(context);
 vm.runInContext(scripts.join('\n\n'), context, { filename: 'web/index.html::<script>' });
 
 context.loadProductOpsDemo();
+context.document.getElementById('publicInquirySourceBatch').value = 'feishu-dm\nwechat-group\nxhs-post';
+const inquiryBatchLinks = context.buildInquiryBatchLinks('microSaas', context.document.getElementById('publicInquirySourceBatch').value);
+const inquiryBatchSummary = context.buildInquiryBatchLinksSummary('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -246,6 +249,8 @@ const sourceDailyTrendPayload = context.buildLeadSourceDailyWebhookPayload();
 const leadSourceDailyHistory = context.readLeadSourceDailyHistory();
 await context.shareLeadTodoSummary();
 await context.shareLeadPortfolioSummary();
+await context.copyInquiryBatchLinks();
+context.exportInquiryBatchJson();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -303,6 +308,14 @@ if (!portfolioSummary.includes('跨产品线索摘要｜共 6 条') || !portfoli
 
 if (!portfolioMarkdown.includes('# Passive Income Lab 跨产品线索总览') || !portfolioMarkdown.includes('## 产品分布') || !portfolioMarkdown.includes('## 来源分布')) {
   throw new Error(`跨产品线索 Markdown 异常: ${portfolioMarkdown}`);
+}
+
+if (inquiryBatchLinks.length !== 3 || inquiryBatchLinks[0]?.sourceTag !== 'feishu-dm' || !inquiryBatchLinks.every((item) => String(item.inquiryLink || '').includes('view=inquiry') && String(item.inquiryLink || '').includes('src='))) {
+  throw new Error(`渠道追踪链接包异常: ${JSON.stringify(inquiryBatchLinks)}`);
+}
+
+if (!inquiryBatchSummary.includes('渠道追踪询价链接包') || !inquiryBatchSummary.includes('feishu-dm') || !inquiryBatchSummary.includes('wechat-group') || !inquiryBatchSummary.includes('xhs-post')) {
+  throw new Error(`渠道追踪链接摘要异常: ${inquiryBatchSummary}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {
@@ -415,6 +428,10 @@ if (!items.some((item) => ['已超期', '即将超期', '节奏正常'].includes
 }
 
 const downloadNames = downloads.map((item) => item.download);
+if (!downloadNames.some((name) => name.startsWith('inquiry-link-batch-') && name.endsWith('.json'))) {
+  throw new Error(`未触发渠道追踪链接 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {
   throw new Error(`未触发线索待办 JSON 导出: ${JSON.stringify(downloads)}`);
 }

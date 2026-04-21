@@ -1,3 +1,10 @@
+## 2026-04-21 08:00 (Asia/Shanghai)
+- 这轮没有继续堆更多日报模板，而是补了一个更贴近真实获客执行的低阻力入口：`web/index.html` 的公开询价区现在支持批量输入来源标签（如 `feishu-dm / wechat-group / xhs-post`），并一键复制或导出对应的**渠道追踪询价链接包**。
+- 新增 `parseInquirySourceBatch()`、`buildInquiryBatchLinks()`、`buildInquiryBatchLinksSummary()`、`copyInquiryBatchLinks()`、`exportInquiryBatchJson()`；现在可以把同一产品快速分发到多个渠道，并保持每条询价链接都带独立 `src` 参数，后续来源日报才有更细的归因颗粒度。
+- `README.md` 已同步补上这项能力说明；`scripts/smoke-lead-todos.mjs` 也会回归校验“批量来源标签 -> 复制链接包 / 导出 JSON”链路，避免以后改 UI 时悄悄失效。
+- 这一步比继续加说明文档更接近真实增长：用户现在能立刻把同一产品以不同来源标签发到飞书、微信群、小红书等渠道，后续再根据 `lead-source-daily` 看哪条分发更值得继续推。
+- 下一步最值得做的是：把这批追踪链接再补一份“分发动作模板 / 文案包”，让今天生成链接后可以直接开始外发实验，而不是手工再写一轮话术。
+
 ## 2026-04-17 17:00 (Asia/Shanghai)
 - 新增 `api/lead-source-daily.js`，可直接基于 `lead-capture` 快照生成真实 `lead-source-daily-digest` payload；`GET` 返回摘要/Markdown/来源高亮，`POST` 可选直接转发到 webhook，终于把“来源日报模板”补成了可被调度器直接调用的 API。
 - 新增 `scripts/smoke-lead-source-daily.mjs`，并把它纳入 `npm run validate`；现在不仅能验证页面里那套来源日报按钮，还能验证后端 API 确实会产出 `topSource / recommendation / markdown` 并可转发出去。
