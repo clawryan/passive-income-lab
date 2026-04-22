@@ -34,6 +34,7 @@ class Element {
   remove() {}
   click() {}
   select() {}
+  querySelectorAll() { return []; }
 }
 
 const elements = new Map(ids.map((id) => [id, new Element(id)]));
@@ -197,6 +198,11 @@ const inquiryExperimentPlanText = context.buildInquiryExperimentPlanText('microS
 const inquiryCadencePlan = context.buildInquiryCadencePlan('microSaas');
 const inquiryCadencePlanText = context.buildInquiryCadencePlanText('microSaas');
 const inquiryCadenceIcs = context.buildInquiryCadenceIcs('microSaas');
+const initialCadenceStatus = context.getInquiryCadenceStatusSnapshot('microSaas');
+context.cycleInquiryCadenceDayStatus('microSaas', 1);
+context.cycleInquiryCadenceDayStatus('microSaas', 1);
+const updatedCadenceStatus = context.getInquiryCadenceStatusSnapshot('microSaas');
+const inquiryCadenceStatusSummary = context.buildInquiryCadenceStatusSummaryText('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -265,6 +271,8 @@ context.exportInquiryExperimentJson();
 await context.copyInquiryCadencePlan();
 context.exportInquiryCadenceJson();
 context.exportInquiryCadenceIcs();
+await context.copyInquiryCadenceStatusSummary();
+context.exportInquiryCadenceStatusJson();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -358,6 +366,14 @@ if (!inquiryCadencePlanText.includes('7 天渠道分发节奏') || !inquiryCaden
 
 if (!inquiryCadenceIcs.includes('BEGIN:VCALENDAR') || !inquiryCadenceIcs.includes('SUMMARY:Micro-SaaS 冷启动提示词包｜Day 1 启动 2-3 个主渠道') || !inquiryCadenceIcs.includes('BEGIN:VALARM') || !inquiryCadenceIcs.includes('URL:https://example.com/web/?product=micro-saas')) {
   throw new Error(`7 天分发节奏 ICS 异常: ${inquiryCadenceIcs}`);
+}
+
+if (initialCadenceStatus.totalDays !== 7 || initialCadenceStatus.completedDays !== 0 || updatedCadenceStatus.reviewedDays !== 1 || updatedCadenceStatus.completedDays !== 1 || updatedCadenceStatus.nextFocus?.day !== 2) {
+  throw new Error(`7 天节奏执行状态异常: ${JSON.stringify({ initialCadenceStatus, updatedCadenceStatus })}`);
+}
+
+if (!inquiryCadenceStatusSummary.includes('7 天节奏执行摘要') || !inquiryCadenceStatusSummary.includes('Day 1｜启动 2-3 个主渠道｜已复盘') || !inquiryCadenceStatusSummary.includes('下一焦点：Day 2 24h 首轮复盘')) {
+  throw new Error(`7 天节奏执行摘要异常: ${inquiryCadenceStatusSummary}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {

@@ -1,3 +1,10 @@
+## 2026-04-22 08:00 (Asia/Shanghai)
+- 这轮优先补了比接第三方更低阻力、但更贴近真实执行的闭环：公开询价区现新增 **7 天节奏执行看板**，可按当前产品把 Day 1~Day 7 逐天切换为“待执行 / 已执行 / 已复盘”。
+- 新增 `INQUIRY_CADENCE_STATUS_KEY`、`getInquiryCadenceStatusSnapshot()`、`cycleInquiryCadenceDayStatus()`、`buildInquiryCadenceStatusSummaryText()`、`renderInquiryCadenceStatusBoard()`、`copyInquiryCadenceStatusSummary()`、`exportInquiryCadenceStatusJson()`；状态默认保存在浏览器本地，适合手机 / 电脑接力时快速确认本周分发已经推进到哪一天。
+- `scripts/smoke-lead-todos.mjs` 已同步补上 Day 1 状态从 `待执行 -> 已执行 -> 已复盘` 的断言，以及执行摘要 / 执行 JSON 导出回归，确认这条链路不是只在 UI 上多了个状态框。
+- 验证已通过：`npm run validate`。
+- 下一步最值得做的是：把这份节奏执行状态继续接到 Todoist / Webhook / 远程快照，避免浏览器本地状态无法跨设备自动同步。
+
 ## 2026-04-21 22:00 (Asia/Shanghai)
 - 公开询价区继续把“7 天渠道分发节奏”往可执行闭环推进：新增 **导出 7 天节奏 ICS**，可把 Day 1~Day 7 的分发与复盘提醒直接导入手机 / 电脑日历。
 - 新增 `getInquiryCadenceReminderAt()` / `buildInquiryCadenceIcs()` / `exportInquiryCadenceIcs()`，每一天会生成独立日历事件，默认 09:00 提醒，并附带当天目标、动作、复盘问题、优先渠道 / 候补渠道与单产品页链接。

@@ -163,6 +163,11 @@
               <button id="exportInquiryCadenceIcs" class="ghost">导出 7 天节奏 ICS</button>
               <div class="mini muted" style="display:flex;align-items:center">可直接导入手机/电脑日历，连续 7 天按节奏提醒自己复盘与分发。</div>
             </div>
+            <div class="grid g2">
+              <button id="copyInquiryCadenceStatusSummary" class="ghost">复制节奏执行摘要</button>
+              <button id="exportInquiryCadenceStatusJson" class="ghost">导出节奏执行 JSON</button>
+            </div>
+            <div id="inquiryCadenceStatusBoard" class="mini muted">执行进度：默认按当前产品保存到浏览器本地；点击下方卡片可切换“待执行 / 已执行 / 已复盘”。</div>
           </div>
         </div>
         <div class="grid g2">
@@ -5180,6 +5185,134 @@ function buildInquiryCadencePlanText(key){
   ].join('\n').trim();
 }
 
+const INQUIRY_CADENCE_STATUS_KEY='passive-income-lab-inquiry-cadence-status-v1';
+const INQUIRY_CADENCE_STATUS_ORDER=['pending','done','reviewed'];
+const INQUIRY_CADENCE_STATUS_LABELS={
+  pending:'待执行',
+  done:'已执行',
+  reviewed:'已复盘'
+};
+
+function loadInquiryCadenceStatuses(){
+  try{
+    return JSON.parse(localStorage.getItem(INQUIRY_CADENCE_STATUS_KEY) || '{}') || {};
+  }catch(_error){
+    return {};
+  }
+}
+
+function saveInquiryCadenceStatuses(value){
+  localStorage.setItem(INQUIRY_CADENCE_STATUS_KEY,JSON.stringify(value || {}));
+}
+
+function getInquiryCadenceStatusSnapshot(key){
+  const cadence=buildInquiryCadencePlan(key);
+  const store=loadInquiryCadenceStatuses();
+  const raw=store?.[cadence.productSlug] || {};
+  const days=(cadence.days || []).map((day)=>{
+    const status=INQUIRY_CADENCE_STATUS_ORDER.includes(raw?.[day.day]?.status) ? raw[day.day].status : 'pending';
+    return {
+      day:day.day,
+      title:day.title,
+      objective:day.objective,
+      status,
+      statusLabel:INQUIRY_CADENCE_STATUS_LABELS[status] || '待执行',
+      updatedAt:raw?.[day.day]?.updatedAt || ''
+    };
+  });
+  const counts=days.reduce((acc,item)=>{
+    acc[item.status]=(acc[item.status] || 0)+1;
+    return acc;
+  },{pending:0,done:0,reviewed:0});
+  return {
+    generatedAt:new Date().toISOString(),
+    productSlug:cadence.productSlug,
+    productTitle:cadence.productTitle,
+    landingLink:cadence.landingLink,
+    totalDays:days.length,
+    completedDays:counts.done+counts.reviewed,
+    reviewedDays:counts.reviewed,
+    counts,
+    days,
+    nextFocus:days.find(item=>item.status!=='reviewed') || null
+  };
+}
+
+function cycleInquiryCadenceDayStatus(key,dayNumber){
+  const cadence=buildInquiryCadencePlan(key);
+  if(!cadence.totalChannels) return null;
+  const store=loadInquiryCadenceStatuses();
+  const productStatuses={...(store?.[cadence.productSlug] || {})};
+  const currentStatus=INQUIRY_CADENCE_STATUS_ORDER.includes(productStatuses?.[dayNumber]?.status) ? productStatuses[dayNumber].status : 'pending';
+  const currentIndex=INQUIRY_CADENCE_STATUS_ORDER.indexOf(currentStatus);
+  const nextStatus=INQUIRY_CADENCE_STATUS_ORDER[(currentIndex+1)%INQUIRY_CADENCE_STATUS_ORDER.length];
+  productStatuses[dayNumber]={
+    status:nextStatus,
+    updatedAt:new Date().toISOString()
+  };
+  store[cadence.productSlug]=productStatuses;
+  saveInquiryCadenceStatuses(store);
+  renderInquiryCadenceStatusBoard();
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=`已把 ${cadence.productTitle} Day ${dayNumber} 切换为「${INQUIRY_CADENCE_STATUS_LABELS[nextStatus]}」。`;
+  return nextStatus;
+}
+
+function buildInquiryCadenceStatusSummaryText(key){
+  const snapshot=getInquiryCadenceStatusSnapshot(key);
+  if(!snapshot.totalDays){
+    return `${snapshot.productTitle}｜节奏执行摘要\n暂无来源标签，请先输入如 feishu-dm / wechat-group / xhs-post。`;
+  }
+  return [
+    `${snapshot.productTitle}｜7 天节奏执行摘要`,
+    `已执行 ${snapshot.completedDays}/${snapshot.totalDays}｜已复盘 ${snapshot.reviewedDays}/${snapshot.totalDays}`,
+    `状态分布：待执行 ${snapshot.counts.pending}｜已执行 ${snapshot.counts.done}｜已复盘 ${snapshot.counts.reviewed}`,
+    `下一焦点：${snapshot.nextFocus ? `Day ${snapshot.nextFocus.day} ${snapshot.nextFocus.title}（${snapshot.nextFocus.statusLabel}）` : '7 天已全部复盘，可开始下一轮渠道实验。'}`,
+    `单产品页：${snapshot.landingLink}`,
+    '',
+    ...snapshot.days.map(day=>`Day ${day.day}｜${day.title}｜${day.statusLabel}${day.updatedAt ? `｜更新 ${formatProductOpsTimestamp(day.updatedAt)}` : ''}`)
+  ].join('\n');
+}
+
+function renderInquiryCadenceStatusBoard(){
+  const board=$('inquiryCadenceStatusBoard');
+  if(!board) return;
+  const offer=getSelectedProduct();
+  const snapshot=getInquiryCadenceStatusSnapshot(offer.key);
+  if(!snapshot.totalDays){
+    board.className='mini muted';
+    board.innerHTML='执行进度：暂无 7 天节奏，请先填写批量来源标签，再把每天标记为“待执行 / 已执行 / 已复盘”。';
+    return;
+  }
+  const cards=snapshot.days.map(day=>`<button class="ghost" data-inquiry-cadence-day="${day.day}" style="text-align:left;padding:10px 12px"><b>Day ${day.day}</b>｜${day.statusLabel}<br><span class="mini muted">${day.title}${day.updatedAt ? `｜更新 ${formatProductOpsTimestamp(day.updatedAt)}` : ''}</span></button>`).join('');
+  board.className='stack';
+  board.innerHTML=`<div class="mini muted">执行进度：已执行 ${snapshot.completedDays}/${snapshot.totalDays}｜已复盘 ${snapshot.reviewedDays}/${snapshot.totalDays}｜下一焦点：${snapshot.nextFocus ? `Day ${snapshot.nextFocus.day} ${snapshot.nextFocus.title}` : '全部完成'}</div><div class="grid g2">${cards}</div><div class="mini muted">点击卡片可循环切换状态：待执行 → 已执行 → 已复盘。</div>`;
+  if(typeof board.querySelectorAll==='function'){
+    board.querySelectorAll('[data-inquiry-cadence-day]').forEach((button)=>{
+      button.addEventListener('click',()=>cycleInquiryCadenceDayStatus(offer.key,Number(button.dataset.inquiryCadenceDay || 0)));
+    });
+  }
+}
+
+async function copyInquiryCadenceStatusSummary(){
+  const offer=getSelectedProduct();
+  const text=buildInquiryCadenceStatusSummaryText(offer.key);
+  await copyText(text,'已复制节奏执行摘要');
+  const snapshot=getInquiryCadenceStatusSnapshot(offer.key);
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=snapshot.totalDays
+    ? `已复制 ${offer.title} 节奏执行摘要（已执行 ${snapshot.completedDays}/${snapshot.totalDays}）。`
+    : '暂无可复制的节奏执行摘要，请先填写批量来源标签。';
+}
+
+function exportInquiryCadenceStatusJson(){
+  const offer=getSelectedProduct();
+  const payload=getInquiryCadenceStatusSnapshot(offer.key);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`inquiry-cadence-status-${offer.slug}-${ts}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+  if($('publicInquiryStatus')) $('publicInquiryStatus').textContent=payload.totalDays
+    ? `已导出 ${offer.title} 节奏执行 JSON（已执行 ${payload.completedDays}/${payload.totalDays}）。`
+    : '已导出空白节奏执行 JSON 模板。';
+}
+
 function getInquiryCadenceReminderAt(dayNumber,baseDate=new Date()){
   const reminderAt=new Date(baseDate);
   reminderAt.setHours(9,0,0,0);
@@ -5335,6 +5468,7 @@ function renderPublicInquiryPanel(){
   if($('publicInquirySource')) $('publicInquirySource').value=sourceTag;
   if($('publicInquirySourceBatch') && !$('publicInquirySourceBatch').value.trim()) $('publicInquirySourceBatch').value='feishu-dm\nwechat-group\nxhs-post';
   if($('publicInquiryHint')) $('publicInquiryHint').textContent=`当前产品：${offer.title}｜公开询价链接：${buildProductInquiryLink(offer.key,sourceTag)}${sourceTag ? `｜来源标签：${sourceTag}` : '｜可附带 src 追踪渠道来源'}｜也可批量生成多渠道追踪链接。`;
+  renderInquiryCadenceStatusBoard();
 }
 
 function loadPublicInquiryTemplate(){
@@ -5761,6 +5895,8 @@ $("exportInquiryExperimentJson").addEventListener('click',exportInquiryExperimen
 $("copyInquiryCadencePlan").addEventListener('click',copyInquiryCadencePlan);
 $("exportInquiryCadenceJson").addEventListener('click',exportInquiryCadenceJson);
 $("exportInquiryCadenceIcs").addEventListener('click',exportInquiryCadenceIcs);
+$("copyInquiryCadenceStatusSummary").addEventListener('click',copyInquiryCadenceStatusSummary);
+$("exportInquiryCadenceStatusJson").addEventListener('click',exportInquiryCadenceStatusJson);
 $("submitPublicInquiry").addEventListener('click',()=>submitPublicInquiry().catch((error)=>{$('publicInquiryStatus').textContent='公开询价提交失败：'+error.message;}));
 $("loadPublicInquiryTemplate").addEventListener('click',loadPublicInquiryTemplate);
 $("saveProductChannelConfig").addEventListener('click',saveSelectedProductChannelConfig);
