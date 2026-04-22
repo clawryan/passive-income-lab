@@ -1,5 +1,8 @@
 ## 2026-04-22 08:00 (Asia/Shanghai)
 - 这轮优先补了比接第三方更低阻力、但更贴近真实执行的闭环：公开询价区现新增 **7 天节奏执行看板**，可按当前产品把 Day 1~Day 7 逐天切换为“待执行 / 已执行 / 已复盘”。
+- 进一步把这条链路推进到“中途不中断”：现新增 **导出剩余节奏 ICS**，会自动跳过已复盘天数，只保留尚未完成的 Day 提醒，方便手机 / 电脑在执行到一半时重新导入日历。
+- `web/index.html` 新增剩余节奏导出按钮与 `buildInquiryCadenceRemainingIcs()`；`scripts/smoke-lead-todos.mjs` 也同步断言 Day 1 被跳过、Day 2 起提醒仍存在。
+- 下一步最值得做的是：把剩余节奏状态进一步接到远程快照 / webhook，让跨设备不只靠导出文件同步。
 - 新增 `INQUIRY_CADENCE_STATUS_KEY`、`getInquiryCadenceStatusSnapshot()`、`cycleInquiryCadenceDayStatus()`、`buildInquiryCadenceStatusSummaryText()`、`renderInquiryCadenceStatusBoard()`、`copyInquiryCadenceStatusSummary()`、`exportInquiryCadenceStatusJson()`；状态默认保存在浏览器本地，适合手机 / 电脑接力时快速确认本周分发已经推进到哪一天。
 - `scripts/smoke-lead-todos.mjs` 已同步补上 Day 1 状态从 `待执行 -> 已执行 -> 已复盘` 的断言，以及执行摘要 / 执行 JSON 导出回归，确认这条链路不是只在 UI 上多了个状态框。
 - 验证已通过：`npm run validate`。

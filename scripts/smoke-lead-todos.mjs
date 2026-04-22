@@ -203,6 +203,7 @@ context.cycleInquiryCadenceDayStatus('microSaas', 1);
 context.cycleInquiryCadenceDayStatus('microSaas', 1);
 const updatedCadenceStatus = context.getInquiryCadenceStatusSnapshot('microSaas');
 const inquiryCadenceStatusSummary = context.buildInquiryCadenceStatusSummaryText('microSaas');
+const inquiryCadenceRemainingIcs = context.buildInquiryCadenceRemainingIcs('microSaas');
 context.document.getElementById('leadCaptureApiUrl').value = '/api/lead-capture';
 context.document.getElementById('leadCaptureApiAuth').value = 'Bearer lead-capture-demo';
 context.persistLeadCaptureConfig();
@@ -273,6 +274,7 @@ context.exportInquiryCadenceJson();
 context.exportInquiryCadenceIcs();
 await context.copyInquiryCadenceStatusSummary();
 context.exportInquiryCadenceStatusJson();
+context.exportInquiryCadenceRemainingIcs();
 await context.copyLeadWebhookCurl();
 await context.copyLeadTodoWebhookPayload();
 await context.copyLeadPortfolioWebhookPayload();
@@ -374,6 +376,10 @@ if (initialCadenceStatus.totalDays !== 7 || initialCadenceStatus.completedDays !
 
 if (!inquiryCadenceStatusSummary.includes('7 天节奏执行摘要') || !inquiryCadenceStatusSummary.includes('Day 1｜启动 2-3 个主渠道｜已复盘') || !inquiryCadenceStatusSummary.includes('下一焦点：Day 2 24h 首轮复盘')) {
   throw new Error(`7 天节奏执行摘要异常: ${inquiryCadenceStatusSummary}`);
+}
+
+if (!inquiryCadenceRemainingIcs.includes('BEGIN:VCALENDAR') || !inquiryCadenceRemainingIcs.includes('SUMMARY:Micro-SaaS 冷启动提示词包｜剩余 Day 2 24h 首轮复盘') || inquiryCadenceRemainingIcs.includes('SUMMARY:Micro-SaaS 冷启动提示词包｜剩余 Day 1 启动 2-3 个主渠道') || !inquiryCadenceRemainingIcs.includes('当前状态：待执行')) {
+  throw new Error(`剩余 7 天节奏 ICS 异常: ${inquiryCadenceRemainingIcs}`);
 }
 
 if (!quotedCloserSummary.includes('已报价催单摘要') || !quotedCloserSummary.includes('建议催单文案')) {
@@ -504,6 +510,10 @@ if (!downloadNames.some((name) => name.startsWith('inquiry-cadence-plan-') && na
 
 if (!downloadNames.some((name) => name.startsWith('inquiry-cadence-plan-') && name.endsWith('.ics'))) {
   throw new Error(`未触发 7 天分发节奏 ICS 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('inquiry-cadence-remaining-') && name.endsWith('.ics'))) {
+  throw new Error(`未触发剩余 7 天节奏 ICS 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('lead-followup-todos-') && name.endsWith('.json'))) {
