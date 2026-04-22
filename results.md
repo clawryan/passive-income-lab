@@ -1,3 +1,9 @@
+## 2026-04-22 22:0x (Asia/Shanghai)
+- 这轮延续晚上刚补完的手机分享能力，优先做了一个更适合协作 / 自动化的低阻力增量：给线索区的 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材补齐 **JSON 导出**，把它们从“可手工转发的文本”推进成“可继续被程序消费的结构化资产”。
+- `web/index.html` 新增 3 个导出动作：`exportWonLeadCasesJson`、`exportQuotedLeadCloserJson`、`exportWonLeadUpsellJson`；对应 `buildWonLeadCasesJson()`、`buildQuotedLeadCloserJson()`、`buildWonLeadUpsellJson()` 会统一输出 `summary / count / leads[]`，并带上 `productTitle / suggestedAction / suggestedMessage / landingLink` 等关键成交字段。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖三类 JSON 构建与下载校验；本轮 `npm run smoke:lead-todos`、`npm run check:web`、`npm run validate` 均通过，确认新增 JSON 出口没有把既有线索 / 日报 / cron 链路带坏。
+- 下一步最值得做的是：把这三类结构化成交素材继续接到现有 Webhook / 飞书卡片 / n8n 模板里，形成“成交社会证明 / 催单提醒 / 复购跟进”的一键外发出口，而不只停留在本地下载。
+
 ## 2026-04-22 20:0x (Asia/Shanghai)
 - 线索区现已补齐 **手机原生分享成交案例 / 已报价催单 / 复购转介绍摘要**；这样“已成交社会证明”“已报价催单话术”“复购 / 转介绍跟进文案”都能像待办摘要一样直接从手机浏览器调起系统分享，而不必先复制再切到飞书 / 微信。
 - `scripts/smoke-lead-todos.mjs` 已同步纳入这三条分享链路断言；本轮 `npm run validate` 通过，确认 `check:web / smoke:ab / smoke:ab-history / smoke:product-ops / smoke:lead-todos / smoke:lead-capture / smoke:lead-source-daily / smoke:lead-source-daily-cron` 全链路未回退。

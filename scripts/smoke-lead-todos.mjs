@@ -228,8 +228,11 @@ const portfolioSummary = context.buildLeadPortfolioSummaryText();
 const portfolioMarkdown = context.buildLeadPortfolioMarkdown();
 const quotedCloserSummary = context.buildQuotedLeadCloserSummary();
 const quotedCloserMarkdown = context.buildQuotedLeadCloserMarkdown();
+const quotedCloserJson = context.buildQuotedLeadCloserJson();
+const wonCaseJson = context.buildWonLeadCasesJson();
 const wonUpsellSummary = context.buildWonLeadUpsellSummary();
 const wonUpsellMarkdown = context.buildWonLeadUpsellMarkdown();
+const wonUpsellJson = context.buildWonLeadUpsellJson();
 await context.shareWonLeadCaseSummary();
 await context.shareQuotedLeadCloserSummary();
 await context.shareWonLeadUpsellSummary();
@@ -301,8 +304,11 @@ await context.sendLeadPortfolioWebhook();
 await context.sendLeadSourceDailyWebhook();
 await context.copyQuotedLeadCloserSummary();
 context.exportQuotedLeadCloserMd();
+context.exportQuotedLeadCloserJson();
+context.exportWonLeadCasesJson();
 await context.copyWonLeadUpsellSummary();
 context.exportWonLeadUpsellMd();
+context.exportWonLeadUpsellJson();
 context.exportLeadTodoJson();
 context.exportLeadTodoMarkdown();
 context.exportLeadTodoIcs();
@@ -393,12 +399,24 @@ if (!quotedCloserMarkdown.includes('# Passive Income Lab 已报价催单包') ||
   throw new Error(`已报价催单 Markdown 异常: ${quotedCloserMarkdown}`);
 }
 
+if (quotedCloserJson.kind !== 'quoted-lead-closer' || !quotedCloserJson.summary?.includes('已报价催单摘要') || !quotedCloserJson.leads?.[0]?.landingLink) {
+  throw new Error(`已报价催单 JSON 异常: ${JSON.stringify(quotedCloserJson)}`);
+}
+
+if (!wonCaseJson.summary?.includes('成交案例摘要') || wonCaseJson.kind !== 'won-lead-cases' || !wonCaseJson.leads?.[0]?.reusableAngle) {
+  throw new Error(`成交案例 JSON 异常: ${JSON.stringify(wonCaseJson)}`);
+}
+
 if (!wonUpsellSummary.includes('复购 / 转介绍摘要') || !wonUpsellSummary.includes('建议跟进文案')) {
   throw new Error(`复购 / 转介绍摘要异常: ${wonUpsellSummary}`);
 }
 
 if (!wonUpsellMarkdown.includes('# Passive Income Lab 复购与转介绍包') || !wonUpsellMarkdown.includes('## 客户 1｜')) {
   throw new Error(`复购 / 转介绍 Markdown 异常: ${wonUpsellMarkdown}`);
+}
+
+if (wonUpsellJson.kind !== 'won-lead-upsell' || !wonUpsellJson.summary?.includes('复购 / 转介绍摘要') || !wonUpsellJson.leads?.[0]?.suggestedMessage) {
+  throw new Error(`复购 / 转介绍 JSON 异常: ${JSON.stringify(wonUpsellJson)}`);
 }
 
 if (todoWebhookPayload.kind !== 'lead-followup-todos' || !todoWebhookPayload.payload?.summary?.includes('Passive Income Lab 跟进待办')) {
@@ -535,8 +553,20 @@ if (!downloadNames.some((name) => name.startsWith('quoted-lead-closer-') && name
   throw new Error(`未触发已报价催单 Markdown 导出: ${JSON.stringify(downloads)}`);
 }
 
+if (!downloadNames.some((name) => name.startsWith('quoted-lead-closer-') && name.endsWith('.json'))) {
+  throw new Error(`未触发已报价催单 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('won-lead-cases-') && name.endsWith('.json'))) {
+  throw new Error(`未触发成交案例 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
 if (!downloadNames.some((name) => name.startsWith('won-lead-upsell-') && name.endsWith('.md'))) {
   throw new Error(`未触发复购 / 转介绍 Markdown 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('won-lead-upsell-') && name.endsWith('.json'))) {
+  throw new Error(`未触发复购 / 转介绍 JSON 导出: ${JSON.stringify(downloads)}`);
 }
 
 if (!downloadNames.some((name) => name.startsWith('lead-portfolio-summary-') && name.endsWith('.json'))) {

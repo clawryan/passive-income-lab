@@ -157,6 +157,13 @@
 
 # Build Log
 
+## 2026-04-22 22:0x (Asia/Shanghai)
+- 这轮没有再扩新 API，而是补一个紧挨着刚做完手机分享能力、同时更利于协作/自动化的低阻力缺口：线索区的 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材此前只能复制、分享或导出 Markdown，还缺结构化 JSON，导致想喂给自动化、协作者或手机端二次处理时还得再手工拆文本。
+- `web/index.html` 现已为这三类素材各补 1 个 **JSON 导出** 动作：`exportWonLeadCasesJson()`、`exportQuotedLeadCloserJson()`、`exportWonLeadUpsellJson()`；对应新增 `buildWonLeadCasesJson()`、`buildQuotedLeadCloserJson()`、`buildWonLeadUpsellJson()`，会统一导出 `summary + count + leads[]`，并把 `productTitle / suggestedAction / suggestedMessage / landingLink` 等关键成交字段一起结构化带出。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖三类 JSON 构建与下载校验，断言导出文件名真实出现 `won-lead-cases-*.json / quoted-lead-closer-*.json / won-lead-upsell-*.json`，避免这次只是页面多了按钮。
+- `README.md` 已同步把这三类素材更新为“复制 / 手机分享 / Markdown / JSON 导出”，减少文档和真实能力漂移。
+- 结果：线索区的成交素材现在不只适合手工转发，也更适合喂给 webhook / n8n / 协作者继续加工，离“私聊成交动作 → 结构化资产沉淀”更近一步。
+
 ## 2026-04-22 20:0x (Asia/Shanghai)
 - 这轮没有再扩新 API，而是补一个更贴近真实私聊成交推进的低阻力缺口：线索区虽然已经能复制“成交案例 / 已报价催单 / 复购转介绍”三类摘要，但手机端还不能像待办摘要那样直接调起系统分享，导致发到飞书 / 微信前仍要手工复制再切应用。
 - `web/index.html` 现已补齐 **手机原生分享成交案例**、**手机原生分享已报价催单**、**手机原生分享复购 / 转介绍** 三个动作，并新增 `shareWonLeadCaseSummary()`、`shareQuotedLeadCloserSummary()`、`shareWonLeadUpsellSummary()`；在支持 Web Share API 的手机浏览器中可直接转发，不支持时自动回退为复制摘要。

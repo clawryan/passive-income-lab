@@ -354,24 +354,27 @@
         </div>
         <div class="grid g2">
           <button id="exportWonLeadCasesMd" class="ghost">导出成交案例 Markdown</button>
-          <div class="mini muted" style="display:flex;align-items:center">适合把已成交案例直接发到飞书 / 微信做社会证明。</div>
+          <button id="exportWonLeadCasesJson" class="ghost">导出成交案例 JSON</button>
         </div>
+        <div class="mini muted">适合把已成交案例直接发到飞书 / 微信做社会证明，或继续喂给自动化 / 协作者。</div>
         <div class="grid g2">
           <button id="copyQuotedLeadCloserSummary" class="ghost">复制已报价催单摘要</button>
           <button id="shareQuotedLeadCloserSummary" class="ghost">手机原生分享已报价催单</button>
         </div>
         <div class="grid g2">
           <button id="exportQuotedLeadCloserMd" class="ghost">导出已报价催单 Markdown</button>
-          <div class="mini muted" style="display:flex;align-items:center">适合在手机端直接转发给待确认客户或协作者跟单。</div>
+          <button id="exportQuotedLeadCloserJson" class="ghost">导出已报价催单 JSON</button>
         </div>
+        <div class="mini muted">适合在手机端直接转发给待确认客户、协作者跟单，或接自动化提醒。</div>
         <div class="grid g2">
           <button id="copyWonLeadUpsellSummary" class="ghost">复制复购 / 转介绍摘要</button>
           <button id="shareWonLeadUpsellSummary" class="ghost">手机原生分享复购 / 转介绍</button>
         </div>
         <div class="grid g2">
           <button id="exportWonLeadUpsellMd" class="ghost">导出复购 / 转介绍 Markdown</button>
-          <div class="mini muted" style="display:flex;align-items:center">适合成交后追反馈、转介绍或交给协作者继续跟进。</div>
+          <button id="exportWonLeadUpsellJson" class="ghost">导出复购 / 转介绍 JSON</button>
         </div>
+        <div class="mini muted">适合成交后追反馈、转介绍或交给协作者继续跟进，也便于后续自动化读取。</div>
         <input id="importLeadJsonFile" type="file" accept="application/json,.json" style="display:none" />
         <div class="grid g2">
           <button id="loadLeadForSelectedProduct" class="ghost">按当前产品生成跟进模板</button>
@@ -3887,6 +3890,34 @@ function buildQuotedLeadCloserSummary(leads=getQuotedLeads()){
   return lines.join('\n');
 }
 
+function buildQuotedLeadCloserJson(leads=getQuotedLeads()){
+  return {
+    kind:'quoted-lead-closer',
+    exportedAt:new Date().toISOString(),
+    count:leads.length,
+    summary:buildQuotedLeadCloserSummary(leads),
+    leads:leads.map(entry=>{
+      const offer=getProductOfferBySlug(entry.productSlug);
+      return {
+        id:entry.id,
+        name:entry.name,
+        productSlug:entry.productSlug,
+        productTitle:offer.title,
+        stage:entry.stage || '已报价',
+        channel:entry.channel,
+        budget:entry.budget,
+        priority:entry.priority,
+        need:entry.need || '待补充',
+        nextStep:entry.nextStep || '待确认下一步',
+        suggestedAction:getLeadTodoAction(entry),
+        suggestedMessage:`${entry.name}，上次给你的 ${offer.title} 方案如果方向没问题，我这边可以按你当前场景先从最小交付开始；如果还有预算、交付边界或时间安排上的顾虑，直接回我卡点，我今晚就帮你收敛成可执行版本。`,
+        landingLink:buildProductLandingLink(offer.key),
+        updatedAt:entry.updatedAt || entry.createdAt || ''
+      };
+    })
+  };
+}
+
 function buildQuotedLeadCloserMarkdown(leads=getQuotedLeads()){
   const generatedAt=new Date().toISOString();
   const lines=[
@@ -3938,6 +3969,33 @@ function buildWonLeadCaseSummary(leads=getWonLeads()){
     lines.push(`- 可复用卖点：${offer.deliverables}`);
   });
   return lines.join('\n');
+}
+
+function buildWonLeadCasesJson(leads=getWonLeads()){
+  return {
+    kind:'won-lead-cases',
+    exportedAt:new Date().toISOString(),
+    count:leads.length,
+    summary:buildWonLeadCaseSummary(leads),
+    leads:leads.map(entry=>{
+      const offer=getProductOfferBySlug(entry.productSlug);
+      return {
+        id:entry.id,
+        name:entry.name,
+        productSlug:entry.productSlug,
+        productTitle:offer.title,
+        channel:entry.channel,
+        budget:entry.budget,
+        priority:entry.priority,
+        need:entry.need || '',
+        nextStep:entry.nextStep || '',
+        reusableAngle:offer.deliverables,
+        landingLink:buildProductLandingLink(offer.key),
+        createdAt:entry.createdAt || '',
+        updatedAt:entry.updatedAt || entry.createdAt || ''
+      };
+    })
+  };
 }
 
 function buildWonLeadCasesMarkdown(leads=getWonLeads()){
@@ -4004,6 +4062,15 @@ function exportWonLeadCasesMd(){
     : '已导出空白成交案例模板 Markdown';
 }
 
+function exportWonLeadCasesJson(){
+  const wonLeads=getWonLeads();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`won-lead-cases-${ts}.json`,JSON.stringify(buildWonLeadCasesJson(wonLeads),null,2),'application/json;charset=utf-8');
+  $('leadStatus').textContent=wonLeads.length
+    ? `已导出成交案例 JSON（${wonLeads.length} 条）`
+    : '已导出空白成交案例模板 JSON';
+}
+
 function buildWonLeadUpsellSummary(leads=getWonLeads()){
   if(!leads.length){
     return '';
@@ -4022,6 +4089,32 @@ function buildWonLeadUpsellSummary(leads=getWonLeads()){
     lines.push(`- 单产品链接：${buildProductLandingLink(offer.key)}`);
   });
   return lines.join('\n');
+}
+
+function buildWonLeadUpsellJson(leads=getWonLeads()){
+  return {
+    kind:'won-lead-upsell',
+    exportedAt:new Date().toISOString(),
+    count:leads.length,
+    summary:buildWonLeadUpsellSummary(leads),
+    leads:leads.map(entry=>{
+      const offer=getProductOfferBySlug(entry.productSlug);
+      return {
+        id:entry.id,
+        name:entry.name,
+        productSlug:entry.productSlug,
+        productTitle:offer.title,
+        channel:entry.channel,
+        budget:entry.budget,
+        priority:entry.priority,
+        nextStep:entry.nextStep || '待补充交付后动作',
+        suggestedAction:'确认初次交付感受，顺势追加季度更新 / 定制深化 / 朋友转介绍。',
+        suggestedMessage:`${entry.name}，上次那版 ${offer.title} 如果你已经开始用了，我想顺手收个 2 分钟反馈：哪部分最值、哪部分还想继续补强？如果你接下来还要持续跑这块，我可以直接给你接季度更新 / 深化版；如果你身边也有类似需求的人，也欢迎直接把这条单产品链接转给对方。`,
+        landingLink:buildProductLandingLink(offer.key),
+        updatedAt:entry.updatedAt || entry.createdAt || ''
+      };
+    })
+  };
 }
 
 function buildWonLeadUpsellMarkdown(leads=getWonLeads()){
@@ -4086,6 +4179,15 @@ function exportQuotedLeadCloserMd(){
     : '已导出空白已报价催单模板 Markdown';
 }
 
+function exportQuotedLeadCloserJson(){
+  const quotedLeads=getQuotedLeads();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`quoted-lead-closer-${ts}.json`,JSON.stringify(buildQuotedLeadCloserJson(quotedLeads),null,2),'application/json;charset=utf-8');
+  $('leadStatus').textContent=quotedLeads.length
+    ? `已导出已报价催单 JSON（${quotedLeads.length} 条）`
+    : '已导出空白已报价催单模板 JSON';
+}
+
 async function copyWonLeadUpsellSummary(){
   const wonLeads=getWonLeads();
   if(!wonLeads.length){
@@ -4117,6 +4219,15 @@ function exportWonLeadUpsellMd(){
   $('leadStatus').textContent=wonLeads.length
     ? `已导出复购 / 转介绍 Markdown（${wonLeads.length} 条）`
     : '已导出空白复购 / 转介绍模板 Markdown';
+}
+
+function exportWonLeadUpsellJson(){
+  const wonLeads=getWonLeads();
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  downloadFile(`won-lead-upsell-${ts}.json`,JSON.stringify(buildWonLeadUpsellJson(wonLeads),null,2),'application/json;charset=utf-8');
+  $('leadStatus').textContent=wonLeads.length
+    ? `已导出复购 / 转介绍 JSON（${wonLeads.length} 条）`
+    : '已导出空白复购 / 转介绍模板 JSON';
 }
 
 function exportLeadJson(){
@@ -6103,12 +6214,15 @@ $("exportLeadPortfolioMd").addEventListener('click',exportLeadPortfolioMarkdown)
 $("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
 $("shareWonLeadCaseSummary").addEventListener('click',shareWonLeadCaseSummary);
 $("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
+$("exportWonLeadCasesJson").addEventListener('click',exportWonLeadCasesJson);
 $("copyQuotedLeadCloserSummary").addEventListener('click',copyQuotedLeadCloserSummary);
 $("shareQuotedLeadCloserSummary").addEventListener('click',shareQuotedLeadCloserSummary);
 $("exportQuotedLeadCloserMd").addEventListener('click',exportQuotedLeadCloserMd);
+$("exportQuotedLeadCloserJson").addEventListener('click',exportQuotedLeadCloserJson);
 $("copyWonLeadUpsellSummary").addEventListener('click',copyWonLeadUpsellSummary);
 $("shareWonLeadUpsellSummary").addEventListener('click',shareWonLeadUpsellSummary);
 $("exportWonLeadUpsellMd").addEventListener('click',exportWonLeadUpsellMd);
+$("exportWonLeadUpsellJson").addEventListener('click',exportWonLeadUpsellJson);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
 $("leadStageFilter").addEventListener('change',renderLeadBoard);
 $("leadSortMode").addEventListener('change',renderLeadBoard);
