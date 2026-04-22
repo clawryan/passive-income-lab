@@ -350,15 +350,27 @@
         </div>
         <div class="grid g2">
           <button id="copyWonLeadCaseSummary" class="ghost">复制成交案例摘要</button>
+          <button id="shareWonLeadCaseSummary" class="ghost">手机原生分享成交案例</button>
+        </div>
+        <div class="grid g2">
           <button id="exportWonLeadCasesMd" class="ghost">导出成交案例 Markdown</button>
+          <div class="mini muted" style="display:flex;align-items:center">适合把已成交案例直接发到飞书 / 微信做社会证明。</div>
         </div>
         <div class="grid g2">
           <button id="copyQuotedLeadCloserSummary" class="ghost">复制已报价催单摘要</button>
+          <button id="shareQuotedLeadCloserSummary" class="ghost">手机原生分享已报价催单</button>
+        </div>
+        <div class="grid g2">
           <button id="exportQuotedLeadCloserMd" class="ghost">导出已报价催单 Markdown</button>
+          <div class="mini muted" style="display:flex;align-items:center">适合在手机端直接转发给待确认客户或协作者跟单。</div>
         </div>
         <div class="grid g2">
           <button id="copyWonLeadUpsellSummary" class="ghost">复制复购 / 转介绍摘要</button>
+          <button id="shareWonLeadUpsellSummary" class="ghost">手机原生分享复购 / 转介绍</button>
+        </div>
+        <div class="grid g2">
           <button id="exportWonLeadUpsellMd" class="ghost">导出复购 / 转介绍 Markdown</button>
+          <div class="mini muted" style="display:flex;align-items:center">适合成交后追反馈、转介绍或交给协作者继续跟进。</div>
         </div>
         <input id="importLeadJsonFile" type="file" accept="application/json,.json" style="display:none" />
         <div class="grid g2">
@@ -3970,6 +3982,19 @@ async function copyWonLeadCaseSummary(){
   $('leadStatus').textContent=`已复制成交案例摘要（${wonLeads.length} 条）`;
 }
 
+async function shareWonLeadCaseSummary(){
+  const wonLeads=getWonLeads();
+  if(!wonLeads.length){
+    $('leadStatus').textContent='当前还没有已成交线索，暂时无法生成案例摘要';
+    return;
+  }
+  const text=buildWonLeadCaseSummary(wonLeads);
+  await shareText({
+    title:`成交案例摘要（${wonLeads.length} 条）`,
+    text
+  },'已调起系统分享成交案例摘要',()=>copyText(text,'当前浏览器不支持原生分享，已复制成交案例摘要'),'leadStatus');
+}
+
 function exportWonLeadCasesMd(){
   const wonLeads=getWonLeads();
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
@@ -4039,6 +4064,19 @@ async function copyQuotedLeadCloserSummary(){
   $('leadStatus').textContent=`已复制已报价催单摘要（${quotedLeads.length} 条）`;
 }
 
+async function shareQuotedLeadCloserSummary(){
+  const quotedLeads=getQuotedLeads();
+  if(!quotedLeads.length){
+    $('leadStatus').textContent='当前还没有已报价线索，暂时无法生成催单摘要';
+    return;
+  }
+  const text=buildQuotedLeadCloserSummary(quotedLeads);
+  await shareText({
+    title:`已报价催单摘要（${quotedLeads.length} 条）`,
+    text
+  },'已调起系统分享已报价催单摘要',()=>copyText(text,'当前浏览器不支持原生分享，已复制已报价催单摘要'),'leadStatus');
+}
+
 function exportQuotedLeadCloserMd(){
   const quotedLeads=getQuotedLeads();
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
@@ -4057,6 +4095,19 @@ async function copyWonLeadUpsellSummary(){
   const text=buildWonLeadUpsellSummary(wonLeads);
   await copyText(text,`已复制 ${wonLeads.length} 条复购 / 转介绍摘要`);
   $('leadStatus').textContent=`已复制复购 / 转介绍摘要（${wonLeads.length} 条）`;
+}
+
+async function shareWonLeadUpsellSummary(){
+  const wonLeads=getWonLeads();
+  if(!wonLeads.length){
+    $('leadStatus').textContent='当前还没有已成交线索，暂时无法生成复购 / 转介绍摘要';
+    return;
+  }
+  const text=buildWonLeadUpsellSummary(wonLeads);
+  await shareText({
+    title:`复购 / 转介绍摘要（${wonLeads.length} 条）`,
+    text
+  },'已调起系统分享复购 / 转介绍摘要',()=>copyText(text,'当前浏览器不支持原生分享，已复制复购 / 转介绍摘要'),'leadStatus');
 }
 
 function exportWonLeadUpsellMd(){
@@ -6050,10 +6101,13 @@ $("shareLeadPortfolioSummary").addEventListener('click',shareLeadPortfolioSummar
 $("exportLeadPortfolioJson").addEventListener('click',exportLeadPortfolioJson);
 $("exportLeadPortfolioMd").addEventListener('click',exportLeadPortfolioMarkdown);
 $("copyWonLeadCaseSummary").addEventListener('click',copyWonLeadCaseSummary);
+$("shareWonLeadCaseSummary").addEventListener('click',shareWonLeadCaseSummary);
 $("exportWonLeadCasesMd").addEventListener('click',exportWonLeadCasesMd);
 $("copyQuotedLeadCloserSummary").addEventListener('click',copyQuotedLeadCloserSummary);
+$("shareQuotedLeadCloserSummary").addEventListener('click',shareQuotedLeadCloserSummary);
 $("exportQuotedLeadCloserMd").addEventListener('click',exportQuotedLeadCloserMd);
 $("copyWonLeadUpsellSummary").addEventListener('click',copyWonLeadUpsellSummary);
+$("shareWonLeadUpsellSummary").addEventListener('click',shareWonLeadUpsellSummary);
 $("exportWonLeadUpsellMd").addEventListener('click',exportWonLeadUpsellMd);
 $("loadLeadForSelectedProduct").addEventListener('click',loadLeadForSelectedProduct);
 $("leadStageFilter").addEventListener('change',renderLeadBoard);

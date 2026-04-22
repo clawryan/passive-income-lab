@@ -1,3 +1,8 @@
+## 2026-04-22 20:0x (Asia/Shanghai)
+- 线索区现已补齐 **手机原生分享成交案例 / 已报价催单 / 复购转介绍摘要**；这样“已成交社会证明”“已报价催单话术”“复购 / 转介绍跟进文案”都能像待办摘要一样直接从手机浏览器调起系统分享，而不必先复制再切到飞书 / 微信。
+- `scripts/smoke-lead-todos.mjs` 已同步纳入这三条分享链路断言；本轮 `npm run validate` 通过，确认 `check:web / smoke:ab / smoke:ab-history / smoke:product-ops / smoke:lead-todos / smoke:lead-capture / smoke:lead-source-daily / smoke:lead-source-daily-cron` 全链路未回退。
+- 下一步最值得做的是：把这三类“可直接分享”的成交素材继续接到统一 Webhook / 远程快照，沉淀成可跨设备复用的已成交案例库与催单模板，而不只停留在本地浏览器。
+
 ## 2026-04-22 08:00 (Asia/Shanghai)
 - 这轮优先补了比接第三方更低阻力、但更贴近真实执行的闭环：公开询价区现新增 **7 天节奏执行看板**，可按当前产品把 Day 1~Day 7 逐天切换为“待执行 / 已执行 / 已复盘”。
 - 进一步把这条链路推进到“中途不中断”：现新增 **导出剩余节奏 ICS**，会自动跳过已复盘天数，只保留尚未完成的 Day 提醒，方便手机 / 电脑在执行到一半时重新导入日历。

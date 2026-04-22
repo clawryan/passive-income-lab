@@ -230,6 +230,9 @@ const quotedCloserSummary = context.buildQuotedLeadCloserSummary();
 const quotedCloserMarkdown = context.buildQuotedLeadCloserMarkdown();
 const wonUpsellSummary = context.buildWonLeadUpsellSummary();
 const wonUpsellMarkdown = context.buildWonLeadUpsellMarkdown();
+await context.shareWonLeadCaseSummary();
+await context.shareQuotedLeadCloserSummary();
+await context.shareWonLeadUpsellSummary();
 const todoWebhookPayload = context.buildLeadTodoWebhookPayload();
 const portfolioWebhookPayload = context.buildLeadPortfolioWebhookPayload();
 const todoN8nWorkflow = context.buildLeadN8nWorkflow('lead-followup-todos');
@@ -469,11 +472,11 @@ if (typeof sourceDailyDigest !== 'string' || !sourceDailyDigest.trim()) {
   throw new Error(`来源日报摘要未生成有效文本: ${sourceDailyDigest}`);
 }
 
-if (shareCalls.length < 3) {
+if (shareCalls.length < 6) {
   throw new Error(`原生分享调用次数不足: ${JSON.stringify(shareCalls)}`);
 }
 
-if (!shareCalls.some((payload) => String(payload?.title || '').includes('来源日报')) || !shareCalls.some((payload) => String(payload?.title || '').includes('跟进待办')) || !shareCalls.some((payload) => String(payload?.title || '').includes('跨产品线索摘要'))) {
+if (!shareCalls.some((payload) => String(payload?.title || '').includes('来源日报')) || !shareCalls.some((payload) => String(payload?.title || '').includes('跟进待办')) || !shareCalls.some((payload) => String(payload?.title || '').includes('跨产品线索摘要')) || !shareCalls.some((payload) => String(payload?.title || '').includes('成交案例摘要')) || !shareCalls.some((payload) => String(payload?.title || '').includes('已报价催单摘要')) || !shareCalls.some((payload) => String(payload?.title || '').includes('复购 / 转介绍摘要'))) {
   throw new Error(`原生分享载荷异常: ${JSON.stringify(shareCalls)}`);
 }
 
