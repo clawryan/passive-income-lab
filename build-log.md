@@ -157,6 +157,13 @@
 
 # Build Log
 
+## 2026-04-23 08:00 (Asia/Shanghai)
+- 这轮直接沿着昨晚 results 里已经连续指向的下一步推进：不再只补本地导出，而是把 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材真正接进现有线索 Webhook 出口。
+- `web/index.html` 的“线索 Webhook 出口”现已新增 12 个动作：三类素材分别支持 **一键推送到 Webhook**、**复制 Webhook Payload**、**复制飞书卡片 Payload**、**复制 n8n Workflow JSON**；对应新增 `buildLeadAssetWebhookPayload()`、`sendLeadAssetWebhook()`、`buildLeadAssetFeishuCardPayload()`、`copyLeadAssetWebhookPayload()`、`copyLeadAssetFeishuCardPayload()`、`copyLeadAssetN8nWorkflow()`。
+- 现有 `buildLeadN8nWorkflow()`、`buildLeadWorkerTemplate()`、`buildLeadWebhookIntegrationGuide()` 也已扩展支持 `won-lead-cases / quoted-lead-closer / won-lead-upsell` 三种新 `kind`，这样已有飞书机器人 / n8n / Worker 中转不必另造一套协议。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖三类素材的 Webhook Payload / 飞书卡片 / n8n Workflow 构造，以及三次真实 `sendLeadAssetWebhook()` 调用；`npm run check:web`、`node scripts/smoke-lead-todos.mjs`、`npm run validate` 均通过。
+- 结果：成交素材不再只是“导出后手工转发”，而是已经能直接接进现有机器人和自动化链路，更接近真实的催单、社会证明和复购经营闭环。
+
 ## 2026-04-22 22:0x (Asia/Shanghai)
 - 这轮没有再扩新 API，而是补一个紧挨着刚做完手机分享能力、同时更利于协作/自动化的低阻力缺口：线索区的 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材此前只能复制、分享或导出 Markdown，还缺结构化 JSON，导致想喂给自动化、协作者或手机端二次处理时还得再手工拆文本。
 - `web/index.html` 现已为这三类素材各补 1 个 **JSON 导出** 动作：`exportWonLeadCasesJson()`、`exportQuotedLeadCloserJson()`、`exportWonLeadUpsellJson()`；对应新增 `buildWonLeadCasesJson()`、`buildQuotedLeadCloserJson()`、`buildWonLeadUpsellJson()`，会统一导出 `summary + count + leads[]`，并把 `productTitle / suggestedAction / suggestedMessage / landingLink` 等关键成交字段一起结构化带出。

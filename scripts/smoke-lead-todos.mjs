@@ -250,6 +250,15 @@ const portfolioFeishuCardPayload = context.buildLeadFeishuCardPayload('lead-port
 const sourceDailyDigest = context.buildLeadSourceDailyDigest();
 const sourceDailyWebhookPayload = context.buildLeadSourceDailyWebhookPayload();
 const sourceDailyFeishuCardPayload = context.buildLeadSourceDailyFeishuCardPayload();
+const wonCasesWebhookPayload = context.buildLeadAssetWebhookPayload('won-lead-cases');
+const quotedCloserWebhookPayload = context.buildLeadAssetWebhookPayload('quoted-lead-closer');
+const wonUpsellWebhookPayload = context.buildLeadAssetWebhookPayload('won-lead-upsell');
+const wonCasesFeishuCardPayload = context.buildLeadAssetFeishuCardPayload('won-lead-cases');
+const quotedCloserFeishuCardPayload = context.buildLeadAssetFeishuCardPayload('quoted-lead-closer');
+const wonUpsellFeishuCardPayload = context.buildLeadAssetFeishuCardPayload('won-lead-upsell');
+const wonCasesN8nWorkflow = context.buildLeadN8nWorkflow('won-lead-cases');
+const quotedCloserN8nWorkflow = context.buildLeadN8nWorkflow('quoted-lead-closer');
+const wonUpsellN8nWorkflow = context.buildLeadN8nWorkflow('won-lead-upsell');
 context.persistLeadSourceDailyPayload(sourceDailyWebhookPayload);
 const trendLeads = context.loadProductLeads();
 trendLeads.unshift({
@@ -297,11 +306,23 @@ await context.copyLeadSourceDailyDigest();
 await context.shareLeadSourceDailyDigest();
 await context.copyLeadSourceDailyWebhookPayload();
 await context.copyLeadSourceDailyFeishuCardPayload();
+await context.copyLeadAssetWebhookPayload('won-lead-cases');
+await context.copyLeadAssetWebhookPayload('quoted-lead-closer');
+await context.copyLeadAssetWebhookPayload('won-lead-upsell');
+await context.copyLeadAssetFeishuCardPayload('won-lead-cases');
+await context.copyLeadAssetFeishuCardPayload('quoted-lead-closer');
+await context.copyLeadAssetFeishuCardPayload('won-lead-upsell');
+await context.copyLeadAssetN8nWorkflow('won-lead-cases');
+await context.copyLeadAssetN8nWorkflow('quoted-lead-closer');
+await context.copyLeadAssetN8nWorkflow('won-lead-upsell');
 context.exportLeadSourceDailyMarkdown();
 context.exportLeadSourceDailyJson();
 await context.sendLeadTodoWebhook();
 await context.sendLeadPortfolioWebhook();
 await context.sendLeadSourceDailyWebhook();
+await context.sendLeadAssetWebhook('won-lead-cases');
+await context.sendLeadAssetWebhook('quoted-lead-closer');
+await context.sendLeadAssetWebhook('won-lead-upsell');
 await context.copyQuotedLeadCloserSummary();
 context.exportQuotedLeadCloserMd();
 context.exportQuotedLeadCloserJson();
@@ -417,6 +438,34 @@ if (!wonUpsellMarkdown.includes('# Passive Income Lab 复购与转介绍包') ||
 
 if (wonUpsellJson.kind !== 'won-lead-upsell' || !wonUpsellJson.summary?.includes('复购 / 转介绍摘要') || !wonUpsellJson.leads?.[0]?.suggestedMessage) {
   throw new Error(`复购 / 转介绍 JSON 异常: ${JSON.stringify(wonUpsellJson)}`);
+}
+
+if (wonCasesWebhookPayload.kind !== 'won-lead-cases' || !wonCasesWebhookPayload.payload?.markdown?.includes('# Passive Income Lab 成交案例')) {
+  throw new Error(`成交案例 Webhook Payload 异常: ${JSON.stringify(wonCasesWebhookPayload)}`);
+}
+
+if (quotedCloserWebhookPayload.kind !== 'quoted-lead-closer' || !quotedCloserWebhookPayload.payload?.summary?.includes('已报价催单摘要')) {
+  throw new Error(`已报价催单 Webhook Payload 异常: ${JSON.stringify(quotedCloserWebhookPayload)}`);
+}
+
+if (wonUpsellWebhookPayload.kind !== 'won-lead-upsell' || !wonUpsellWebhookPayload.payload?.summary?.includes('复购 / 转介绍摘要')) {
+  throw new Error(`复购 / 转介绍 Webhook Payload 异常: ${JSON.stringify(wonUpsellWebhookPayload)}`);
+}
+
+if (wonCasesFeishuCardPayload.meta?.kind !== 'won-lead-cases' || !JSON.stringify(wonCasesFeishuCardPayload).includes('成交案例')) {
+  throw new Error(`成交案例飞书卡片异常: ${JSON.stringify(wonCasesFeishuCardPayload)}`);
+}
+
+if (quotedCloserFeishuCardPayload.meta?.kind !== 'quoted-lead-closer' || !JSON.stringify(quotedCloserFeishuCardPayload).includes('已报价催单')) {
+  throw new Error(`已报价催单飞书卡片异常: ${JSON.stringify(quotedCloserFeishuCardPayload)}`);
+}
+
+if (wonUpsellFeishuCardPayload.meta?.kind !== 'won-lead-upsell' || !JSON.stringify(wonUpsellFeishuCardPayload).includes('复购 / 转介绍')) {
+  throw new Error(`复购 / 转介绍飞书卡片异常: ${JSON.stringify(wonUpsellFeishuCardPayload)}`);
+}
+
+if (wonCasesN8nWorkflow.name !== 'Passive Income Lab｜won-lead-cases -> 飞书' || quotedCloserN8nWorkflow.name !== 'Passive Income Lab｜quoted-lead-closer -> 飞书' || wonUpsellN8nWorkflow.name !== 'Passive Income Lab｜won-lead-upsell -> 飞书') {
+  throw new Error(`线索资产 n8n Workflow 异常: ${JSON.stringify({ wonCasesN8nWorkflow: wonCasesN8nWorkflow.name, quotedCloserN8nWorkflow: quotedCloserN8nWorkflow.name, wonUpsellN8nWorkflow: wonUpsellN8nWorkflow.name })}`);
 }
 
 if (todoWebhookPayload.kind !== 'lead-followup-todos' || !todoWebhookPayload.payload?.summary?.includes('Passive Income Lab 跟进待办')) {

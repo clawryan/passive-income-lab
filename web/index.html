@@ -476,6 +476,26 @@
             <button id="copyLeadSourceDailyN8nWorkflow" class="ghost">复制来源日报 n8n Workflow JSON</button>
             <button id="copyLeadSourceDailyWorkerTemplate" class="ghost">复制来源日报 Cloudflare Worker 模板</button>
           </div>
+          <div class="grid g3">
+            <button id="sendWonLeadCasesWebhook" class="ghost">推送成交案例到 Webhook</button>
+            <button id="sendQuotedLeadCloserWebhook" class="ghost">推送已报价催单到 Webhook</button>
+            <button id="sendWonLeadUpsellWebhook" class="ghost">推送复购/转介绍到 Webhook</button>
+          </div>
+          <div class="grid g3">
+            <button id="copyWonLeadCasesWebhookPayload" class="ghost">复制成交案例 Payload</button>
+            <button id="copyQuotedLeadCloserWebhookPayload" class="ghost">复制已报价催单 Payload</button>
+            <button id="copyWonLeadUpsellWebhookPayload" class="ghost">复制复购/转介绍 Payload</button>
+          </div>
+          <div class="grid g3">
+            <button id="copyWonLeadCasesFeishuCardPayload" class="ghost">复制成交案例飞书卡片</button>
+            <button id="copyQuotedLeadCloserFeishuCardPayload" class="ghost">复制已报价催单飞书卡片</button>
+            <button id="copyWonLeadUpsellFeishuCardPayload" class="ghost">复制复购/转介绍飞书卡片</button>
+          </div>
+          <div class="grid g3">
+            <button id="copyWonLeadCasesN8nWorkflow" class="ghost">复制成交案例 n8n Workflow</button>
+            <button id="copyQuotedLeadCloserN8nWorkflow" class="ghost">复制已报价催单 n8n Workflow</button>
+            <button id="copyWonLeadUpsellN8nWorkflow" class="ghost">复制复购/转介绍 n8n Workflow</button>
+          </div>
           <div class="grid g2">
             <button id="exportLeadSourceDailyMd" class="ghost">导出来源日报 Markdown</button>
             <button id="exportLeadSourceDailyJson" class="ghost">导出来源日报 JSON</button>
@@ -2233,6 +2253,20 @@ async function sendLeadSourceDailyWebhook(){
     : '已推送空白来源日报模板到 Webhook');
 }
 
+async function sendLeadAssetWebhook(kind='won-lead-cases'){
+  const webhookPayload=buildLeadAssetWebhookPayload(kind);
+  const labelMap={
+    'won-lead-cases':'成交案例',
+    'quoted-lead-closer':'已报价催单',
+    'won-lead-upsell':'复购 / 转介绍'
+  };
+  const label=labelMap[kind] || '线索资产';
+  const count=webhookPayload.payload?.count || 0;
+  await postLeadWebhook(kind,webhookPayload.payload,count
+    ? `已推送${label}到 Webhook（${count} 条）`
+    : `已推送空白${label}模板到 Webhook`);
+}
+
 function buildLeadTodoWebhookPayload(){
   const items=buildLeadTodoItems();
   return {
@@ -2268,6 +2302,35 @@ function buildLeadPortfolioWebhookPayload(){
       summary:buildLeadPortfolioSummaryText(),
       markdown:buildLeadPortfolioMarkdown()
     }
+  };
+}
+
+function buildLeadAssetWebhookPayload(kind='won-lead-cases'){
+  const exportedAt=new Date().toISOString();
+  if(kind==='quoted-lead-closer'){
+    const payload=buildQuotedLeadCloserJson();
+    return {
+      source:'passive-income-lab',
+      kind,
+      generatedAt:exportedAt,
+      payload:{ ...payload, markdown:buildQuotedLeadCloserMarkdown() }
+    };
+  }
+  if(kind==='won-lead-upsell'){
+    const payload=buildWonLeadUpsellJson();
+    return {
+      source:'passive-income-lab',
+      kind,
+      generatedAt:exportedAt,
+      payload:{ ...payload, markdown:buildWonLeadUpsellMarkdown() }
+    };
+  }
+  const payload=buildWonLeadCasesJson();
+  return {
+    source:'passive-income-lab',
+    kind:'won-lead-cases',
+    generatedAt:exportedAt,
+    payload:{ ...payload, markdown:buildWonLeadCasesMarkdown() }
   };
 }
 
@@ -2456,6 +2519,46 @@ function buildLeadSourceDailyFeishuCardPayload(){
   };
 }
 
+function buildLeadAssetFeishuCardPayload(kind='won-lead-cases'){
+  const webhookPayload=buildLeadAssetWebhookPayload(kind);
+  const payload=webhookPayload.payload || {};
+  const titleMap={
+    'won-lead-cases':'Passive Income Lab｜成交案例',
+    'quoted-lead-closer':'Passive Income Lab｜已报价催单',
+    'won-lead-upsell':'Passive Income Lab｜复购 / 转介绍'
+  };
+  const subtitleMap={
+    'won-lead-cases':'社会证明',
+    'quoted-lead-closer':'催单推进',
+    'won-lead-upsell':'复购增长'
+  };
+  const lines=(payload.leads || []).slice(0,3).map((item,index)=>`- ${index+1}. ${item.name}｜${item.productTitle || item.productSlug || '未分类'}｜${item.suggestedAction || item.reusableAngle || item.nextStep || '待跟进'}`);
+  return {
+    msg_type:'interactive',
+    card:{
+      schema:'2.0',
+      config:{ wide_screen_mode:true, enable_forward:true },
+      header:{
+        title:{ tag:'plain_text', content:titleMap[kind] || 'Passive Income Lab｜线索资产' },
+        template:'purple',
+        subtitle:{ tag:'plain_text', content:`${subtitleMap[kind] || '线索资产'}｜${new Date().toLocaleString('zh-CN',{ hour12:false })}` }
+      },
+      body:{
+        elements:[
+          { tag:'markdown', content:`**来源**：${webhookPayload.source}
+**类型**：${webhookPayload.kind}
+**时间**：${webhookPayload.generatedAt}
+**条数**：${payload.count || 0}` },
+          { tag:'hr' },
+          { tag:'markdown', content:payload.summary || '暂无摘要' },
+          { tag:'hr' },
+          { tag:'markdown', content:`**关键明细**\n${lines.length ? lines.join('\\n') : '- 当前暂无可推送条目'}` }
+        ]
+      }
+    },
+    meta:{ source:'passive-income-lab', kind:webhookPayload.kind, generatedAt:webhookPayload.generatedAt }
+  };
+}
 
 function buildLeadFeishuCardPayload(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
@@ -2572,17 +2675,40 @@ async function copyLeadSourceDailyWorkerTemplate(){
   $('leadWebhookStatus').textContent='已复制来源日报 Cloudflare Worker 模板';
 }
 
+async function copyLeadAssetWebhookPayload(kind='won-lead-cases'){
+  const labelMap={ 'won-lead-cases':'成交案例', 'quoted-lead-closer':'已报价催单', 'won-lead-upsell':'复购 / 转介绍' };
+  await copyText(JSON.stringify(buildLeadAssetWebhookPayload(kind),null,2),`已复制${labelMap[kind] || '线索资产'} Webhook Payload`);
+  $('leadWebhookStatus').textContent=`已复制${labelMap[kind] || '线索资产'} Webhook Payload`;
+}
+
+async function copyLeadAssetFeishuCardPayload(kind='won-lead-cases'){
+  const labelMap={ 'won-lead-cases':'成交案例', 'quoted-lead-closer':'已报价催单', 'won-lead-upsell':'复购 / 转介绍' };
+  await copyText(JSON.stringify(buildLeadAssetFeishuCardPayload(kind),null,2),`已复制${labelMap[kind] || '线索资产'}飞书卡片 Payload`);
+  $('leadWebhookStatus').textContent=`已复制${labelMap[kind] || '线索资产'}飞书卡片 Payload`;
+}
+
+async function copyLeadAssetN8nWorkflow(kind='won-lead-cases'){
+  const labelMap={ 'won-lead-cases':'成交案例', 'quoted-lead-closer':'已报价催单', 'won-lead-upsell':'复购 / 转介绍' };
+  await copyText(JSON.stringify(buildLeadN8nWorkflow(kind),null,2),`已复制${labelMap[kind] || '线索资产'} n8n Workflow JSON`);
+  $('leadWebhookStatus').textContent=`已复制${labelMap[kind] || '线索资产'} n8n Workflow JSON`;
+}
+
 function buildLeadN8nWorkflow(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
   const isSourceDaily=kind==='lead-source-daily-digest';
-  const pathSegment=isPortfolio ? 'lead-portfolio-summary' : (isSourceDaily ? 'lead-source-daily-digest' : 'lead-followup-todos');
+  const isAsset=['won-lead-cases','quoted-lead-closer','won-lead-upsell'].includes(kind);
+  const pathSegment=isPortfolio ? 'lead-portfolio-summary' : (isSourceDaily ? 'lead-source-daily-digest' : kind);
   const title=isPortfolio
     ? 'Passive Income Lab｜跨产品总览 -> 飞书'
-    : (isSourceDaily ? 'Passive Income Lab｜来源日报 -> 飞书' : 'Passive Income Lab｜跟进待办 -> 飞书');
+    : (isSourceDaily
+        ? 'Passive Income Lab｜来源日报 -> 飞书'
+        : (isAsset
+            ? `Passive Income Lab｜${kind} -> 飞书`
+            : 'Passive Income Lab｜跟进待办 -> 飞书'));
   const examplePayload=isPortfolio
     ? buildLeadPortfolioWebhookPayload()
-    : (isSourceDaily ? buildLeadSourceDailyWebhookPayload() : buildLeadTodoWebhookPayload());
-  const exampleText=isPortfolio ? '跨产品线索总览' : (isSourceDaily ? '来源日报' : '跟进待办');
+    : (isSourceDaily ? buildLeadSourceDailyWebhookPayload() : (isAsset ? buildLeadAssetWebhookPayload(kind) : buildLeadTodoWebhookPayload()));
+  const exampleText=isPortfolio ? '跨产品线索总览' : (isSourceDaily ? '来源日报' : (isAsset ? kind : '跟进待办'));
   return {
     name:title,
     nodes:[
@@ -2665,14 +2791,17 @@ function buildLeadN8nWorkflow(kind='lead-followup-todos'){
 function buildLeadWorkerTemplate(kind='lead-followup-todos'){
   const isPortfolio=kind==='lead-portfolio-summary';
   const isSourceDaily=kind==='lead-source-daily-digest';
+  const isAsset=['won-lead-cases','quoted-lead-closer','won-lead-upsell'].includes(kind);
   const examplePayload=isPortfolio
     ? buildLeadPortfolioWebhookPayload()
-    : (isSourceDaily ? buildLeadSourceDailyWebhookPayload() : buildLeadTodoWebhookPayload());
+    : (isSourceDaily ? buildLeadSourceDailyWebhookPayload() : (isAsset ? buildLeadAssetWebhookPayload(kind) : buildLeadTodoWebhookPayload()));
   const summaryExpr=isPortfolio
     ? "String(payload.summary || payload.markdown || 'Passive Income Lab 跨产品总览')"
     : (isSourceDaily
         ? "String(payload.summary || payload.markdown || 'Passive Income Lab 来源日报')"
-        : "String(payload.summary || payload.markdown || 'Passive Income Lab 跟进待办')");
+        : (isAsset
+            ? "String(payload.summary || payload.markdown || 'Passive Income Lab 线索资产')"
+            : "String(payload.summary || payload.markdown || 'Passive Income Lab 跟进待办')"));
   return [
     "export default {",
     "  async fetch(request, env) {",
@@ -2765,9 +2894,9 @@ function buildLeadWebhookIntegrationGuide(){
     '',
     '2) n8n Webhook 节点建议',
     '- Webhook 节点 Method 设为 POST，Response 可先返回 200 JSON。',
-    '- 后续 IF/Switch 节点按 body.kind 路由：lead-followup-todos / lead-portfolio-summary / lead-source-daily-digest。',
+    '- 后续 IF/Switch 节点按 body.kind 路由：lead-followup-todos / lead-portfolio-summary / lead-source-daily-digest / won-lead-cases / quoted-lead-closer / won-lead-upsell。',
     '- 发飞书消息时，可直接使用 body.payload.summary；若要发长文，可改用 body.payload.markdown。',
-    '- 页面已支持直接复制三份 n8n workflow JSON：待办流 / 总览流 / 来源日报流；导入后只需替换 Feishu 机器人地址。',
+    '- 页面已支持直接复制六类 n8n workflow JSON：待办流 / 总览流 / 来源日报流 / 成交案例流 / 已报价催单流 / 复购转介绍流；导入后只需替换 Feishu 机器人地址。',
     '',
     '3) Cloudflare Worker 中转建议',
     '- 页面已支持直接复制三份 Worker 模板：待办流 / 总览流 / 来源日报流。',
@@ -2792,6 +2921,7 @@ function buildLeadWebhookIntegrationGuide(){
     '- copyLeadTodoN8nWorkflow：把线索待办推到 Feishu Bot。',
     '- copyLeadPortfolioN8nWorkflow：把跨产品总览推到 Feishu Bot。',
     '- copyLeadSourceDailyN8nWorkflow：把来源日报推到 Feishu Bot。',
+    '- copyWonLeadCasesN8nWorkflow / copyQuotedLeadCloserN8nWorkflow / copyWonLeadUpsellN8nWorkflow：把成交案例、已报价催单、复购转介绍推到 Feishu Bot。',
     '',
     '8) Cloudflare Worker 模板（页面内可直接复制）',
     '- copyLeadTodoWorkerTemplate：复制待办中转模板。',
@@ -2800,7 +2930,8 @@ function buildLeadWebhookIntegrationGuide(){
     '',
     '9) 飞书卡片消息 Payload（页面内可直接复制）',
     '- copyLeadTodoFeishuCardPayload：复制待办 interactive card JSON。',
-    '- copyLeadPortfolioFeishuCardPayload：复制总览 interactive card JSON。'
+    '- copyLeadPortfolioFeishuCardPayload：复制总览 interactive card JSON。',
+    '- copyWonLeadCasesFeishuCardPayload / copyQuotedLeadCloserFeishuCardPayload / copyWonLeadUpsellFeishuCardPayload：复制成交案例、已报价催单、复购转介绍卡片 JSON。'
   ].join('\n');
 }
 
@@ -6185,18 +6316,30 @@ $("copyLeadWebhookCurl").addEventListener('click',copyLeadWebhookCurl);
 $("sendLeadTodoWebhook").addEventListener('click',sendLeadTodoWebhook);
 $("sendLeadPortfolioWebhook").addEventListener('click',sendLeadPortfolioWebhook);
 $("sendLeadSourceDailyWebhook").addEventListener('click',sendLeadSourceDailyWebhook);
+$("sendWonLeadCasesWebhook").addEventListener('click',()=>sendLeadAssetWebhook('won-lead-cases'));
+$("sendQuotedLeadCloserWebhook").addEventListener('click',()=>sendLeadAssetWebhook('quoted-lead-closer'));
+$("sendWonLeadUpsellWebhook").addEventListener('click',()=>sendLeadAssetWebhook('won-lead-upsell'));
 $("copyLeadTodoWebhookPayload").addEventListener('click',copyLeadTodoWebhookPayload);
 $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioWebhookPayload);
 $("copyLeadSourceDailyWebhookPayload").addEventListener('click',copyLeadSourceDailyWebhookPayload);
+$("copyWonLeadCasesWebhookPayload").addEventListener('click',()=>copyLeadAssetWebhookPayload('won-lead-cases'));
+$("copyQuotedLeadCloserWebhookPayload").addEventListener('click',()=>copyLeadAssetWebhookPayload('quoted-lead-closer'));
+$("copyWonLeadUpsellWebhookPayload").addEventListener('click',()=>copyLeadAssetWebhookPayload('won-lead-upsell'));
 $("copyLeadWebhookIntegrationGuide").addEventListener('click',copyLeadWebhookIntegrationGuide);
 $("copyLeadTodoN8nWorkflow").addEventListener('click',copyLeadTodoN8nWorkflow);
 $("copyLeadPortfolioN8nWorkflow").addEventListener('click',copyLeadPortfolioN8nWorkflow);
 $("copyLeadSourceDailyN8nWorkflow").addEventListener('click',copyLeadSourceDailyN8nWorkflow);
+$("copyWonLeadCasesN8nWorkflow").addEventListener('click',()=>copyLeadAssetN8nWorkflow('won-lead-cases'));
+$("copyQuotedLeadCloserN8nWorkflow").addEventListener('click',()=>copyLeadAssetN8nWorkflow('quoted-lead-closer'));
+$("copyWonLeadUpsellN8nWorkflow").addEventListener('click',()=>copyLeadAssetN8nWorkflow('won-lead-upsell'));
 $("copyLeadTodoWorkerTemplate").addEventListener('click',copyLeadTodoWorkerTemplate);
 $("copyLeadPortfolioWorkerTemplate").addEventListener('click',copyLeadPortfolioWorkerTemplate);
 $("copyLeadSourceDailyWorkerTemplate").addEventListener('click',copyLeadSourceDailyWorkerTemplate);
 $("copyLeadTodoFeishuCardPayload").addEventListener('click',copyLeadTodoFeishuCardPayload);
 $("copyLeadPortfolioFeishuCardPayload").addEventListener('click',copyLeadPortfolioFeishuCardPayload);
+$("copyWonLeadCasesFeishuCardPayload").addEventListener('click',()=>copyLeadAssetFeishuCardPayload('won-lead-cases'));
+$("copyQuotedLeadCloserFeishuCardPayload").addEventListener('click',()=>copyLeadAssetFeishuCardPayload('quoted-lead-closer'));
+$("copyWonLeadUpsellFeishuCardPayload").addEventListener('click',()=>copyLeadAssetFeishuCardPayload('won-lead-upsell'));
 $("copyLeadSourceDailyDigest").addEventListener('click',copyLeadSourceDailyDigest);
 $("shareLeadSourceDailyDigest").addEventListener('click',shareLeadSourceDailyDigest);
 $("copyLeadSourceDailyFeishuCardPayload").addEventListener('click',copyLeadSourceDailyFeishuCardPayload);

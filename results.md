@@ -210,6 +210,13 @@
 
 # Results
 
+## 2026-04-23 08:00 (Asia/Shanghai)
+- 沿着 4/22 晚上写下的下一步，把线索区刚补齐的 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材，从“可复制 / 可分享 / 可导出”继续推进成 **可直接接现有 Webhook / 飞书卡片 / n8n** 的外发资产。
+- `web/index.html` 的“线索 Webhook 出口”现已支持三类素材分别执行：**推送到 Webhook**、**复制 Webhook Payload**、**复制飞书卡片 Payload**、**复制 n8n Workflow JSON**；同时 `buildLeadN8nWorkflow()`、`buildLeadWorkerTemplate()`、`buildLeadWebhookIntegrationGuide()` 也已统一扩展到这三个新 `kind`，避免自动化层再单独造协议。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖三类素材的 Webhook Payload / 飞书卡片 / n8n Workflow 构造与 webhook 发送回归；本轮 `npm run check:web`、`node scripts/smoke-lead-todos.mjs`、`npm run validate` 全部通过。
+- 这一步的价值比继续补本地下载格式更贴近收入闭环：现在成交社会证明、催单素材和复购跟进已经能直接喂给飞书机器人、n8n 或中转 Worker，而不是仍卡在“先导出，再手工复制粘贴”。
+- 下一步最值得做的是：把这三类素材再补一份 **统一来源/产品筛选 + 历史留档**，让“今天推过哪些成交素材、对应哪个产品/来源更有效”也能被远程回看，而不是只在当次触发时生效。
+
 ## 2026-04-19 08:00 (Asia/Shanghai)
 - 新增 `scripts/generate-lead-source-daily-proof.mjs` 与 `npm run proof:lead-source-daily`，现在可自动种入演示线索并串行跑 `GET /api/lead-source-daily`、`POST dryRun`、手动 webhook 转发、`POST /api/cron/lead-source-daily`，把来源日报的关键返回固化成 `outputs/lead-source-daily-local-proof.md` 与 `outputs/lead-source-daily-local-proof.json`。
 - 这一步的价值不在于再多一个按钮，而在于补了一份可重复生成、可直接转发给自己/协作者的“验收证据”：里面会明确写出 `historyStorage.mode`、`latest.trigger`、手动推送与 cron 推送后的 `historyCount`，更容易确认 latest/history 机制没有回退。
