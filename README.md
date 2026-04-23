@@ -46,6 +46,7 @@
 - **Cloudflare Worker 中转模板可直接复制**：线索 Webhook 区现可一键复制“待办 Cloudflare Worker 模板 / 总览 Cloudflare Worker 模板”，默认带 CORS、`Authorization` 校验占位与飞书转发逻辑，适合把浏览器按钮快速接到 Worker 再转发到 Feishu Bot、自建接口或后续自动化。
 - **飞书卡片 Payload 可直接复制**：线索 Webhook 区现可一键复制“待办飞书卡片 Payload / 总览飞书卡片 Payload”，方便把线索待办或跨产品总览直接转成 Feishu interactive card JSON，再喂给机器人、中转服务或自动化节点。
 - **成交素材也可直接走 Webhook / 飞书 / n8n**：线索 Webhook 区现已补齐“成交案例 / 已报价催单 / 复购转介绍”三类成交素材的一键推送、Webhook Payload、飞书卡片与 n8n Workflow 复制入口，方便把社会证明、催单提醒和复购跟进直接接到机器人或自动化，而不只停留在本地导出。
+- **成交素材外发记录可回看**：每次从页面把“成交案例 / 已报价催单 / 复购转介绍”推到 Webhook 时，浏览器会额外留存最近 12 次外发摘要（素材类型、条数、主产品、主来源、时间），方便在手机或电脑端快速确认今天已经推过哪些成交素材，避免重复骚扰同一批线索。
 - **来源归因已进入 Webhook / 飞书卡片**：跨产品总览 Webhook payload 现额外带 `sourceHighlights`（前 5 个来源的线索 / 报价 / 成交概览），总览飞书卡片也会直接展示“当前最有效来源 + Top 来源分布”，方便把来源→线索→成交变化接到日报机器人或增长提醒。
 - **来源日报自动化模板已补齐**：线索 Webhook 区现除可一键推送“来源日报”到既有 Webhook 外，也可直接复制来源日报 Webhook Payload / 飞书卡片 Payload / n8n Workflow JSON / Cloudflare Worker 模板；日报会基于当前跨产品线索与 `sourceHighlights` 自动生成“总线索 / 可推进 / 当前最热产品 / 当前最有效来源 / Top 来源 / 建议动作”，更适合直接挂 cron、机器人或增长播报。仓库内另有 `outputs/lead-source-daily-automation-guide.md` 留档。
 - **来源日报定时触发样例已补齐**：新增 `outputs/lead-source-daily-scheduler-examples.md`，收口本地 cron、GitHub Actions、Vercel Cron 三种最小定时样例，以及可直接复用的 `curl` 模板，方便把“已能生成日报 payload”再推进到“可稳定定时推送”。

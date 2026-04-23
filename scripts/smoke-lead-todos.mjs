@@ -547,6 +547,16 @@ if (!shareCalls.some((payload) => String(payload?.title || '').includes('来源�
   throw new Error(`原生分享载荷异常: ${JSON.stringify(shareCalls)}`);
 }
 
+const leadAssetHistory = context.readLeadAssetHistory();
+if (!Array.isArray(leadAssetHistory) || leadAssetHistory.length < 3 || !leadAssetHistory.some((item) => item.kind === 'won-lead-cases') || !leadAssetHistory.some((item) => item.kind === 'quoted-lead-closer') || !leadAssetHistory.some((item) => item.kind === 'won-lead-upsell')) {
+  throw new Error(`成交素材历史未成功落盘: ${JSON.stringify(leadAssetHistory)}`);
+}
+
+const leadAssetBoardHtml = context.document.getElementById('leadAssetHistoryBoard').innerHTML;
+if (!leadAssetBoardHtml.includes('成交素材外发记录') || !leadAssetBoardHtml.includes('成交案例') || !leadAssetBoardHtml.includes('已报价催单') || !leadAssetBoardHtml.includes('复购 / 转介绍')) {
+  throw new Error(`成交素材历史未成功渲染: ${leadAssetBoardHtml}`);
+}
+
 const portfolioBoardHtml = context.document.getElementById('leadPortfolioBoard').innerHTML;
 if (!portfolioBoardHtml.includes('跨产品线索总览') || !portfolioBoardHtml.includes('最优先线索') || !portfolioBoardHtml.includes('当前最有效来源')) {
   throw new Error(`跨产品线索总览未成功渲染: ${portfolioBoardHtml}`);

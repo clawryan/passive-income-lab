@@ -1,3 +1,9 @@
+## 2026-04-23 11:0x (Asia/Shanghai)
+- 这轮没有再堆新的文案导出，而是补了一个更接近真实执行的低阻力缺口：**成交素材外发记录**。现在从线索 Webhook 区把“成交案例 / 已报价催单 / 复购转介绍”推到 Webhook 时，浏览器会同步留存最近 12 次外发摘要，方便快速回看今天已经推过哪些素材、覆盖多少条线索、主打哪个产品/来源。
+- `web/index.html` 新增 `LEAD_ASSET_HISTORY_KEY`、`readLeadAssetHistory()`、`persistLeadAssetHistory()`、`renderLeadAssetHistoryBoard()`，并在每次 `sendLeadAssetWebhook()` 时自动落盘与刷新看板；页面里新增“成交素材外发记录”卡片，直接展示最近外发时间、素材类型、条数、主产品、主来源。
+- `scripts/smoke-lead-todos.mjs` 已同步补上历史落盘与看板渲染断言；本轮 `npm run check:web`、`npm run smoke:lead-todos`、`npm run validate` 均通过，确认没有把既有 A/B、lead capture、来源日报与 cron 链路带坏。
+- 下一步最值得做的是：把这份“成交素材外发记录”继续接到远程快照或 `lead-capture` 存储层，做成跨设备可回看的轻量素材投放日志，而不只停留在单浏览器本地。
+
 ## 2026-04-22 22:0x (Asia/Shanghai)
 - 这轮延续晚上刚补完的手机分享能力，优先做了一个更适合协作 / 自动化的低阻力增量：给线索区的 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材补齐 **JSON 导出**，把它们从“可手工转发的文本”推进成“可继续被程序消费的结构化资产”。
 - `web/index.html` 新增 3 个导出动作：`exportWonLeadCasesJson`、`exportQuotedLeadCloserJson`、`exportWonLeadUpsellJson`；对应 `buildWonLeadCasesJson()`、`buildQuotedLeadCloserJson()`、`buildWonLeadUpsellJson()` 会统一输出 `summary / count / leads[]`，并带上 `productTitle / suggestedAction / suggestedMessage / landingLink` 等关键成交字段。
