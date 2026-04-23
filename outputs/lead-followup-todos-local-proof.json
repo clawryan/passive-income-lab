@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-04-23T09:05:30.152Z",
+  "seedLeads": [
+    {
+      "id": "followup-proof-1",
+      "name": "超期待跟进客户",
+      "productSlug": "micro-saas",
+      "source": "public-inquiry:feishu-dm",
+      "stage": "待跟进",
+      "priority": "高"
+    },
+    {
+      "id": "followup-proof-2",
+      "name": "报价待确认客户",
+      "productSlug": "orion-nexus",
+      "source": "public-inquiry:wechat-group",
+      "stage": "已报价",
+      "priority": "中"
+    },
+    {
+      "id": "followup-proof-3",
+      "name": "资料已发客户",
+      "productSlug": "micro-saas",
+      "source": "public-inquiry:xhs",
+      "stage": "已发送资料",
+      "priority": "高"
+    }
+  ],
+  "checks": {
+    "getBefore": {
+      "count": 3,
+      "topLead": "超期待跟进客户",
+      "overdueCount": 3,
+      "historyCount": 0,
+      "historyStorage": {
+        "mode": "local-file",
+        "durable": false,
+        "path": "/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-followup-proof-0QYKDe/followup-history.json",
+        "note": "跟进待办历史当前仅保存在本地文件，适合本机调试；若要部署后持久化，建议配置 KV_REST_API_URL / KV_REST_API_TOKEN。"
+      }
+    },
+    "dryRun": {
+      "trigger": "manual-dry-run",
+      "historyCount": 1,
+      "forwarded": false,
+      "dryRun": true
+    },
+    "manualPost": {
+      "trigger": "manual-post",
+      "historyCount": 1,
+      "topLead": "超期待跟进客户",
+      "webhook": {
+        "forwarded": true,
+        "ok": true,
+        "status": 202,
+        "url": "https://example.com/followup-proof-webhook"
+      }
+    },
+    "getAfterTrend": {
+      "count": 4,
+      "countDelta": 1,
+      "summary": "较上次：待办总数 +1｜已超期 +1｜即将超期 持平",
+      "topLead": "超期待跟进客户"
+    },
+    "cronPost": {
+      "trigger": "cron-post",
+      "historyCount": 2,
+      "topLead": "超期待跟进客户",
+      "webhook": {
+        "forwarded": true,
+        "ok": true,
+        "status": 202,
+        "url": "https://example.com/followup-proof-webhook"
+      }
+    }
+  },
+  "forwardedPayloadPreview": {
+    "kind": "lead-followup-todos",
+    "generatedAt": "2026-04-23T09:05:30.152Z",
+    "summary": "Passive Income Lab 跟进待办日报｜2026/4/23\n待办总数：4｜现在 2｜24h 2｜72h 0\n节奏状态：已超期 4｜即将超期 0｜节奏正常 0\n较上次：待办总数 +1｜已超期 +1｜即将超期 持平\n最优先线索：超期待跟进客户｜Micro-SaaS 冷启动提示词包｜待跟进｜已超期\n当前待跟进最多来源：public-inquiry:feishu-dm（1 条）\n建议动作：先处理 超期待跟进客户（Micro-SaaS 冷启动提示词包），它已现在超期 123h。 超期待办在增加，先清最老的“现在/24h”线索，再继续铺新渠道。",
+    "recommendation": "先处理 超期待跟进客户（Micro-SaaS 冷启动提示词包），它已现在超期 123h。"
+  },
+  "artifactPaths": {
+    "markdown": "outputs/lead-followup-todos-local-proof.md",
+    "json": "outputs/lead-followup-todos-local-proof.json"
+  }
+}

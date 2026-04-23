@@ -4,6 +4,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/lead-followup-todos",
+      "schedule": "0 */4 * * *"
+    },
+    {
       "path": "/api/cron/lead-source-daily",
       "schedule": "0 1 * * *"
     }

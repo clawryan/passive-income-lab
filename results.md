@@ -1,3 +1,9 @@
+## 2026-04-23 17:00 (Asia/Shanghai)
+- 沿着 `lead-followup-todos` 刚补齐的 API / cron 继续收口，这轮没有再扩 UI，而是补了一个更接近真实部署验收的低阻力缺口：**跟进待办本地验收证明**。现在可一键生成 `outputs/lead-followup-todos-local-proof.md|json`，把 GET / POST / dry-run / cron / trend / latest-history 关键证据固化下来，方便自己或协作者快速确认这条“每 4 小时催办线索”的链路确实跑通。
+- 新增 `scripts/generate-lead-followup-todos-proof.mjs` 与 `npm run proof:lead-followup-todos`；脚本会自动种入演示线索、依次跑 `GET /api/lead-followup-todos`、`POST dryRun`、手动 webhook 转发、补一条新线索验证 `trend.countDelta`、再触发 `POST /api/cron/lead-followup-todos`，并把关键返回留档到 `outputs/lead-followup-todos-local-proof.md|json`。
+- `README.md` / `package.json` 已同步补上 proof 入口；这样这条新链路不再只是“有 smoke test”，而是和来源日报一样，有可重复生成、可直接转发的验收证据。
+- 下一步最值得做的是：拿真实 `LEAD_FOLLOWUP_TODOS_WEBHOOK_URL` 跑一次线上 proof，并把接收端日志与 `/api/lead-followup-todos` 的 `latest/history/trend` 返回一起沉淀到 `outputs/`，让它从“本地可证明”推进到“线上已实测”。
+
 ## 2026-04-23 11:0x (Asia/Shanghai)
 - 这轮没有再堆新的文案导出，而是补了一个更接近真实执行的低阻力缺口：**成交素材外发记录**。现在从线索 Webhook 区把“成交案例 / 已报价催单 / 复购转介绍”推到 Webhook 时，浏览器会同步留存最近 12 次外发摘要，方便快速回看今天已经推过哪些素材、覆盖多少条线索、主打哪个产品/来源。
 - `web/index.html` 新增 `LEAD_ASSET_HISTORY_KEY`、`readLeadAssetHistory()`、`persistLeadAssetHistory()`、`renderLeadAssetHistoryBoard()`，并在每次 `sendLeadAssetWebhook()` 时自动落盘与刷新看板；页面里新增“成交素材外发记录”卡片，直接展示最近外发时间、素材类型、条数、主产品、主来源。
