@@ -53,6 +53,7 @@
 - **来源日报 API 已补齐**：新增 `api/lead-source-daily.js`，可直接读取 `lead-capture` 快照生成真实 `lead-source-daily-digest` payload；`GET` 返回摘要/Markdown/来源高亮，并额外带上 `latest/history` 最近日报留档；`POST` 可选直接转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`（未配置时也可 `dryRun` 验收），同时把本次日报写入最近 7 次历史，便于确认它是否真的跑过。
 - **来源日报历史支持持久化留档**：`api/lead-source-daily.js` 现会在检测到 `KV_REST_API_URL + KV_REST_API_TOKEN`（兼容 Upstash / Vercel KV REST）时把 `latest/history` 写入托管 KV；未配置时回退到本地文件。这样线上可直接用手机或 cURL 查“最近 7 次日报是否真的被 cron 跑过”，而不必只盯着接收端机器人消息。
 - **线索跟进待办 API / cron 已补齐**：新增 `api/lead-followup-todos.js` 与 `api/cron/lead-followup-todos.js`，可直接把当前可推进线索整理成“现在 / 24h / 72h”待办日报，支持 webhook 转发、最近 7 次历史留档，以及按“已超期 / 即将超期 / 节奏正常”排序；适合每 4 小时自动催办最容易滑单的线索。
+- **跟进待办定时触发样例已补齐**：新增 `outputs/lead-followup-todos-scheduler-examples.md`，收口本地 cron、GitHub Actions、Vercel Cron 三种最小定时样例，以及可直接复用的 `curl` 验收模板，方便把“跟进待办已能生成”再推进到“稳定定时催办”。
 - **来源日报 cron 入口已补齐**：新增 `api/cron/lead-source-daily.js`，可直接作为定时器入口读取快照、生成真实日报并转发到 `LEAD_SOURCE_DAILY_WEBHOOK_URL`；每次触发也会同步写入 `latest/history` 留档；仓库内 `vercel.json` 也已内置 `0 1 * * *`（Asia/Shanghai 09:00）定时配置。
 - **来源日报本地验收证明可直接生成**：新增 `scripts/generate-lead-source-daily-proof.mjs` 与 `npm run proof:lead-source-daily`，会自动种入演示线索、依次跑 `GET /api/lead-source-daily`、`POST dryRun`、手动 webhook 转发、`POST /api/cron/lead-source-daily`，并把证据留档到 `outputs/lead-source-daily-local-proof.md|json`，便于保留“latest/history 真的在增长”的可分享证明。
 - **来源日报可直接分享 / 导出留档**：线索 Webhook 区现补齐“手机原生分享来源日报摘要 / 导出来源日报 Markdown / JSON”按钮，并把原本已实现但未露出的“推送来源日报到 Webhook / 复制来源日报 Webhook Payload 示例”显式放到界面上，方便把当前来源归因快照直接发给协作者、沉淀为日报附件或接入自动化。
@@ -101,6 +102,7 @@
 - `npm run smoke:product-ops`：载入产品经营演示样本并验证看板渲染、摘要构建与 JSON 导出链路
 - `npm run smoke:lead-todos`：载入演示线索并验证“当前筛选跟进待办”摘要、Webhook 与远程采集入口链路
 - `npm run smoke:lead-followup-todos`：验证 `/api/lead-followup-todos` 的 GET / POST、待办排序、趋势摘要与历史留档
+- `npm run smoke:lead-followup-todos-cron`：验证 `/api/cron/lead-followup-todos` 的 GET / POST、Webhook 转发与历史留档
 - `npm run smoke:lead-capture`：验证 `/api/lead-capture` 的 GET / POST、快照合并与本地文件存储
 - `npm run smoke:lead-source-daily`：验证 `/api/lead-source-daily` 的日报聚合与可选 webhook 转发
 - `npm run proof:lead-source-daily`：生成来源日报本地验收证明，并输出到 `outputs/lead-source-daily-local-proof.md|json`

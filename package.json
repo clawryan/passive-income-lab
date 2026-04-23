@@ -11,11 +11,12 @@
     "smoke:product-ops": "node scripts/smoke-product-ops.mjs",
     "smoke:lead-todos": "node scripts/smoke-lead-todos.mjs",
     "smoke:lead-followup-todos": "node scripts/smoke-lead-followup-todos.mjs",
+    "smoke:lead-followup-todos-cron": "node scripts/smoke-lead-followup-todos-cron.mjs",
     "smoke:lead-capture": "node scripts/smoke-lead-capture.mjs",
     "smoke:lead-source-daily": "node scripts/smoke-lead-source-daily.mjs",
     "smoke:lead-source-daily-cron": "node scripts/smoke-lead-source-daily-cron.mjs",
     "proof:lead-source-daily": "node scripts/generate-lead-source-daily-proof.mjs",
     "proof:lead-followup-todos": "node scripts/generate-lead-followup-todos-proof.mjs",
-    "validate": "npm run check:web && npm run smoke:ab && npm run smoke:ab-history && npm run smoke:product-ops && npm run smoke:lead-todos && npm run smoke:lead-followup-todos && npm run smoke:lead-capture && npm run smoke:lead-source-daily && npm run smoke:lead-source-daily-cron"
+    "validate": "npm run check:web && npm run smoke:ab && npm run smoke:ab-history && npm run smoke:product-ops && npm run smoke:lead-todos && npm run smoke:lead-followup-todos && npm run smoke:lead-followup-todos-cron && npm run smoke:lead-capture && npm run smoke:lead-source-daily && npm run smoke:lead-source-daily-cron"
   }
 }
