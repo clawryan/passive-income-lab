@@ -521,7 +521,11 @@
           </div>
           <div class="grid g2">
             <button id="exportLeadAssetHistoryMd" class="ghost">导出成交素材外发 Markdown</button>
-            <div class="mini muted" style="display:flex;align-items:center">适合给自己/协作者做“今天推了哪些成交素材、主打哪个产品/来源”的简报留档。</div>
+            <button id="pushLeadAssetHistoryRemote" class="ghost">推送当前外发记录到远程快照</button>
+          </div>
+          <div class="grid g2">
+            <button id="pullLeadAssetHistoryRemote" class="ghost">拉取远程成交素材快照</button>
+            <div class="mini muted" style="display:flex;align-items:center">适合给自己/协作者做“今天推了哪些成交素材、主打哪个产品/来源”的简报留档；若已配置 Lead Capture API，会自动尝试改用同源的 <code>/api/lead-asset-history</code>。</div>
           </div>
           <div id="leadAssetHistoryBoard"><div class="muted">当前暂无成交素材外发记录</div></div>
         </div>
@@ -2428,6 +2432,57 @@ function persistLeadAssetHistory(webhookPayload){
   return deduped;
 }
 
+function mergeLeadAssetHistoryEntries(localHistory=[],remoteHistory=[]){
+  const merged=[];
+  [...(localHistory || []),...(remoteHistory || [])].forEach(item=>{
+    if(!item || !item.generatedAt || !item.kind) return;
+    if(merged.some(existing=>existing.generatedAt===item.generatedAt && existing.kind===item.kind)) return;
+    merged.push(item);
+  });
+  return merged
+    .sort((a,b)=>new Date(b.generatedAt || 0)-new Date(a.generatedAt || 0))
+    .slice(0,LEAD_ASSET_HISTORY_LIMIT);
+}
+
+async function pushLeadAssetHistoryRemote(){
+  const history=readLeadAssetHistory();
+  if(!history.length){
+    $('leadWebhookStatus').textContent='当前没有成交素材外发记录可推送。';
+    return;
+  }
+  const latest=history[0];
+  const request=getLeadAssetHistoryRequest('POST',{
+    source:'passive-income-lab-web',
+    entry:latest,
+    context:{
+      totalLocalHistory:history.length,
+      pushedAt:new Date().toISOString()
+    }
+  });
+  const response=await fetch(request.url,request.options);
+  const data=await response.json();
+  if(!response.ok){
+    throw new Error(data.error || '推送成交素材外发记录失败');
+  }
+  const merged=mergeLeadAssetHistoryEntries(history,data.snapshot?.history || []);
+  writeLeadAssetHistory(merged);
+  renderLeadAssetHistoryBoard();
+  $('leadWebhookStatus').textContent=`已推送成交素材外发记录到远程快照：${data.storage?.mode || 'remote'}｜远程 ${data.snapshot?.count ?? merged.length} 条`;
+}
+
+async function pullLeadAssetHistoryRemote(){
+  const request=getLeadAssetHistoryRequest('GET');
+  const response=await fetch(request.url,request.options);
+  const data=await response.json();
+  if(!response.ok){
+    throw new Error(data.error || '拉取成交素材外发快照失败');
+  }
+  const merged=mergeLeadAssetHistoryEntries(readLeadAssetHistory(),data.snapshot?.history || []);
+  writeLeadAssetHistory(merged);
+  renderLeadAssetHistoryBoard();
+  $('leadWebhookStatus').textContent=`已拉取远程成交素材快照：${data.snapshot?.count ?? 0} 条，合并后本地 ${merged.length} 条`;
+}
+
 function formatLeadSourceDailyDelta(value){
   if(!value) return '持平';
   return value > 0 ? `+${value}` : `${value}`;
@@ -3751,6 +3806,26 @@ function persistLeadCaptureConfig(){
 function getLeadCaptureRequest(method,body){
   const config=loadLeadCaptureConfig();
   const url=config.url || '/api/lead-capture';
+  const headers={'Content-Type':'application/json'};
+  if(config.auth){
+    headers.Authorization=config.auth;
+  }
+  return {
+    url,
+    options:{
+      method,
+      headers,
+      ...(body ? {body:JSON.stringify(body)} : {})
+    }
+  };
+}
+
+function getLeadAssetHistoryRequest(method,body){
+  const config=loadLeadCaptureConfig();
+  const baseUrl=(config.url || '/api/lead-capture').trim() || '/api/lead-capture';
+  const url=baseUrl.includes('lead-capture')
+    ? baseUrl.replace('lead-capture','lead-asset-history')
+    : `${baseUrl.replace(/\/$/,'')}/../lead-asset-history`;
   const headers={'Content-Type':'application/json'};
   if(config.auth){
     headers.Authorization=config.auth;
@@ -6521,6 +6596,8 @@ $("leadAssetHistoryFilter").addEventListener('change',renderLeadAssetHistoryBoar
 $("copyLeadAssetHistorySummary").addEventListener('click',copyLeadAssetHistorySummary);
 $("exportLeadAssetHistoryJson").addEventListener('click',exportLeadAssetHistoryJson);
 $("exportLeadAssetHistoryMd").addEventListener('click',exportLeadAssetHistoryMarkdown);
+$("pushLeadAssetHistoryRemote").addEventListener('click',()=>pushLeadAssetHistoryRemote().catch(handleActionError));
+$("pullLeadAssetHistoryRemote").addEventListener('click',()=>pullLeadAssetHistoryRemote().catch(handleActionError));
 $("copyLeadTodoWebhookPayload").addEventListener('click',copyLeadTodoWebhookPayload);
 $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioWebhookPayload);
 $("copyLeadSourceDailyWebhookPayload").addEventListener('click',copyLeadSourceDailyWebhookPayload);

@@ -62,6 +62,17 @@ const remoteLeadSnapshot = [
     updatedAt: '2026-04-13T08:30:00.000Z'
   }
 ];
+const remoteLeadAssetHistory = [
+  {
+    generatedAt: '2026-04-23T10:00:00.000Z',
+    kind: 'won-lead-cases',
+    label: '成交案例',
+    count: 2,
+    topProduct: { name: 'Micro-SaaS 冷启动提示词包', count: 2 },
+    topSource: { name: '飞书私聊', count: 1 },
+    summary: '成交案例｜演示远程留档'
+  }
+];
 
 const context = {
   console,
@@ -112,6 +123,33 @@ const context = {
   },
   fetch: async (url, options = {}) => {
     fetchCalls.push({ url, options });
+    if (String(url).includes('/api/lead-asset-history')) {
+      if ((options.method || 'GET') === 'POST') {
+        const body = JSON.parse(options.body || '{}');
+        const entry = body.entry || {};
+        const merged = [entry, ...remoteLeadAssetHistory.filter((item) => !(item.generatedAt === entry.generatedAt && item.kind === entry.kind))];
+        remoteLeadAssetHistory.splice(0, remoteLeadAssetHistory.length, ...merged.slice(0, 12));
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              ok: true,
+              storage: { mode: 'local-file' },
+              snapshot: { count: remoteLeadAssetHistory.length, history: [...remoteLeadAssetHistory] },
+              summary: { count: remoteLeadAssetHistory.length, totalLeads: remoteLeadAssetHistory.reduce((sum, item) => sum + Number(item.count || 0), 0) }
+            };
+          }
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { ok: true, storage: { mode: 'local-file' }, snapshot: { count: remoteLeadAssetHistory.length, history: [...remoteLeadAssetHistory] } };
+        }
+      };
+    }
     if (String(url).includes('/api/lead-capture')) {
       if ((options.method || 'GET') === 'POST') {
         const body = JSON.parse(options.body || '{}');
@@ -575,6 +613,8 @@ context.renderLeadAssetHistoryBoard();
 await context.copyLeadAssetHistorySummary();
 context.exportLeadAssetHistoryJson();
 context.exportLeadAssetHistoryMarkdown();
+await context.pushLeadAssetHistoryRemote();
+await context.pullLeadAssetHistoryRemote();
 
 const leadAssetBoardHtml = context.document.getElementById('leadAssetHistoryBoard').innerHTML;
 if (!leadAssetBoardHtml.includes('筛选：全部素材') || !leadAssetBoardHtml.includes('成交案例') || !leadAssetBoardHtml.includes('已报价催单') || !leadAssetBoardHtml.includes('复购 / 转介绍')) {
@@ -679,6 +719,20 @@ if (!downloadNames.some((name) => name.startsWith('lead-asset-history-') && name
 const leadCaptureCalls = fetchCalls.filter((call) => String(call.url).includes('/api/lead-capture'));
 if (leadCaptureCalls.length < 3) {
   throw new Error(`未触发完整远程 Lead Capture 请求（提交/拉取/付款回写）: ${JSON.stringify(fetchCalls)}`);
+}
+
+const leadAssetHistoryCalls = fetchCalls.filter((call) => String(call.url).includes('/api/lead-asset-history'));
+if (leadAssetHistoryCalls.length < 2) {
+  throw new Error(`未触发完整远程成交素材快照请求（推送/拉取）: ${JSON.stringify(fetchCalls)}`);
+}
+if (!leadAssetHistoryCalls.some((call) => (call.options.method || 'GET') === 'POST') || !leadAssetHistoryCalls.some((call) => (call.options.method || 'GET') === 'GET')) {
+  throw new Error(`远程成交素材快照方法异常: ${JSON.stringify(leadAssetHistoryCalls)}`);
+}
+if (!leadAssetHistoryCalls.every((call) => String(call.options?.headers?.Authorization || '') === 'Bearer lead-capture-demo')) {
+  throw new Error(`远程成交素材快照 Authorization 异常: ${JSON.stringify(leadAssetHistoryCalls)}`);
+}
+if (!context.document.getElementById('leadWebhookStatus').textContent.includes('已拉取远程成交素材快照')) {
+  throw new Error(`成交素材快照状态异常: ${context.document.getElementById('leadWebhookStatus').textContent}`);
 }
 
 if (!leadCaptureCalls.some((call) => (call.options.method || 'GET') === 'POST') || !leadCaptureCalls.some((call) => (call.options.method || 'GET') === 'GET')) {
