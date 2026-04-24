@@ -222,6 +222,13 @@
 
 # Results
 
+## 2026-04-24 08:00 (Asia/Shanghai)
+- 这轮选择了一个比“立刻接远程存储”更低阻力、但仍直接服务经营复盘的下一步：把已有的 **成交素材外发记录** 从“页面里能看最近几次”推进成 **可筛选、可复制、可导出** 的轻量投放日志。
+- `web/index.html` 现已为成交素材外发记录补齐 **素材类型筛选**（成交案例 / 已报价催单 / 复购转介绍）、**复制外发摘要**、**导出 JSON**、**导出 Markdown**；这样今天推过哪些社会证明、催单包、复购素材，不再只能肉眼扫卡片，而是能直接发给自己或协作者做复盘。
+- `scripts/smoke-lead-todos.mjs` 已同步扩展，新增对筛选报告、摘要文本以及 `lead-asset-history-*.json|md` 导出的回归断言；本轮 `npm run check:web`、`node scripts/smoke-lead-todos.mjs`、`npm run validate` 全部通过。
+- 这一步的价值在于：成交素材经营动作开始有了可直接留档的“投放日志”层，离后续做跨设备同步、来源对比和远程复盘更近一步，而不是每次都靠临时回忆“今天到底推过什么”。
+- 下一步最值得做的是：把这份成交素材日志继续接到远程快照或 KV / lead-capture 存储层，做成跨设备可回看的素材投放历史，而不只停留在单浏览器本地。
+
 ## 2026-04-23 08:00 (Asia/Shanghai)
 - 沿着 4/22 晚上写下的下一步，把线索区刚补齐的 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材，从“可复制 / 可分享 / 可导出”继续推进成 **可直接接现有 Webhook / 飞书卡片 / n8n** 的外发资产。
 - `web/index.html` 的“线索 Webhook 出口”现已支持三类素材分别执行：**推送到 Webhook**、**复制 Webhook Payload**、**复制飞书卡片 Payload**、**复制 n8n Workflow JSON**；同时 `buildLeadN8nWorkflow()`、`buildLeadWorkerTemplate()`、`buildLeadWebhookIntegrationGuide()` 也已统一扩展到这三个新 `kind`，避免自动化层再单独造协议。

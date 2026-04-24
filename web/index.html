@@ -502,7 +502,29 @@
           </div>
           <div id="leadWebhookStatus" class="mini muted">适合先接飞书机器人、n8n、Make、Zapier 或自建 webhook；只有你点按钮时才会发出请求。</div>
         </div>
-        <div id="leadAssetHistoryBoard" class="card"><div class="muted">当前暂无成交素材外发记录</div></div>
+        <div class="card stack">
+          <div class="section-title">
+            <div>
+              <h3>成交素材外发记录</h3>
+              <div class="muted">把“成交案例 / 已报价催单 / 复购转介绍”外发动作沉淀成轻量投放日志，方便回看今天到底推过什么。</div>
+            </div>
+            <select id="leadAssetHistoryFilter" style="max-width:240px">
+              <option value="">全部素材类型</option>
+              <option value="won-lead-cases">成交案例</option>
+              <option value="quoted-lead-closer">已报价催单</option>
+              <option value="won-lead-upsell">复购 / 转介绍</option>
+            </select>
+          </div>
+          <div class="grid g2">
+            <button id="copyLeadAssetHistorySummary" class="ghost">复制成交素材外发摘要</button>
+            <button id="exportLeadAssetHistoryJson" class="ghost">导出成交素材外发 JSON</button>
+          </div>
+          <div class="grid g2">
+            <button id="exportLeadAssetHistoryMd" class="ghost">导出成交素材外发 Markdown</button>
+            <div class="mini muted" style="display:flex;align-items:center">适合给自己/协作者做“今天推了哪些成交素材、主打哪个产品/来源”的简报留档。</div>
+          </div>
+          <div id="leadAssetHistoryBoard"><div class="muted">当前暂无成交素材外发记录</div></div>
+        </div>
         <div id="leadPortfolioBoard" class="card"><div class="muted">当前暂无跨产品线索总览</div></div>
         <div class="grid g4">
           <button id="copyLeadPortfolioSummary" class="ghost">复制跨产品线索摘要</button>
@@ -3348,17 +3370,121 @@ function buildLeadPortfolioMarkdown(){
   return lines.join('\n');
 }
 
+function getLeadAssetHistoryFilter(){
+  return ($('leadAssetHistoryFilter')?.value || '').trim();
+}
+
+function getFilteredLeadAssetHistory(){
+  const selected=getLeadAssetHistoryFilter();
+  const history=readLeadAssetHistory();
+  return selected ? history.filter(item=>(item.kind || '')===selected) : history;
+}
+
+function buildLeadAssetHistoryReport(){
+  const history=getFilteredLeadAssetHistory();
+  const filter=getLeadAssetHistoryFilter();
+  const exportedAt=new Date().toISOString();
+  const kindCounts=history.reduce((acc,item)=>{
+    const key=item.label || item.kind || '未分类';
+    acc[key]=(acc[key] || 0)+1;
+    return acc;
+  },{});
+  const leadCounts=history.reduce((sum,item)=>sum + Number(item.count || 0),0);
+  const productCounts=history.reduce((acc,item)=>{
+    const key=item.topProduct?.name || '未标记主产品';
+    acc[key]=(acc[key] || 0) + Number(item.topProduct?.count || 0);
+    return acc;
+  },{});
+  const sourceCounts=history.reduce((acc,item)=>{
+    const key=item.topSource?.name || '未标记主来源';
+    acc[key]=(acc[key] || 0) + Number(item.topSource?.count || 0);
+    return acc;
+  },{});
+  const latest=history[0] || null;
+  const topKind=Object.entries(kindCounts).sort((a,b)=>b[1]-a[1])[0] || null;
+  const topProduct=Object.entries(productCounts).sort((a,b)=>b[1]-a[1])[0] || null;
+  const topSource=Object.entries(sourceCounts).sort((a,b)=>b[1]-a[1])[0] || null;
+  return { exportedAt, filter, totalPushes:history.length, totalLeads:leadCounts, latest, topKind:topKind ? { label:topKind[0], count:topKind[1] } : null, topProduct:topProduct ? { name:topProduct[0], count:topProduct[1] } : null, topSource:topSource ? { name:topSource[0], count:topSource[1] } : null, history };
+}
+
+function buildLeadAssetHistorySummaryText(){
+  const report=buildLeadAssetHistoryReport();
+  const title=report.filter ? `成交素材外发摘要｜${({'won-lead-cases':'成交案例','quoted-lead-closer':'已报价催单','won-lead-upsell':'复购 / 转介绍'}[report.filter] || report.filter)}` : '成交素材外发摘要｜全部素材';
+  const lines=[title,`外发次数：${report.totalPushes}｜覆盖线索：${report.totalLeads}`];
+  lines.push(`主素材：${report.topKind ? `${report.topKind.label}（${report.topKind.count} 次）` : '暂无'}｜主产品：${report.topProduct ? `${report.topProduct.name}（${report.topProduct.count}）` : '暂无'}｜主来源：${report.topSource ? `${report.topSource.name}（${report.topSource.count}）` : '暂无'}`);
+  if(report.latest){
+    lines.push(`最近一次：${report.latest.label}｜${formatProductOpsTimestamp(report.latest.generatedAt)}｜${report.latest.summary || '暂无摘要'}`);
+  }else{
+    lines.push('最近一次：暂无');
+  }
+  return lines.join('\n');
+}
+
+function buildLeadAssetHistoryMarkdown(){
+  const report=buildLeadAssetHistoryReport();
+  const lines=[
+    '# Passive Income Lab 成交素材外发记录',
+    '',
+    `- 导出时间：${report.exportedAt}`,
+    `- 筛选范围：${report.filter || '全部素材'}`,
+    `- 外发次数：${report.totalPushes}`,
+    `- 覆盖线索：${report.totalLeads}`,
+    `- 主素材：${report.topKind ? `${report.topKind.label}（${report.topKind.count} 次）` : '暂无'}`,
+    `- 主产品：${report.topProduct ? `${report.topProduct.name}（${report.topProduct.count}）` : '暂无'}`,
+    `- 主来源：${report.topSource ? `${report.topSource.name}（${report.topSource.count}）` : '暂无'}`,
+    '',
+    '## 外发明细'
+  ];
+  if(!report.history.length){
+    lines.push('', '- 暂无外发记录');
+    return lines.join('\n');
+  }
+  report.history.forEach((item,index)=>{
+    lines.push('',`### ${index+1}. ${item.label}`,`- 时间：${item.generatedAt}`,`- 覆盖线索：${item.count}`,`- 主产品：${item.topProduct ? `${item.topProduct.name}（${item.topProduct.count}）` : '暂无'}`,`- 主来源：${item.topSource ? `${item.topSource.name}（${item.topSource.count}）` : '暂无'}`,`- 摘要：${item.summary || '暂无摘要'}`);
+  });
+  return lines.join('\n');
+}
+
+async function copyLeadAssetHistorySummary(){
+  const report=buildLeadAssetHistoryReport();
+  if(!report.totalPushes){
+    $('leadWebhookStatus').textContent='当前还没有成交素材外发记录可复制';
+    return;
+  }
+  await copyText(buildLeadAssetHistorySummaryText(),`已复制成交素材外发摘要（${report.totalPushes} 次）`);
+  $('leadWebhookStatus').textContent=`已复制成交素材外发摘要（${report.totalPushes} 次）`;
+}
+
+function exportLeadAssetHistoryJson(){
+  const report=buildLeadAssetHistoryReport();
+  const ts=report.exportedAt.replace(/[:.]/g,'-');
+  downloadFile(`lead-asset-history-${ts}.json`,JSON.stringify(report,null,2),'application/json;charset=utf-8');
+  $('leadWebhookStatus').textContent=report.totalPushes
+    ? `已导出成交素材外发 JSON（${report.totalPushes} 次）`
+    : '已导出空白成交素材外发 JSON 模板';
+}
+
+function exportLeadAssetHistoryMarkdown(){
+  const report=buildLeadAssetHistoryReport();
+  const ts=report.exportedAt.replace(/[:.]/g,'-');
+  downloadFile(`lead-asset-history-${ts}.md`,buildLeadAssetHistoryMarkdown(),'text/markdown;charset=utf-8');
+  $('leadWebhookStatus').textContent=report.totalPushes
+    ? `已导出成交素材外发 Markdown（${report.totalPushes} 次）`
+    : '已导出空白成交素材外发 Markdown 模板';
+}
+
 function renderLeadAssetHistoryBoard(){
   const board=$('leadAssetHistoryBoard');
   if(!board) return;
-  const history=readLeadAssetHistory();
+  const history=getFilteredLeadAssetHistory();
+  const selected=getLeadAssetHistoryFilter();
   if(!history.length){
-    board.innerHTML='<div class="muted">当前暂无成交素材外发记录</div>';
+    board.innerHTML=`<div class="muted">${selected ? '当前筛选下暂无成交素材外发记录' : '当前暂无成交素材外发记录'}</div>`;
     return;
   }
   const cards=history.slice(0,6).map((item,index)=>`<div style="border:1px solid #243244;border-radius:14px;padding:12px;background:#111827"><div class="mini muted">${index+1}. ${item.label}</div><div style="font-size:22px;font-weight:700;margin-top:6px">${item.count}</div><div class="mini muted">条线索｜${formatProductOpsTimestamp(item.generatedAt)}</div><div class="mini" style="margin-top:8px">${item.topProduct ? `主产品：${item.topProduct.name}（${item.topProduct.count}）` : '主产品：暂无'}<br/>${item.topSource ? `主来源：${item.topSource.name}（${item.topSource.count}）` : '主来源：暂无'}</div></div>`).join('');
   const latest=history[0];
-  board.innerHTML=`<h3>成交素材外发记录</h3><div class="mini muted">最近 ${history.length} 次外发留档｜最近一次：${latest.label}｜${formatProductOpsTimestamp(latest.generatedAt)}</div><div class="grid g3" style="margin-top:12px">${cards}</div><div class="mini muted" style="margin-top:8px">用途：快速回看今天已经推过哪些成交案例 / 催单包 / 复购素材，避免重复轰炸同一批线索。</div>`;
+  board.innerHTML=`<div class="mini muted">最近 ${history.length} 次外发留档｜筛选：${selected ? ({'won-lead-cases':'成交案例','quoted-lead-closer':'已报价催单','won-lead-upsell':'复购 / 转介绍'}[selected] || selected) : '全部素材'}｜最近一次：${latest.label}｜${formatProductOpsTimestamp(latest.generatedAt)}</div><div class="grid g3" style="margin-top:12px">${cards}</div><div class="mini muted" style="margin-top:8px">用途：快速回看今天已经推过哪些成交案例 / 催单包 / 复购素材，避免重复轰炸同一批线索。</div>`;
 }
 
 function renderLeadPortfolioBoard(){
@@ -6391,6 +6517,10 @@ $("sendLeadSourceDailyWebhook").addEventListener('click',sendLeadSourceDailyWebh
 $("sendWonLeadCasesWebhook").addEventListener('click',()=>sendLeadAssetWebhook('won-lead-cases'));
 $("sendQuotedLeadCloserWebhook").addEventListener('click',()=>sendLeadAssetWebhook('quoted-lead-closer'));
 $("sendWonLeadUpsellWebhook").addEventListener('click',()=>sendLeadAssetWebhook('won-lead-upsell'));
+$("leadAssetHistoryFilter").addEventListener('change',renderLeadAssetHistoryBoard);
+$("copyLeadAssetHistorySummary").addEventListener('click',copyLeadAssetHistorySummary);
+$("exportLeadAssetHistoryJson").addEventListener('click',exportLeadAssetHistoryJson);
+$("exportLeadAssetHistoryMd").addEventListener('click',exportLeadAssetHistoryMarkdown);
 $("copyLeadTodoWebhookPayload").addEventListener('click',copyLeadTodoWebhookPayload);
 $("copyLeadPortfolioWebhookPayload").addEventListener('click',copyLeadPortfolioWebhookPayload);
 $("copyLeadSourceDailyWebhookPayload").addEventListener('click',copyLeadSourceDailyWebhookPayload);

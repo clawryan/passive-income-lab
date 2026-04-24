@@ -552,8 +552,32 @@ if (!Array.isArray(leadAssetHistory) || leadAssetHistory.length < 3 || !leadAsse
   throw new Error(`成交素材历史未成功落盘: ${JSON.stringify(leadAssetHistory)}`);
 }
 
+const leadAssetHistorySummary = context.buildLeadAssetHistorySummaryText();
+const leadAssetHistoryMarkdown = context.buildLeadAssetHistoryMarkdown();
+const leadAssetHistoryReport = context.buildLeadAssetHistoryReport();
+if (!leadAssetHistorySummary.includes('成交素材外发摘要') || !leadAssetHistorySummary.includes('外发次数：3') || !leadAssetHistorySummary.includes('主素材：')) {
+  throw new Error(`成交素材历史摘要异常: ${leadAssetHistorySummary}`);
+}
+if (!leadAssetHistoryMarkdown.includes('# Passive Income Lab 成交素材外发记录') || !leadAssetHistoryMarkdown.includes('## 外发明细') || !leadAssetHistoryMarkdown.includes('### 1.')) {
+  throw new Error(`成交素材历史 Markdown 异常: ${leadAssetHistoryMarkdown}`);
+}
+if (leadAssetHistoryReport.totalPushes !== 3 || leadAssetHistoryReport.totalLeads < 1 || !leadAssetHistoryReport.topKind?.label) {
+  throw new Error(`成交素材历史报告异常: ${JSON.stringify(leadAssetHistoryReport)}`);
+}
+context.document.getElementById('leadAssetHistoryFilter').value = 'quoted-lead-closer';
+context.renderLeadAssetHistoryBoard();
+const filteredLeadAssetHistoryReport = context.buildLeadAssetHistoryReport();
+if (filteredLeadAssetHistoryReport.totalPushes !== 1 || filteredLeadAssetHistoryReport.filter !== 'quoted-lead-closer' || filteredLeadAssetHistoryReport.latest?.kind !== 'quoted-lead-closer') {
+  throw new Error(`成交素材历史筛选异常: ${JSON.stringify(filteredLeadAssetHistoryReport)}`);
+}
+context.document.getElementById('leadAssetHistoryFilter').value = '';
+context.renderLeadAssetHistoryBoard();
+await context.copyLeadAssetHistorySummary();
+context.exportLeadAssetHistoryJson();
+context.exportLeadAssetHistoryMarkdown();
+
 const leadAssetBoardHtml = context.document.getElementById('leadAssetHistoryBoard').innerHTML;
-if (!leadAssetBoardHtml.includes('成交素材外发记录') || !leadAssetBoardHtml.includes('成交案例') || !leadAssetBoardHtml.includes('已报价催单') || !leadAssetBoardHtml.includes('复购 / 转介绍')) {
+if (!leadAssetBoardHtml.includes('筛选：全部素材') || !leadAssetBoardHtml.includes('成交案例') || !leadAssetBoardHtml.includes('已报价催单') || !leadAssetBoardHtml.includes('复购 / 转介绍')) {
   throw new Error(`成交素材历史未成功渲染: ${leadAssetBoardHtml}`);
 }
 
@@ -642,6 +666,14 @@ if (!downloadNames.some((name) => name.startsWith('lead-source-daily-digest-') &
 
 if (!downloadNames.some((name) => name.startsWith('lead-source-daily-digest-') && name.endsWith('.json'))) {
   throw new Error(`未触发来源日报 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-asset-history-') && name.endsWith('.json'))) {
+  throw new Error(`未触发成交素材外发 JSON 导出: ${JSON.stringify(downloads)}`);
+}
+
+if (!downloadNames.some((name) => name.startsWith('lead-asset-history-') && name.endsWith('.md'))) {
+  throw new Error(`未触发成交素材外发 Markdown 导出: ${JSON.stringify(downloads)}`);
 }
 
 const leadCaptureCalls = fetchCalls.filter((call) => String(call.url).includes('/api/lead-capture'));

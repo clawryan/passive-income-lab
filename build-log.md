@@ -157,6 +157,13 @@
 
 # Build Log
 
+## 2026-04-24 08:00 (Asia/Shanghai)
+- 这轮没有继续把成交素材日志往远程存储层拉，而是先补一个更低阻力、但已经足够接近真实经营复盘的缺口：**成交素材外发记录筛选 / 摘要 / 导出**。此前页面虽然会留存最近 12 次外发摘要，但还只能在卡片里粗看，想发给自己或协作者复盘今天推过什么，仍得手工整理。
+- `web/index.html` 现已为“成交素材外发记录”补齐 **素材类型筛选**（成交案例 / 已报价催单 / 复购转介绍）以及 **复制外发摘要 / 导出 JSON / 导出 Markdown** 三个动作；对应新增 `getLeadAssetHistoryFilter()`、`getFilteredLeadAssetHistory()`、`buildLeadAssetHistoryReport()`、`buildLeadAssetHistorySummaryText()`、`buildLeadAssetHistoryMarkdown()`、`copyLeadAssetHistorySummary()`、`exportLeadAssetHistoryJson()`、`exportLeadAssetHistoryMarkdown()`。
+- `scripts/smoke-lead-todos.mjs` 已同步覆盖这条链路：不仅断言外发历史继续正常落盘/渲染，还会校验筛选后报告、摘要文本与 `lead-asset-history-*.json|md` 下载文件名，确认这次不是只多了按钮。
+- 验证已通过：`npm run check:web`、`node scripts/smoke-lead-todos.mjs`、`npm run validate`。
+- 结果：成交素材区从“只能回看最近几次”推进到“可按类型复盘并直接留档/转发”，更适合把当天的社会证明、催单动作和复购触达沉淀成轻量增长日志。
+
 ## 2026-04-23 08:00 (Asia/Shanghai)
 - 这轮直接沿着昨晚 results 里已经连续指向的下一步推进：不再只补本地导出，而是把 **成交案例 / 已报价催单 / 复购转介绍** 三类成交素材真正接进现有线索 Webhook 出口。
 - `web/index.html` 的“线索 Webhook 出口”现已新增 12 个动作：三类素材分别支持 **一键推送到 Webhook**、**复制 Webhook Payload**、**复制飞书卡片 Payload**、**复制 n8n Workflow JSON**；对应新增 `buildLeadAssetWebhookPayload()`、`sendLeadAssetWebhook()`、`buildLeadAssetFeishuCardPayload()`、`copyLeadAssetWebhookPayload()`、`copyLeadAssetFeishuCardPayload()`、`copyLeadAssetN8nWorkflow()`。
