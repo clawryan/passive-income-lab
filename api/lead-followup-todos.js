@@ -168,7 +168,33 @@ function getCadenceWeight(level = '') {
   return 2;
 }
 
-function buildFollowupItems(snapshot = {}) {
+function normalizeFilterList(value) {
+  const list = Array.isArray(value) ? value : String(value || '').split(',');
+  return list
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+}
+
+function matchesFilter(target, filters = []) {
+  if (!filters.length) return true;
+  return filters.includes(String(target || '').trim());
+}
+
+function buildFilters(raw = {}) {
+  return {
+    productSlugs: normalizeFilterList(raw.productSlug || raw.productSlugs),
+    sources: normalizeFilterList(raw.source || raw.sources),
+    stages: normalizeFilterList(raw.stage || raw.stages),
+    cadenceLevels: normalizeFilterList(raw.cadenceLevel || raw.cadenceLevels),
+    priorities: normalizeFilterList(raw.priority || raw.priorities)
+  };
+}
+
+function hasActiveFilters(filters = {}) {
+  return Object.values(filters).some((items) => Array.isArray(items) && items.length > 0);
+}
+
+function buildFollowupItems(snapshot = {}, filters = {}) {
   const entries = Array.isArray(snapshot.entries) ? snapshot.entries : [];
   return entries
     .filter((entry) => String(entry.stage || '待跟进').trim() !== '暂不推进')
@@ -198,6 +224,13 @@ function buildFollowupItems(snapshot = {}) {
         need: String(entry.need || entry.demand || '').trim(),
         landingLink: buildLandingLink(productSlug)
       };
+    })
+    .filter((item) => {
+      return matchesFilter(item.productSlug, filters.productSlugs)
+        && matchesFilter(item.source, filters.sources)
+        && matchesFilter(item.stage, filters.stages)
+        && matchesFilter(item.cadenceLevel, filters.cadenceLevels)
+        && matchesFilter(item.priority, filters.priorities);
     })
     .sort((a, b) => {
       return getCadenceWeight(a.cadenceLevel) - getCadenceWeight(b.cadenceLevel)
@@ -290,11 +323,19 @@ function buildTrend(report, previousEntry = null) {
 }
 
 function buildLeadFollowupTodosPayload(snapshot = {}, options = {}) {
-  const items = buildFollowupItems(snapshot);
+  const filters = buildFilters(options.filters || {});
+  const items = buildFollowupItems(snapshot, filters);
   const report = buildTodoReport(items);
   const trend = buildTrend(report, options.previousEntry || null);
+  const filterSummary = [];
+  if (filters.productSlugs.length) filterSummary.push(`产品 ${filters.productSlugs.join(' / ')}`);
+  if (filters.sources.length) filterSummary.push(`来源 ${filters.sources.join(' / ')}`);
+  if (filters.stages.length) filterSummary.push(`阶段 ${filters.stages.join(' / ')}`);
+  if (filters.cadenceLevels.length) filterSummary.push(`节奏 ${filters.cadenceLevels.join(' / ')}`);
+  if (filters.priorities.length) filterSummary.push(`优先级 ${filters.priorities.join(' / ')}`);
   const summaryLines = [
     `Passive Income Lab 跟进待办日报｜${new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
+    hasActiveFilters(filters) ? `筛选范围：${filterSummary.join('｜')}` : '筛选范围：全部可推进线索',
     `待办总数：${report.count}｜现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}`,
     `节奏状态：已超期 ${report.cadenceCounts.overdue || 0}｜即将超期 ${report.cadenceCounts.soon || 0}｜节奏正常 ${report.cadenceCounts.fresh || 0}`,
     trend.summary,
@@ -310,6 +351,7 @@ function buildLeadFollowupTodosPayload(snapshot = {}, options = {}) {
     payload: {
       count: items.length,
       items,
+      filters,
       report,
       trend,
       summary: summaryLines.join('\n'),
@@ -317,6 +359,7 @@ function buildLeadFollowupTodosPayload(snapshot = {}, options = {}) {
         '# Passive Income Lab 跟进待办日报',
         '',
         `- 日期：${new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
+        `- 筛选范围：${hasActiveFilters(filters) ? filterSummary.join('｜') : '全部可推进线索'}`,
         `- 待办总数：${report.count}`,
         `- 时间桶：现在 ${report.bucketCounts.now}｜24h ${report.bucketCounts.next24h}｜72h ${report.bucketCounts.next72h}｜本周 ${report.bucketCounts.thisWeek}`,
         `- 节奏状态：已超期 ${report.cadenceCounts.overdue || 0}｜即将超期 ${report.cadenceCounts.soon || 0}｜节奏正常 ${report.cadenceCounts.fresh || 0}`,
@@ -355,6 +398,7 @@ function buildHistoryEntry(payload, webhook = null, trigger = 'manual-post') {
     generatedAt: payload.generatedAt,
     kind: payload.kind,
     trigger,
+    filters: payload?.payload?.filters || {},
     count: report.count || 0,
     overdueCount: report.cadenceCounts?.overdue || 0,
     soonCount: report.cadenceCounts?.soon || 0,
@@ -384,6 +428,18 @@ async function saveTodosHistory(payload, webhook = null, trigger = 'manual-post'
   return next;
 }
 
+function getRequestBody(req = {}) {
+  if (!req || req.body == null) return {};
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch (_error) {
+      return {};
+    }
+  }
+  return typeof req.body === 'object' ? req.body : {};
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Use GET or POST.' });
@@ -392,7 +448,9 @@ module.exports = async function handler(req, res) {
   try {
     const snapshot = await readSnapshot();
     const historyStore = await readHistoryStore();
-    const payload = buildLeadFollowupTodosPayload(snapshot, { previousEntry: historyStore.latest || null });
+    const body = getRequestBody(req);
+    const filters = req.method === 'GET' ? (req.query || {}) : (body.filters || req.query || {});
+    const payload = buildLeadFollowupTodosPayload(snapshot, { previousEntry: historyStore.latest || null, filters });
 
     if (req.method === 'GET') {
       return res.status(200).json({
@@ -404,7 +462,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const dryRun = body.dryRun === true || body.forward === false;
     const webhook = dryRun ? { forwarded: false, dryRun: true } : await forwardTodosPayload(payload);
     const nextHistoryStore = await saveTodosHistory(payload, webhook, dryRun ? 'manual-dry-run' : 'manual-post');

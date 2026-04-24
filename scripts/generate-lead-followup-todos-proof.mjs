@@ -94,6 +94,7 @@ for (const lead of seedLeads) {
 }
 
 const getBefore = await call(followupHandler, { method: 'GET' });
+const filteredGet = await call(followupHandler, { method: 'GET', query: { productSlug: 'micro-saas', cadenceLevel: 'overdue' } });
 const dryRun = await call(followupHandler, { method: 'POST', body: { dryRun: true } });
 
 let forwardedPayload = null;
@@ -137,6 +138,12 @@ const proofJson = {
       overdueCount: getBefore.payload?.report?.cadenceCounts?.overdue || 0,
       historyCount: Array.isArray(getBefore.history) ? getBefore.history.length : 0,
       historyStorage: getBefore.historyStorage || null
+    },
+    filteredGet: {
+      count: filteredGet.payload?.count || 0,
+      filters: filteredGet.payload?.filters || {},
+      summary: filteredGet.payload?.summary || '',
+      topLead: filteredGet.payload?.report?.topLead?.leadName || null
     },
     dryRun: {
       trigger: dryRun.latest?.trigger || null,
@@ -187,6 +194,7 @@ const markdown = [
   '',
   '## 验收结论',
   `- GET /api/lead-followup-todos：待办 ${proofJson.checks.getBefore.count} 条，最优先线索 ${proofJson.checks.getBefore.topLead || '暂无'}，已超期 ${proofJson.checks.getBefore.overdueCount} 条，首次读取 historyCount=${proofJson.checks.getBefore.historyCount}`,
+  `- GET /api/lead-followup-todos?productSlug=micro-saas&cadenceLevel=overdue：count=${proofJson.checks.filteredGet.count}，topLead=${proofJson.checks.filteredGet.topLead || '暂无'}`,
   `- POST /api/lead-followup-todos (dryRun)：trigger=${proofJson.checks.dryRun.trigger}，historyCount=${proofJson.checks.dryRun.historyCount}，dryRun=${proofJson.checks.dryRun.dryRun}`,
   `- POST /api/lead-followup-todos：trigger=${proofJson.checks.manualPost.trigger}，historyCount=${proofJson.checks.manualPost.historyCount}，topLead=${proofJson.checks.manualPost.topLead || '暂无'}，webhookStatus=${proofJson.checks.manualPost.webhook?.status || 'n/a'}`,
   `- GET /api/lead-followup-todos（新增 1 条线索后）：countDelta=${proofJson.checks.getAfterTrend.countDelta}，trend=${proofJson.checks.getAfterTrend.summary || '暂无'}`,
@@ -194,6 +202,7 @@ const markdown = [
   '',
   '## 关键证据',
   `- 历史存储模式：${proofJson.checks.getBefore.historyStorage?.mode || 'unknown'}（durable=${proofJson.checks.getBefore.historyStorage?.durable ?? 'unknown'}）`,
+  `- 筛选查询已生效：${proofJson.checks.filteredGet.summary.split('\n')[1] || '无'} `,
   `- latest.trigger 已依次覆盖：${proofJson.checks.dryRun.trigger} -> ${proofJson.checks.manualPost.trigger} -> ${proofJson.checks.cronPost.trigger}`,
   `- 趋势摘要已出现增量：${proofJson.checks.getAfterTrend.summary || '暂无'}`,
   forwardedPayload

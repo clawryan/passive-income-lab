@@ -109,6 +109,18 @@ if (
   throw new Error(`GET 跟进待办趋势异常: ${JSON.stringify(res.body)}`);
 }
 
+res = createRes();
+await todosHandler({ method: 'GET', query: { productSlug: 'micro-saas', cadenceLevel: 'overdue' } }, res);
+if (
+  res.statusCode !== 200 ||
+  res.body.payload?.count !== 2 ||
+  res.body.payload?.filters?.productSlugs?.[0] !== 'micro-saas' ||
+  res.body.payload?.filters?.cadenceLevels?.[0] !== 'overdue' ||
+  !String(res.body.payload?.summary || '').includes('筛选范围：产品 micro-saas｜节奏 overdue')
+) {
+  throw new Error(`GET 跟进待办筛选异常: ${JSON.stringify(res.body)}`);
+}
+
 console.log('lead-followup-todos 冒烟通过:', {
   count: res.body.payload.count,
   topLead: res.body.payload.report.topLead?.leadName,
