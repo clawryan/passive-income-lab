@@ -116,6 +116,13 @@ function normalizeLead(rawLead = {}) {
     nextStep: String(rawLead.nextStep || '待确认下一步').trim() || '待确认下一步',
     productSlug: String(rawLead.productSlug || 'micro-saas').trim() || 'micro-saas',
     source: String(rawLead.source || 'manual').trim() || 'manual',
+    sourceTag: String(rawLead.sourceTag || '').trim(),
+    referrer: String(rawLead.referrer || rawLead.ref || '').trim(),
+    utmSource: String(rawLead.utmSource || rawLead.utm_source || '').trim(),
+    utmMedium: String(rawLead.utmMedium || rawLead.utm_medium || '').trim(),
+    utmCampaign: String(rawLead.utmCampaign || rawLead.utm_campaign || '').trim(),
+    utmContent: String(rawLead.utmContent || rawLead.utm_content || '').trim(),
+    utmTerm: String(rawLead.utmTerm || rawLead.utm_term || '').trim(),
     originPage: String(rawLead.originPage || '').trim(),
     paymentStatus: String(rawLead.paymentStatus || '').trim(),
     paymentCurrency: String(rawLead.paymentCurrency || 'CNY').trim() || 'CNY',
@@ -171,6 +178,13 @@ function mergeEntries(entries, incomingLead) {
       budget: pickPreferExisting(existing.budget, incomingLead.budget, ['待确认']),
       priority: pickPreferExisting(existing.priority, incomingLead.priority, ['中']),
       source: pickPreferExisting(existing.source, incomingLead.source, ['manual']),
+      sourceTag: pickPreferExisting(existing.sourceTag, incomingLead.sourceTag),
+      referrer: pickPreferExisting(existing.referrer, incomingLead.referrer),
+      utmSource: pickPreferExisting(existing.utmSource, incomingLead.utmSource),
+      utmMedium: pickPreferExisting(existing.utmMedium, incomingLead.utmMedium),
+      utmCampaign: pickPreferExisting(existing.utmCampaign, incomingLead.utmCampaign),
+      utmContent: pickPreferExisting(existing.utmContent, incomingLead.utmContent),
+      utmTerm: pickPreferExisting(existing.utmTerm, incomingLead.utmTerm),
       originPage: pickPreferExisting(existing.originPage, incomingLead.originPage),
       paymentCurrency: pickPreferExisting(existing.paymentCurrency, incomingLead.paymentCurrency, ['CNY']),
       paymentReference: pickPreferExisting(existing.paymentReference, incomingLead.paymentReference),
@@ -224,6 +238,9 @@ function buildSnapshotSummary(snapshot = {}) {
   const stageCounts = {};
   const productCounts = {};
   const sourceCounts = {};
+  const sourceTagCounts = {};
+  const utmSourceCounts = {};
+  const utmCampaignCounts = {};
   const paymentStatusCounts = {};
   const revenueByCurrency = {};
   let paidLeadCount = 0;
@@ -232,12 +249,18 @@ function buildSnapshotSummary(snapshot = {}) {
     const stage = String(entry.stage || '待跟进').trim() || '待跟进';
     const product = String(entry.productSlug || 'micro-saas').trim() || 'micro-saas';
     const source = String(entry.source || entry.channel || 'manual').trim() || 'manual';
+    const sourceTag = String(entry.sourceTag || '').trim();
+    const utmSource = String(entry.utmSource || '').trim();
+    const utmCampaign = String(entry.utmCampaign || '').trim();
     const paymentStatus = String(entry.paymentStatus || '').trim();
     const paymentCurrency = String(entry.paymentCurrency || 'CNY').trim() || 'CNY';
     const paymentAmount = normalizeMoneyValue(entry.paymentAmount);
     stageCounts[stage] = (stageCounts[stage] || 0) + 1;
     productCounts[product] = (productCounts[product] || 0) + 1;
     sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+    if (sourceTag) sourceTagCounts[sourceTag] = (sourceTagCounts[sourceTag] || 0) + 1;
+    if (utmSource) utmSourceCounts[utmSource] = (utmSourceCounts[utmSource] || 0) + 1;
+    if (utmCampaign) utmCampaignCounts[utmCampaign] = (utmCampaignCounts[utmCampaign] || 0) + 1;
     if (paymentStatus) paymentStatusCounts[paymentStatus] = (paymentStatusCounts[paymentStatus] || 0) + 1;
     if (paymentStatus === 'paid' || stage === '已成交') {
       paidLeadCount += 1;
@@ -250,19 +273,28 @@ function buildSnapshotSummary(snapshot = {}) {
   const topStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0] || null;
   const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0] || null;
   const topSource = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  const topSourceTag = Object.entries(sourceTagCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  const topUtmSource = Object.entries(utmSourceCounts).sort((a, b) => b[1] - a[1])[0] || null;
+  const topUtmCampaign = Object.entries(utmCampaignCounts).sort((a, b) => b[1] - a[1])[0] || null;
   return {
     updatedAt: snapshot.updatedAt || null,
     count: entries.length,
     stageCounts,
     productCounts,
     sourceCounts,
+    sourceTagCounts,
+    utmSourceCounts,
+    utmCampaignCounts,
     paymentStatusCounts,
     paidLeadCount,
     paidAmount: Math.round(paidAmount * 100) / 100,
     revenueByCurrency,
     topStage: topStage ? { stage: topStage[0], count: topStage[1] } : null,
     topProduct: topProduct ? { productSlug: topProduct[0], count: topProduct[1] } : null,
-    topSource: topSource ? { source: topSource[0], count: topSource[1] } : null
+    topSource: topSource ? { source: topSource[0], count: topSource[1] } : null,
+    topSourceTag: topSourceTag ? { sourceTag: topSourceTag[0], count: topSourceTag[1] } : null,
+    topUtmSource: topUtmSource ? { utmSource: topUtmSource[0], count: topUtmSource[1] } : null,
+    topUtmCampaign: topUtmCampaign ? { utmCampaign: topUtmCampaign[0], count: topUtmCampaign[1] } : null
   };
 }
 

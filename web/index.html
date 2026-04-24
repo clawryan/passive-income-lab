@@ -5404,6 +5404,20 @@ function getPublicInquirySourceTag(){
   return new URL(getCurrentPageUrl()).searchParams.get('src') || '';
 }
 
+function getPublicInquiryAttribution(){
+  const url=new URL(getCurrentPageUrl());
+  const params=url.searchParams;
+  return {
+    sourceTag:getPublicInquirySourceTag(),
+    referrer:params.get('ref') || params.get('referrer') || '',
+    utmSource:params.get('utm_source') || '',
+    utmMedium:params.get('utm_medium') || '',
+    utmCampaign:params.get('utm_campaign') || '',
+    utmContent:params.get('utm_content') || '',
+    utmTerm:params.get('utm_term') || ''
+  };
+}
+
 function buildProductInquiryLink(key,sourceTag=''){
   const offer=PRODUCT_OFFERS[key];
   if(!offer) return getCurrentPageUrl();
@@ -6165,7 +6179,8 @@ async function submitPublicInquiry(){
   const contact=($('publicInquiryContact')?.value || '').trim();
   const budget=($('publicInquiryBudget')?.value || '待确认').trim();
   const need=($('publicInquiryNeed')?.value || '').trim();
-  const sourceTag=getPublicInquirySourceTag();
+  const attribution=getPublicInquiryAttribution();
+  const sourceTag=attribution.sourceTag;
   if(!name || !contact || !need){
     $('publicInquiryStatus').textContent='请至少填写称呼、联系方式和当前需求。';
     return;
@@ -6189,6 +6204,13 @@ async function submitPublicInquiry(){
       nextStep:'收到公开询价，需尽快人工跟进',
       productSlug:offer.slug,
       source:sourceTag ? `public-inquiry:${sourceTag}` : 'public-inquiry',
+      sourceTag,
+      referrer:attribution.referrer,
+      utmSource:attribution.utmSource,
+      utmMedium:attribution.utmMedium,
+      utmCampaign:attribution.utmCampaign,
+      utmContent:attribution.utmContent,
+      utmTerm:attribution.utmTerm,
       originPage:getCurrentPageUrl(),
       createdAt:now,
       updatedAt:now
@@ -6197,7 +6219,8 @@ async function submitPublicInquiry(){
       view:'inquiry',
       product:offer.slug,
       productTitle:offer.title,
-      sourceTag
+      sourceTag,
+      attribution
     }
   })});
   const data=await response.json().catch(()=>({}));

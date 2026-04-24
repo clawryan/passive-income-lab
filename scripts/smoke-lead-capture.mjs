@@ -36,8 +36,8 @@ if (res.statusCode !== 200 || res.body.snapshot.count !== 0 || res.body.storage.
 }
 
 res = createRes();
-await handler({ method: 'POST', body: { lead: { id: 'lead-fixed', name: '测试线索A', contact: 'wechat:test-a', source: 'public-inquiry:feishu-dm', originPage: 'https://example.com/web/?product=micro-saas&view=inquiry&src=feishu-dm', productSlug: 'micro-saas', stage: '待跟进', need: '需要 7 天冷启动包', nextStep: '今晚发报价' } } }, res);
-if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.lead.name !== '测试线索A' || res.body.lead.contact !== 'wechat:test-a' || res.body.lead.source !== 'public-inquiry:feishu-dm') {
+await handler({ method: 'POST', body: { lead: { id: 'lead-fixed', name: '测试线索A', contact: 'wechat:test-a', source: 'public-inquiry:feishu-dm', sourceTag: 'feishu-dm', referrer: 'feishu-bot', utmSource: 'feishu', utmMedium: 'dm', utmCampaign: 'sprint-3h', utmContent: 'card-a', originPage: 'https://example.com/web/?product=micro-saas&view=inquiry&src=feishu-dm&utm_source=feishu&utm_medium=dm&utm_campaign=sprint-3h&utm_content=card-a&ref=feishu-bot', productSlug: 'micro-saas', stage: '待跟进', need: '需要 7 天冷启动包', nextStep: '今晚发报价' } } }, res);
+if (res.statusCode !== 200 || res.body.snapshot.count !== 1 || res.body.lead.name !== '测试线索A' || res.body.lead.contact !== 'wechat:test-a' || res.body.lead.source !== 'public-inquiry:feishu-dm' || res.body.lead.utmCampaign !== 'sprint-3h') {
   throw new Error(`POST 保存异常: ${JSON.stringify(res.body)}`);
 }
 
@@ -61,6 +61,9 @@ if (
   res.body.summary?.topStage?.stage !== '已成交' ||
   res.body.summary?.topProduct?.productSlug !== 'micro-saas' ||
   res.body.summary?.topSource?.source !== 'public-inquiry:feishu-dm' ||
+  res.body.summary?.topSourceTag?.sourceTag !== 'feishu-dm' ||
+  res.body.summary?.topUtmSource?.utmSource !== 'feishu' ||
+  res.body.summary?.topUtmCampaign?.utmCampaign !== 'sprint-3h' ||
   res.body.summary?.paymentStatusCounts?.paid !== 1
 ) {
   throw new Error(`最终 GET / 文件存储异常: ${JSON.stringify(res.body)}`);
