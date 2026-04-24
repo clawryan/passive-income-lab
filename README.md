@@ -108,10 +108,11 @@
 - `npm run smoke:lead-followup-todos-cron`：验证 `/api/cron/lead-followup-todos` 的 GET / POST、Webhook 转发与历史留档
 - `npm run smoke:lead-capture`：验证 `/api/lead-capture` 的 GET / POST、快照合并与本地文件存储
 - `npm run smoke:lead-source-daily`：验证 `/api/lead-source-daily` 的日报聚合与可选 webhook 转发
+- `npm run smoke:lead-asset-history`：验证 `/api/lead-asset-history` 的 GET / POST、去重覆盖、本地文件与 KV 持久化链路
 - `npm run proof:lead-source-daily`：生成来源日报本地验收证明，并输出到 `outputs/lead-source-daily-local-proof.md|json`
 - `npm run proof:lead-followup-todos`：生成跟进待办本地验收证明，并输出到 `outputs/lead-followup-todos-local-proof.md|json`
 - `npm run proof:lead-asset-history`：生成成交素材外发记录本地验收证明，并输出到 `outputs/lead-asset-history-local-proof.md|json`
-- `npm run validate`：串联执行以上八步中的核心回归（proof 独立执行，避免每次验证都覆盖留档产物）
+- `npm run validate`：串联执行以上核心回归（proof 独立执行，避免每次验证都覆盖留档产物）
 
 ### Vercel 部署
 仓库已包含最小 `vercel.json`，部署后根路径会自动指向 `web/index.html`。

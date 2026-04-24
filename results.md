@@ -1,3 +1,9 @@
+## 2026-04-24 22:00 (Asia/Shanghai)
+- 这轮沿着“成交素材外发记录可推送 / 拉取远程快照”继续收口，没有再扩新 UI，而是优先补了一个更低阻力、但能长期守住质量的缺口：给 `/api/lead-asset-history` 新增独立 smoke 回归，并并入 `npm run validate`。
+- 新增 `scripts/smoke-lead-asset-history.mjs` 与 `npm run smoke:lead-asset-history`；脚本会分别校验本地文件模式与 KV 模式下的 `GET / POST`、同一 `generatedAt + kind` 去重覆盖、`summary.totalLeads / topKind / topProduct / topSource / latest` 聚合结果，以及 `storage.mode` 是否正确切换为 `local-file / vercel-kv`。
+- `README.md` / `package.json` / `build-log.md` 已同步更新；本轮 `npm run smoke:lead-asset-history` 与 `npm run validate` 均通过，说明新增回归没有把既有 A/B、线索、日报、cron 链路带坏。
+- 下一步最值得做的是：拿真实线上 `/api/lead-asset-history` 地址跑一次手机端推送成交素材 → 电脑端 GET 拉回快照的真验收，并把线上返回样例继续沉淀到 `outputs/`。
+
 ## 2026-04-24 17:00 (Asia/Shanghai)
 - 沿着“成交素材外发记录可推送 / 拉取远程快照”这条更接近收入闭环的线索继续收口，这轮没有再扩 UI，而是补了一个更低阻力、但更便于交付验收的缺口：**成交素材外发记录本地验收证明**。现在可一键生成 `outputs/lead-asset-history-local-proof.md|json`，把 `GET /api/lead-asset-history` 初始空快照、三类素材连续 POST、同一 `generatedAt + kind` 去重覆盖、以及最终 `summary.topKind / topProduct / topSource / latest` 关键证据固化下来，方便自己或协作者快速确认这条“成交素材外发日志”链路确实跑通。
 - 新增 `scripts/generate-lead-asset-history-proof.mjs` 与 `npm run proof:lead-asset-history`；脚本会使用独立临时本地存储，顺序完成空快照读取、三类素材写入、重复键覆盖验证，并输出 Markdown / JSON 两份 proof 产物。

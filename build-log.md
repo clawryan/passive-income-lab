@@ -157,6 +157,12 @@
 
 # Build Log
 
+## 2026-04-24 22:00 (Asia/Shanghai)
+- 这轮没有继续扩成交素材外发记录的 UI，而是补了一个更低阻力、但对持续开发更关键的回归缺口：给 `/api/lead-asset-history` 单独加了 **smoke 脚本**，并正式并入 `npm run validate`。这样“成交素材外发记录远程快照”不再只有一次性的 proof，而是每次迭代都能自动校验。
+- 新增 `scripts/smoke-lead-asset-history.mjs`：会分别验证 **本地文件模式** 与 **KV 模式** 下的 `GET / POST`、`generatedAt + kind` 去重覆盖、`summary.totalLeads / topKind / topProduct / topSource / latest` 聚合结果，以及存储模式是否正确切换为 `local-file / vercel-kv`。
+- `package.json` 已新增 `npm run smoke:lead-asset-history`，并把它串进 `npm run validate`；`README.md` 也已同步补上脚本说明，避免功能有了但日常回归没守住。
+- 结果：成交素材外发记录这条链路现在具备 **proof 留档 + smoke 回归** 双保险，更适合后续继续往真实线上验收或自动化复盘推进。
+
 ## 2026-04-24 08:00 (Asia/Shanghai)
 - 这轮没有继续把成交素材日志往远程存储层拉，而是先补一个更低阻力、但已经足够接近真实经营复盘的缺口：**成交素材外发记录筛选 / 摘要 / 导出**。此前页面虽然会留存最近 12 次外发摘要，但还只能在卡片里粗看，想发给自己或协作者复盘今天推过什么，仍得手工整理。
 - `web/index.html` 现已为“成交素材外发记录”补齐 **素材类型筛选**（成交案例 / 已报价催单 / 复购转介绍）以及 **复制外发摘要 / 导出 JSON / 导出 Markdown** 三个动作；对应新增 `getLeadAssetHistoryFilter()`、`getFilteredLeadAssetHistory()`、`buildLeadAssetHistoryReport()`、`buildLeadAssetHistorySummaryText()`、`buildLeadAssetHistoryMarkdown()`、`copyLeadAssetHistorySummary()`、`exportLeadAssetHistoryJson()`、`exportLeadAssetHistoryMarkdown()`。
