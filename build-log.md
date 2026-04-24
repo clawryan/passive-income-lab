@@ -566,3 +566,10 @@
 - `web/index.html` 现已把这两个已有动作显式补到线索 Webhook 区，并新增“导出来源日报 Markdown / JSON”按钮，直接复用现有 `buildLeadSourceDailyWebhookPayload()` 产出的 `summary / markdown / report / sourceHighlights`。
 - 目的：把“来源日报能生成”推进到“来源日报能直接发、能留档、能被协作者接走”，减少每次还要手工复制多段文本或临时翻 DevTools 的摩擦。
 - 验证：`npm run validate` 通过；`scripts/smoke-lead-todos.mjs` 已新增来源日报 Markdown / JSON 导出断言，确认下载文件名与内容链路都存在。
+
+## 2026-04-24 17:0x (Asia/Shanghai)
+- 这轮没有再加新 UI，而是优先补一个更接近真实协作验收的低阻力缺口：给 `api/lead-asset-history.js` 增加**本地 proof 生成脚本**，把“成交案例 / 已报价催单 / 复购转介绍”的外发记录链路沉淀成可重复生成的证据。
+- 新增 `scripts/generate-lead-asset-history-proof.mjs` 与 `npm run proof:lead-asset-history`；脚本会使用独立临时本地存储，依次跑 `GET /api/lead-asset-history`、连续 `POST` 三类素材记录、再用同一 `generatedAt + kind` 重复写入验证去重覆盖，最后把 `summary.topKind / topProduct / topSource / latest` 留档到 `outputs/lead-asset-history-local-proof.md|json`。
+- `README.md` / `package.json` 已同步补上 proof 入口，方便后续在手机 / 电脑或协作者环境里快速复现这条日志链路，而不用手工拼请求。
+- 目的：把“成交素材外发记录可远程快照”从仅有 smoke test，推进到“有可分享的本地验收证明”，为下一步真实线上 URL 联调做准备。
+- 验证：`npm run proof:lead-asset-history` 已生成 `outputs/lead-asset-history-local-proof.md|json`；额外运行 `node scripts/smoke-lead-todos.mjs` 通过，确认这次补的 proof 没把既有素材导出 / Webhook / 远程快照链路带坏。

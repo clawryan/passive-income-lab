@@ -109,6 +109,7 @@
 - `npm run smoke:lead-source-daily`：验证 `/api/lead-source-daily` 的日报聚合与可选 webhook 转发
 - `npm run proof:lead-source-daily`：生成来源日报本地验收证明，并输出到 `outputs/lead-source-daily-local-proof.md|json`
 - `npm run proof:lead-followup-todos`：生成跟进待办本地验收证明，并输出到 `outputs/lead-followup-todos-local-proof.md|json`
+- `npm run proof:lead-asset-history`：生成成交素材外发记录本地验收证明，并输出到 `outputs/lead-asset-history-local-proof.md|json`
 - `npm run validate`：串联执行以上八步中的核心回归（proof 独立执行，避免每次验证都覆盖留档产物）
 
 ### Vercel 部署

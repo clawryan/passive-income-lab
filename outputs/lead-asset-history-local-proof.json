@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-04-24T09:03:38.814Z",
+  "seedEntries": [
+    {
+      "generatedAt": "2026-04-24T08:00:00.000Z",
+      "kind": "won-lead-cases",
+      "count": 2
+    },
+    {
+      "generatedAt": "2026-04-24T09:00:00.000Z",
+      "kind": "quoted-lead-closer",
+      "count": 3
+    },
+    {
+      "generatedAt": "2026-04-24T10:00:00.000Z",
+      "kind": "won-lead-upsell",
+      "count": 1
+    }
+  ],
+  "checks": {
+    "getBefore": {
+      "snapshotCount": 0,
+      "storage": {
+        "mode": "local-file",
+        "durable": false,
+        "path": "/var/folders/2z/l3smmyhd6dq2m35rjh5k_jyc0000gn/T/pil-lead-asset-proof-onDoa0/lead-asset-history.json",
+        "note": "本地文件存储适合本机 / 调试；若要真正跨设备持久化，建议配置 KV_REST_API_URL / KV_REST_API_TOKEN。"
+      },
+      "totalLeads": 0
+    },
+    "posts": [
+      {
+        "kind": "won-lead-cases",
+        "count": 2,
+        "snapshotCount": 1,
+        "topProduct": "Micro-SaaS 冷启动提示词包",
+        "topSource": "feishu-dm"
+      },
+      {
+        "kind": "quoted-lead-closer",
+        "count": 3,
+        "snapshotCount": 2,
+        "topProduct": "Orion Nexus Quant 研究包",
+        "topSource": "wechat-group"
+      },
+      {
+        "kind": "won-lead-upsell",
+        "count": 1,
+        "snapshotCount": 3,
+        "topProduct": "Micro-SaaS 冷启动提示词包",
+        "topSource": "wechat-group"
+      }
+    ],
+    "duplicateOverwrite": {
+      "snapshotCount": 3,
+      "latestKind": "won-lead-upsell",
+      "latestCount": 4,
+      "totalLeads": 9
+    },
+    "getAfter": {
+      "snapshotCount": 3,
+      "topKind": {
+        "kind": "won-lead-upsell",
+        "count": 1
+      },
+      "topProduct": {
+        "name": "Micro-SaaS 冷启动提示词包",
+        "count": 3
+      },
+      "topSource": {
+        "name": "wechat-group",
+        "count": 2
+      },
+      "latest": {
+        "generatedAt": "2026-04-24T10:00:00.000Z",
+        "kind": "won-lead-upsell",
+        "label": "复购 / 转介绍",
+        "count": 4,
+        "topProduct": {
+          "name": "Micro-SaaS 冷启动提示词包",
+          "count": 1
+        },
+        "topSource": {
+          "name": "xhs-post",
+          "count": 1
+        },
+        "summary": "复购 / 转介绍 4 条｜用于验证 generatedAt + kind 去重覆盖"
+      }
+    }
+  },
+  "artifactPaths": {
+    "markdown": "outputs/lead-asset-history-local-proof.md",
+    "json": "outputs/lead-asset-history-local-proof.json"
+  }
+}
