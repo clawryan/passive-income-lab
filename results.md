@@ -228,6 +228,12 @@
 
 # Results
 
+## 2026-06-07 15:25 (Asia/Shanghai)
+- 这轮选择了一个比“继续堆前端入口”更低阻力、但更直接服务成交闭环验收的下一步：给 `lead-capture` 补一份可重复生成的 proof 产物，把“留资 → 报价 → 付款回写 → 收入摘要”从 smoke test 推进到可分享证据。
+- 新增 `scripts/generate-lead-capture-proof.mjs` 与 `npm run proof:lead-capture`；脚本会分别验证本地文件模式和 KV + webhook 模式下的 `GET /api/lead-capture`、`POST lead`、`POST event(status=paid)`，并把 `storage.mode / topSource / topProduct / paidLeadCount / revenueByCurrency / paymentStatusCounts / webhook 预览` 固化到 `outputs/lead-capture-local-proof.md|json`。
+- 这一步的价值在于：以后不只是能说“付款回写链路应该可用”，而是能直接拿一份 proof 文件对照线上环境，快速确认它是否真的跑通、收入摘要是否真的增长。
+- 下一步最值得做的是：拿真实线上 `/api/lead-capture` 地址做一次手机端公开询价 → 电脑端 GET 快照 → 付款回写的真验收，并把返回样例继续沉淀到 `outputs/`。
+
 ## 2026-04-24 08:00 (Asia/Shanghai)
 - 这轮选择了一个比“立刻接远程存储”更低阻力、但仍直接服务经营复盘的下一步：把已有的 **成交素材外发记录** 从“页面里能看最近几次”推进成 **可筛选、可复制、可导出** 的轻量投放日志。
 - `web/index.html` 现已为成交素材外发记录补齐 **素材类型筛选**（成交案例 / 已报价催单 / 复购转介绍）、**复制外发摘要**、**导出 JSON**、**导出 Markdown**；这样今天推过哪些社会证明、催单包、复购素材，不再只能肉眼扫卡片，而是能直接发给自己或协作者做复盘。

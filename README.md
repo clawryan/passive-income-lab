@@ -30,6 +30,7 @@
 - **Lead Capture 已支持托管 KV 持久化**：`api/lead-capture.js` 现可在检测到 `KV_REST_API_URL + KV_REST_API_TOKEN`（兼容 Upstash/Vercel KV REST）时把线索快照写入托管 KV；未配置时继续回退到本地文件，方便本机调试、部署后多端共享与逐步迁移。
 - **Lead Capture GET 已自带汇总摘要**：`GET /api/lead-capture` 现在除了返回全量 `entries`，还会额外返回 `summary.updatedAt / stageCounts / productCounts / sourceCounts / topStage / topProduct / topSource`，方便用手机或 cURL 快速验收远程快照是否真的在累积、哪种渠道来源最有效，而不用每次手翻全量线索。
 - **已成交 / 付款事件可远程回写**：`POST /api/lead-capture` 现已支持 `event` 载荷（如 `leadId + status=paid + amount + reference`），可把既有线索远程更新为“已成交”，并写入 `paymentAmount / paymentCurrency / paymentReference / paymentAt`，同时在 `summary` 中返回 `paymentStatusCounts / paidLeadCount / revenueByCurrency`，更接近真实收款后的回写闭环。
+- **Lead Capture 本地验收证明可直接生成**：新增 `scripts/generate-lead-capture-proof.mjs` 与 `npm run proof:lead-capture`，会自动跑本地文件模式与 KV 模式下的 `GET / POST lead / POST event`，并把“留资 → 报价 → 付款回写 → 收入摘要”的关键证据留档到 `outputs/lead-capture-local-proof.md|json`。
 - **手机端可直接远程标记已付款**：线索区“远程付款回写”现可从当前编辑中的线索自动回填 `leadId / 金额 / 币种 / 参考号 / 备注`，并一键调用 `/api/lead-capture` 回写 `status=paid`；成功后会同步刷新本地线索板与累计收入摘要，方便在电脑或手机上手动确认收款后立刻更新经营状态。
 - **KV 部署清单已留档**：新增 `outputs/lead-capture-kv-deploy.md`，把 Vercel / Upstash（或兼容 KV REST）所需环境变量、验收 cURL 与常见故障检查收口成可直接照着走的上线清单。
 - **公开询价链接 / 留资表单**：单产品页现可一键复制 `?product=...&view=inquiry` 公开询价链接；潜在客户可在手机端直接填写称呼、联系方式、预算和需求，并提交到 `/api/lead-capture`，把“先聊再手录”推进到“先留资后跟进”。
@@ -109,6 +110,7 @@
 - `npm run smoke:lead-capture`：验证 `/api/lead-capture` 的 GET / POST、快照合并与本地文件存储
 - `npm run smoke:lead-source-daily`：验证 `/api/lead-source-daily` 的日报聚合与可选 webhook 转发
 - `npm run smoke:lead-asset-history`：验证 `/api/lead-asset-history` 的 GET / POST、去重覆盖、本地文件与 KV 持久化链路
+- `npm run proof:lead-capture`：生成 Lead Capture 本地验收证明，并输出到 `outputs/lead-capture-local-proof.md|json`
 - `npm run proof:lead-source-daily`：生成来源日报本地验收证明，并输出到 `outputs/lead-source-daily-local-proof.md|json`
 - `npm run proof:lead-followup-todos`：生成跟进待办本地验收证明，并输出到 `outputs/lead-followup-todos-local-proof.md|json`
 - `npm run proof:lead-asset-history`：生成成交素材外发记录本地验收证明，并输出到 `outputs/lead-asset-history-local-proof.md|json`

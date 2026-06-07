@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-06-07T07:30:18.713Z",
+  "checks": {
+    "localInitial": {
+      "storageMode": "local-file",
+      "count": 0
+    },
+    "localLeadCreate": {
+      "storageMode": "local-file",
+      "topSource": "public-inquiry:feishu-dm",
+      "topUtmCampaign": "dev-sprint-3h",
+      "nextStep": "今晚发报价"
+    },
+    "localLeadUpdate": {
+      "stage": "已报价",
+      "topStage": "已报价"
+    },
+    "localPayment": {
+      "eventStatus": "paid",
+      "leadStage": "已成交",
+      "paidLeadCount": 1,
+      "revenueByCurrency": {
+        "CNY": 229
+      }
+    },
+    "localFinal": {
+      "count": 1,
+      "topStage": "已成交",
+      "topProduct": "micro-saas",
+      "topSource": "public-inquiry:feishu-dm",
+      "paymentStatusCounts": {
+        "paid": 1
+      },
+      "localStoreExists": true
+    },
+    "kvInitial": {
+      "storageMode": "vercel-kv+webhook-forward",
+      "durable": true,
+      "count": 0
+    },
+    "kvLeadCreate": {
+      "storageMode": "vercel-kv+webhook-forward",
+      "webhookStatus": 202,
+      "topProduct": "orion-nexus"
+    },
+    "kvPayment": {
+      "eventStatus": "paid",
+      "leadStage": "已成交",
+      "paidLeadCount": 1,
+      "revenueByCurrency": {
+        "CNY": 1999
+      },
+      "webhookStatus": 202
+    },
+    "kvFinal": {
+      "count": 1,
+      "topStage": "已成交",
+      "topProduct": "orion-nexus",
+      "topSource": "public-inquiry:wechat-group",
+      "paymentStatusCounts": {
+        "paid": 1
+      },
+      "storageMode": "vercel-kv+webhook-forward"
+    }
+  },
+  "forwardedWebhookPreview": {
+    "kind": "lead-event",
+    "source": "payment-webhook-sync",
+    "leadId": "proof-lead-kv",
+    "eventStatus": "paid",
+    "snapshotCount": 1,
+    "paidLeadCount": 1
+  },
+  "artifactPaths": {
+    "markdown": "outputs/lead-capture-local-proof.md",
+    "json": "outputs/lead-capture-local-proof.json"
+  }
+}

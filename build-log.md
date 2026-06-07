@@ -157,6 +157,12 @@
 
 # Build Log
 
+## 2026-06-07 15:25 (Asia/Shanghai)
+- 这轮没有再扩前端按钮，而是优先补一个更接近真实成交验收的低阻力缺口：给 `api/lead-capture.js` 增加 **本地 proof 生成脚本**，把“留资 → 报价 → 付款回写 → 收入摘要”的关键证据固化成可重复生成、可直接转发的产物。
+- 新增 `scripts/generate-lead-capture-proof.mjs` 与 `npm run proof:lead-capture`；脚本会分别跑 **本地文件模式** 与 **KV + webhook 模式** 下的 `GET /api/lead-capture`、`POST lead`、`POST event(status=paid)`，并把 `storage.mode / topSource / topProduct / paidLeadCount / revenueByCurrency / paymentStatusCounts` 等关键结果留档到 `outputs/lead-capture-local-proof.md|json`。
+- `README.md` / `package.json` 已同步补上 proof 入口与说明，避免这条链路只有 smoke test、却缺少更适合交付验收与线上对照的证据产物。
+- 结果：Lead Capture 不再只有接口说明和 smoke 脚本，还多了一份可重复生成的“成交回写闭环证明”，更适合下一步拿真实线上域名做手机端公开询价 → 电脑端拉快照 → 付款回写的真验收。
+
 ## 2026-04-24 22:00 (Asia/Shanghai)
 - 这轮没有继续扩成交素材外发记录的 UI，而是补了一个更低阻力、但对持续开发更关键的回归缺口：给 `/api/lead-asset-history` 单独加了 **smoke 脚本**，并正式并入 `npm run validate`。这样“成交素材外发记录远程快照”不再只有一次性的 proof，而是每次迭代都能自动校验。
 - 新增 `scripts/smoke-lead-asset-history.mjs`：会分别验证 **本地文件模式** 与 **KV 模式** 下的 `GET / POST`、`generatedAt + kind` 去重覆盖、`summary.totalLeads / topKind / topProduct / topSource / latest` 聚合结果，以及存储模式是否正确切换为 `local-file / vercel-kv`。
